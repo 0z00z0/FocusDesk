@@ -3,7 +3,7 @@
     Builds the per-user Inno Setup installer for FocusDesk.
 
 .DESCRIPTION
-    1. Publishes the app fully self-contained (win-x64, Windows App SDK bundled, no trimming —
+    1. Publishes the app fully self-contained (win-x64, Windows App SDK bundled, no trimming -
        trimming breaks WinUI 3).
     2. Compiles installer\FocusDesk.iss with Inno Setup (ISCC.exe).
 
@@ -14,7 +14,7 @@
         winget install JRSoftware.InnoSetup
 
 .EXAMPLE
-    .\build-installer.ps1                  # auto-bumps patch (e.g. 1.0.2 → 1.0.3)
+    .\build-installer.ps1                  # auto-bumps patch (e.g. 1.0.2 -> 1.0.3)
     .\build-installer.ps1 -Version 1.1.0   # explicit override
 #>
 [CmdletBinding()]
@@ -30,7 +30,7 @@ $proj         = Join-Path $root "FocusDesk.csproj"
 $publishDir   = Join-Path $root "publish"
 $iss          = Join-Path $installerDir "FocusDesk.iss"
 
-# ── 0. Resolve / bump version ────────────────────────────────────────────────
+# -- 0. Resolve / bump version ------------------------------------------------
 $projContent = Get-Content $proj -Raw
 $vMatch      = [regex]::Match($projContent, '<Version>(\d+\.\d+\.\d+)</Version>')
 if (-not $vMatch.Success) { throw "Cannot find <Version>x.y.z</Version> in $proj" }
@@ -52,7 +52,7 @@ if ($currentVersion -ne $Version) {
     Write-Host "    Updated FocusDesk.csproj: $currentVersion -> $Version" -ForegroundColor DarkGray
 }
 
-# ── 1. Publish the app (fully self-contained, no trim) ───────────────────────
+# -- 1. Publish the app (fully self-contained, no trim) -----------------------
 Write-Host "==> Publishing app (self-contained win-x64, Windows App SDK bundled)..." -ForegroundColor Cyan
 if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
 # WindowsAppSDKSelfContained is NOT passed here as a -p: global on purpose: a command-line global
@@ -67,7 +67,7 @@ dotnet publish $proj `
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed ($LASTEXITCODE)." }
 
 if (-not (Test-Path (Join-Path $publishDir "FocusDesk.pri"))) {
-    throw "FocusDesk.pri missing from publish output — WinUI would crash at startup (0xC000027B)."
+    throw "FocusDesk.pri missing from publish output - WinUI would crash at startup (0xC000027B)."
 }
 
 # The markup names the brand typeface at this path only. Without the file the face falls back in
@@ -79,8 +79,8 @@ foreach ($brandAsset in @("CascadiaMono.ttf", "LICENCE-OFL.txt")) {
     }
 }
 
-# ── 2. Sign the published exe ────────────────────────────────────────────────
-# dotnet publish creates a fresh apphost in the publish folder — a separate binary
+# -- 2. Sign the published exe ------------------------------------------------
+# dotnet publish creates a fresh apphost in the publish folder - a separate binary
 # from the bin\ build output that SignOutput already signed. Sign this copy so the
 # installed exe is not flagged as Unsigned by security tools.
 # Read from the project rather than decided here, so a local build and a CI build agree with
@@ -96,12 +96,12 @@ if (Test-Path $publishedExe) {
     Write-Host "==> Signing published exe..." -ForegroundColor Cyan
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "scripts\sign.ps1") -Path $publishedExe @signSwitches
     # A machine with no certificate exits 0 and is signed by CI instead. A non-zero exit is a real
-    # failure — the signature refused, or on CI one that came out without a timestamp — and the
+    # failure - the signature refused, or on CI one that came out without a timestamp - and the
     # file it left behind must not be packed.
     if ($LASTEXITCODE -ne 0) { throw "Signing the published exe failed ($LASTEXITCODE)." }
 }
 
-# ── 3. Locate Inno Setup compiler ────────────────────────────────────────────
+# -- 3. Locate Inno Setup compiler --------------------------------------------
 $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
 if (-not $iscc) {
     foreach ($p in @(
@@ -115,7 +115,7 @@ if (-not $iscc) {
     throw "Inno Setup (ISCC.exe) not found. Install it once with:  winget install JRSoftware.InnoSetup"
 }
 
-# ── 4. Compile the installer ─────────────────────────────────────────────────
+# -- 4. Compile the installer -------------------------------------------------
 # Remove any previous versioned setup files so the Output folder stays clean.
 Get-ChildItem (Join-Path $installerDir "Output") -Filter "FocusDesk-Setup-*.exe" -ErrorAction SilentlyContinue |
     Remove-Item -Force
@@ -126,13 +126,13 @@ if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)." }
 
 $setup = Join-Path $installerDir "Output\FocusDesk-Setup-$Version.exe"
 
-# ── 5. Sign the installer exe ────────────────────────────────────────────────
+# -- 5. Sign the installer exe ------------------------------------------------
 # Sign before computing the SHA so the printed hash matches the distributed file.
 if (Test-Path $setup) {
     Write-Host "==> Signing installer..." -ForegroundColor Cyan
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "scripts\sign.ps1") -Path $setup @signSwitches
     # As above: absent certificate exits 0, a refused signature does not, and on CI neither does an
-    # untimestamped one — an installer nobody can verify once the certificate expires.
+    # untimestamped one - an installer nobody can verify once the certificate expires.
     if ($LASTEXITCODE -ne 0) { throw "Signing the installer failed ($LASTEXITCODE)." }
 }
 
