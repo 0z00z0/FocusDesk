@@ -1,0 +1,18 @@
+<Project>
+
+  <!--
+    The ZeroZero build kit. The kit is never a PackageReference: that restores cleanly, delivers
+    nothing and fails the build with ZZB011. It is an MSBuild SDK package whose version is named in
+    global.json under msbuild-sdks, and it arrives through four imports that each carry
+    Sdk="ZeroZero.Build" and name their file — the props here, the targets in
+    Directory.Build.targets, the pins in Directory.Packages.props, and the WinUI application block
+    in FocusDesk.csproj.
+
+    Resolving the SDK is itself a restore against the family feed, so the feed and its credential
+    have to be in place before the first project is evaluated. nuget.config carries the source and
+    the mapping; the credential comes from the environment.
+  -->
+
+  <Import Project="ZeroZero.Build.props" Sdk="ZeroZero.Build" />
+
+</Project>

@@ -1,0 +1,68 @@
+## .NET / Visual Studio
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+artifacts/
+
+# Build logs
+[Ll]og/
+[Ll]ogs/
+*.log
+*.binlog
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+
+# NuGet
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+project.lock.json
+
+# MSIX packaging output
+AppPackages/
+BundleArtifacts/
+*.msix
+*.msixupload
+*.appx
+*.appxbundle
+*.appxupload
+
+# Publish output
+publish/
+*.pubxml
+PublishScripts/
+
+# Code analysis and tooling
+_ReSharper*/
+*.DotSettings.user
+*.dotCover
+.idea/
+
+# Generated files
+Generated\ Files/
+*_wpftmp.csproj
+
+# Installer build output (self-contained publish + compiled Setup.exe — not committed).
+publish/
+installer/Output/
+
+# Local task tracking — not for the repo.
+TODO.md
+
+# Stray Explorer shortcut that lands in the folder — not part of the project.
+Projects.lnk
+
+# Session handoff: exported Claude memory + transcript for a session rooted in this dir.
+# Personal detail (HA broker, gh accounts, preferences) + a large transcript — never commit.
+.claude-handoff/

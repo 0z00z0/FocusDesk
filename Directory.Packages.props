@@ -1,0 +1,28 @@
+<Project>
+
+  <!-- Central package management, switched on by the family's pin file. Every package the family
+       shares is pinned there and nowhere else: a version attribute on a PackageReference, a second
+       declaration, an Update that moves a pin, or a VersionOverride each fail the build (ZZB006 /
+       NU1013). FocusDesk's own packages are declared below the import. -->
+
+  <Import Project="ZeroZero.Packages.props" Sdk="ZeroZero.Build" />
+
+  <!-- The shared library, one pin per component. A component's package version is its own tag
+       without the prefix, so the numbers move independently and a bump here is a deliberate
+       adoption. Every direct reference has its pin here. What arrives transitively is never
+       declared — the MQTT discovery layer and client, the controls, the primitives, the Win32
+       layer, the dump registration and the single-type settings store — because declaring one
+       resolves the same assembly twice. -->
+  <ItemGroup Label="ZeroZero shared library">
+    <PackageVersion Include="ZeroZero.Brand.WinUI" Version="0.10.0" />
+    <PackageVersion Include="ZeroZero.Config.Sections" Version="0.8.0" />
+    <PackageVersion Include="ZeroZero.Config.Watch" Version="0.8.0" />
+    <PackageVersion Include="ZeroZero.Diagnostics" Version="0.7.0" />
+    <PackageVersion Include="ZeroZero.Lifecycle" Version="0.7.1" />
+    <PackageVersion Include="ZeroZero.Mqtt.WinUI" Version="0.7.3" />
+    <PackageVersion Include="ZeroZero.Tray" Version="0.7.0" />
+    <PackageVersion Include="ZeroZero.Update" Version="0.11.0" />
+    <PackageVersion Include="ZeroZero.Update.WinUI" Version="0.11.0" />
+  </ItemGroup>
+
+</Project>

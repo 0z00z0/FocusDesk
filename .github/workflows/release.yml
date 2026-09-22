@@ -1,0 +1,654 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 1.2.3 — without the leading v)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Build, sign, and publish the installer
+  # ─────────────────────────────────────────────────────────────────────────────
+  release:
+    runs-on: windows-latest
+
+    # Same kind of hard cap as ci.yml's build job, sized for this job's longer work. Without it a
+    # tagged release inherits GitHub's 6-hour default — and the gate it runs is the very step that
+    # can hang, so the one path that publishes to users would be exposed to it.
+    timeout-minutes: 30
+
+    # Secrets surfaced as job-level env so step `if:` conditions can test them
+    # (a step's own `env:` block is NOT visible to that step's `if:`).
+    env:
+      CODE_SIGN_PFX: ${{ secrets.CODE_SIGN_PFX }}
+      CODE_SIGN_PASSWORD: ${{ secrets.CODE_SIGN_PASSWORD }}
+      # The shared library arrives as packages from GitHub Packages, which authenticates every read.
+      # NuGet takes the credential from this variable rather than from nuget.config, so no token is
+      # written into the repository, and the MSBuild SDK resolver that fetches the build kit reads
+      # the same variable — it has to, because the kit is resolved before any project is evaluated.
+      # PACKAGES_READ_TOKEN first, the job's own token second: the packages are private and belong
+      # to another repository in the organisation, so the job's own token reaches them only where
+      # each package grants this repository read access.
+      NuGetPackageSourceCredentials_zerozero: Username=${{ github.actor }};Password=${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      sha256: ${{ steps.sha256.outputs.sha256 }}
+
+    steps:
+      # ── 1. Checkout (full history so tags resolve) ──────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # ── 2. Resolve version string ────────────────────────────────────────────
+      # Tag-triggered: strip the leading 'v'.
+      # workflow_dispatch: use the input; fall back to '0.0.0-dev'.
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -match '^refs/tags/v(.+)$') {
+            $ver = $Matches[1]
+          } elseif ('${{ github.event.inputs.version }}' -ne '') {
+            $ver = '${{ github.event.inputs.version }}'
+          } else {
+            $ver = '0.0.0-dev'
+          }
+          Write-Host "Version: $ver"
+          "version=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      # ── 3. Set up .NET 10 ────────────────────────────────────────────────────
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.x'
+
+      # ── 3b. Test gate ────────────────────────────────────────────────────────
+      # Fail-closed like the unsigned guard further down: a tag push publishes to
+      # users, so red tests must stop the release. Placed before the installer is
+      # built or signed — nothing downstream can then ship on a failed suite.
+      # Split into timed steps for the same reason as ci.yml, and with the same runtime
+      # install and the same pin — see the long comment there for the mechanism. Without the
+      # runtime the tagged release, the one path that publishes to users, hangs exactly like CI.
+      #
+      # This is also WHY the fix is a runner install rather than
+      # -p:WindowsAppSdkBootstrapInitialize=false: a build property would rewrite
+      # bin\FocusDesk.dll without the bootstrap initializer, and the installer publish further
+      # down this job could then ship an exe that cannot start on a machine lacking the Windows
+      # App Runtime. Installing the runtime changes no build input at all.
+      - name: Install Windows App Runtime 2.4.0 (x64)
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $url    = 'https://aka.ms/windowsappsdk/2.4/2.4.0/windowsappruntimeinstall-x64.exe'
+          $sha256 = '851C35B0B0A59CE4C55F9171F601193322FC3413143B0DC3390EA11E14CFA7FC'
+          $exe    = Join-Path $env:RUNNER_TEMP 'WindowsAppRuntimeInstall-x64.exe'
+
+          Invoke-WebRequest -Uri $url -OutFile $exe -UseBasicParsing
+          $actual = (Get-FileHash $exe -Algorithm SHA256).Hash.ToUpper()
+          if ($actual -ne $sha256) {
+            throw "WindowsAppRuntimeInstall-x64.exe SHA256 is $actual, expected $sha256. Refusing to run an unexpected binary."
+          }
+
+          function Show-Runtime([string]$when) {
+            Write-Host "Windows App Runtime packages $when :"
+            $all = Get-AppxPackage | Where-Object { $_.Name -like '*WindowsAppRuntime*' -or $_.Name -like '*WinAppRuntime*' }
+            if (-not $all) { Write-Host '  (none)' }
+            else { $all | Sort-Object Name, Architecture | ForEach-Object { Write-Host "  $($_.Name) $($_.Version) $($_.Architecture)" } }
+          }
+          Show-Runtime 'BEFORE'
+
+          & $exe --quiet
+          if ($LASTEXITCODE -ne 0) { throw "WindowsAppRuntimeInstall failed (exit 0x$('{0:X}' -f $LASTEXITCODE))." }
+
+          Show-Runtime 'AFTER'
+
+          # Asserts the bootstrapper's own requirement (framework family
+          # Microsoft.WindowsAppRuntime.2, >= 2.4.0.0, x64) rather than mere presence — the
+          # runner image already carries a framework package of this family below what the
+          # bootstrapper asks for, so presence proves nothing.
+          $fw = Get-AppxPackage -Name 'Microsoft.WindowsAppRuntime.2' |
+                Where-Object { $_.Architecture -eq 'X64' -and [version]$_.Version -ge [version]'2.4.0.0' }
+          if (-not $fw) {
+            throw 'No x64 Microsoft.WindowsAppRuntime.2 framework package >= 2.4.0.0 is registered after install.'
+          }
+          Write-Host "OK  bootstrap requirement satisfied by $($fw[0].Name) $($fw[0].Version) x64"
+
+      # Primes the win-x64 runtime pack in the NuGet cache. Restoring only the test
+      # project does not fetch it, even though the app project carries its own RID, and
+      # the Release build of the test project then fails with NETSDK1112.
+      - name: Restore app (primes the win-x64 runtime pack)
+        shell: pwsh
+        timeout-minutes: 10
+        run: dotnet restore FocusDesk.csproj -r win-x64
+
+      - name: Restore tests
+        shell: pwsh
+        timeout-minutes: 10
+        run: dotnet restore Tests\FocusDesk.Tests.csproj
+
+      - name: Build tests (Release)
+        shell: pwsh
+        timeout-minutes: 10
+        run: dotnet build Tests\FocusDesk.Tests.csproj -c Release --no-restore --nologo
+
+      # Kept byte-for-byte in step with ci.yml's Test step: the release path must not diverge
+      # from the path the hang is diagnosed on.
+      - name: Test
+        shell: pwsh
+        timeout-minutes: 10
+        run: dotnet test Tests\FocusDesk.Tests.csproj -c Release --no-build --nologo --blame-hang --blame-hang-timeout 3m --blame-crash
+
+      - name: Upload blame dumps
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-test-blame-dumps
+          path: Tests/TestResults/**
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # ── 4. Install Inno Setup 6 via Chocolatey ───────────────────────────────
+      - name: Install Inno Setup 6
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      # ── 5. Build installer (publish + ISCC) ──────────────────────────────────
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $ver = '${{ steps.version.outputs.version }}'
+          Write-Host "Building installer for version $ver"
+          & installer\build-installer.ps1 -Version $ver
+
+      # ── 6. Authenticode sign (skipped gracefully when secrets are absent) ────
+      # Signs with the project's certificate (PFX delivered via the CODE_SIGN_PFX
+      # secret). RFC-3161 timestamped so the signature stays valid after the cert
+      # expires. The app exe is signed FIRST, then the installer is recompiled (so
+      # it bundles the signed exe) and signed once — the shipped installer never
+      # embeds an unsigned exe.
+      - name: Sign binaries
+        if: ${{ env.CODE_SIGN_PFX != '' }}
+        shell: pwsh
+        run: |
+          $pfxPath = Join-Path $env:RUNNER_TEMP 'codesign.pfx'
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:CODE_SIGN_PFX))
+
+          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' `
+            -Filter 'signtool.exe' -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -like '*x64*' } |
+            Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $signtool) { throw 'signtool.exe not found under Windows Kits.' }
+          Write-Host "Using signtool: $signtool"
+
+          function Invoke-Sign([string]$path) {
+            & $signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
+              /f $pfxPath /p $env:CODE_SIGN_PASSWORD $path
+            if ($LASTEXITCODE -ne 0) { throw "signtool failed on $path ($LASTEXITCODE)." }
+          }
+
+          # 1) Sign the published exe. The installer ships the WHOLE publish tree
+          #    (FocusDesk.iss: "{#PublishDir}\*"), so anything own-built in there must be signed
+          #    BEFORE the recompile below, or the bundled copy is the unsigned one.
+          Invoke-Sign 'publish\FocusDesk.exe'
+
+          # 2) Recompile the installer (now bundling the signed binaries), then sign it.
+          $iscc = (Get-ChildItem 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' -ErrorAction SilentlyContinue).FullName
+          if (-not $iscc) { throw 'ISCC.exe not found.' }
+          & $iscc "/DAppVersion=${{ steps.version.outputs.version }}" "/DPublishDir=$(Resolve-Path publish)" installer\FocusDesk.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)." }
+          Invoke-Sign "installer\Output\FocusDesk-Setup-${{ steps.version.outputs.version }}.exe"
+
+          Remove-Item $pfxPath -Force
+          Write-Host 'Signed app exe + installer; PFX deleted.'
+
+      # ── 6b. Unsigned guard ───────────────────────────────────────────────────
+      # Split by trigger, because only one of the two publishes. A tag push reaches
+      # the release step and ships the installer to users, so an unsigned build must stop
+      # here rather than warn and carry on. A workflow_dispatch is a dry run that
+      # publishes nothing (the release step and the validate-manifests job are both gated on
+      # ref_type == 'tag'), so it keeps warning — failing it would take a useful
+      # build/validate check away from anyone without the signing secrets.
+      #
+      # CODE_SIGN_PASSWORD needs no guard of its own: the sign step runs whenever
+      # the PFX is present, and signtool exits non-zero on a wrong/empty password,
+      # which the sign step already turns into a throw.
+      - name: Fail if unsigned (tagged release)
+        if: ${{ env.CODE_SIGN_PFX == '' && github.ref_type == 'tag' }}
+        shell: pwsh
+        run: |
+          Write-Error 'CODE_SIGN_PFX secret is not set — refusing to publish an UNSIGNED release. Restore the signing secrets and re-run this tag.'
+          exit 1
+
+      - name: Warn if unsigned (dry run)
+        if: ${{ env.CODE_SIGN_PFX == '' && github.ref_type != 'tag' }}
+        shell: pwsh
+        run: Write-Warning 'CODE_SIGN_PFX secret not set — installer is UNSIGNED. This dispatch publishes nothing, so it is a warning; a tagged release fails here instead.'
+
+      # ── 7. Compute SHA256 of the installer ───────────────────────────────────
+      - name: Compute installer SHA256
+        id: sha256
+        shell: pwsh
+        run: |
+          $setup = "installer\Output\FocusDesk-Setup-${{ steps.version.outputs.version }}.exe"
+          $hash  = (Get-FileHash $setup -Algorithm SHA256).Hash.ToUpper()
+          Write-Host "SHA256: $hash"
+          "sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      # ── 8. Update winget manifests ───────────────────────────────────────────
+      - name: Update winget manifest
+        shell: pwsh
+        run: |
+          $ver    = '${{ steps.version.outputs.version }}'
+          $sha256 = '${{ steps.sha256.outputs.sha256 }}'
+          $tag    = "v$ver"
+
+          $installerYaml = 'installer\winget\0z00z0.FocusDesk.installer.yaml'
+          $versionYaml   = 'installer\winget\0z00z0.FocusDesk.yaml'
+          $localeYaml    = 'installer\winget\0z00z0.FocusDesk.locale.en-GB.yaml'
+
+          # Helper: replace a YAML scalar in-place, preserving indentation.
+          #
+          # The leading indent class is load-bearing. Anchored hard to ^, the pattern only ever
+          # matches TOP-LEVEL keys: PackageVersion (column 0) is patched while the keys nested
+          # under Installers: — InstallerUrl, InstallerSha256, DisplayVersion — silently never
+          # match and ship frozen at their placeholder values. -replace returns the string
+          # unchanged when nothing matches, so it fails silently; and `winget validate` passes
+          # throughout because it checks the SCHEMA, not whether InstallerUrl resolves or
+          # InstallerSha256 matches the asset.
+          #
+          # Throws when a key doesn't match, so a YAML reshuffle fails the release loudly
+          # instead of silently publishing a stale manifest.
+          # The (?:-[ \t]+)? is load-bearing too: the indent class does NOT match '-', so a key that
+          # happens to be FIRST in a YAML sequence entry ("  - InstallerUrl: ...") would not match
+          # either. Today's keys sit inside sequence entries (Installers:, AppsAndFeaturesEntries:)
+          # and only match because they aren't the first key — a benign reorder would fail the
+          # release outright AFTER the installer is signed and the tag is already pushed.
+          #
+          # Two further subtleties:
+          #
+          # 1. The value is matched with [^\r\n]* — NOT `.*$`. In a .NET (?m) regex `.` matches \r
+          #    and `$` anchors only BEFORE the \n, so `.*$` swallows the CR of every CRLF line it
+          #    rewrites. The runner checks out CRLF (core.autocrlf=true, no .gitattributes), so that
+          #    pattern emits a mixed-EOL manifest and publishes it as a release asset.
+          #    `winget validate` tolerates it, so it never surfaces.
+          #
+          # 2. Indentation is [ \t]*, NOT \s*. \s matches \r and \n, so `^(\s*Key...)` could start
+          #    the match on an earlier line and hoover up newlines into the captured prefix.
+          #
+          # Asserts EXACTLY ONE match, not "at least one": -replace rewrites EVERY match. This file
+          # carries `InstallerType` at column 0 AND nested under AppsAndFeaturesEntries, and
+          # patching a duplicated key would silently rewrite both lines.
+          function Set-YamlValue {
+            param([string]$File, [string]$Key, [string]$Value)
+            $content = Get-Content $File -Raw
+            $pattern = "(?m)^([ \t]*(?:-[ \t]+)?$Key[ \t]*:[ \t]*)[^\r\n]*"
+            $hits = [regex]::Matches($content, $pattern)
+            if ($hits.Count -ne 1) {
+              throw "Set-YamlValue: key '$Key' matched $($hits.Count) line(s) in $File — expected exactly 1."
+            }
+            # '$' is the replacement-token sigil; double it so a value containing '$' stays literal.
+            $replacement = '${1}' + ($Value -replace '\$', '$$$$')
+            $content = [regex]::Replace($content, $pattern, $replacement)
+            Set-Content $File -Value $content -NoNewline
+          }
+
+          # installer manifest
+          Set-YamlValue $installerYaml 'PackageVersion'   $ver
+          Set-YamlValue $installerYaml 'InstallerSha256'  $sha256
+
+          # Update InstallerUrl to point at the new release asset
+          $url = "https://github.com/${{ github.repository }}/releases/download/$tag/FocusDesk-Setup-$ver.exe"
+          Set-YamlValue $installerYaml 'InstallerUrl' $url
+
+          # Also update DisplayVersion inside AppsAndFeaturesEntries
+          Set-YamlValue $installerYaml 'DisplayVersion' $ver
+
+          # version manifest
+          Set-YamlValue $versionYaml 'PackageVersion' $ver
+
+          # locale manifest
+          Set-YamlValue $localeYaml 'PackageVersion' $ver
+
+          Write-Host "Manifests updated:"
+          Get-Content $installerYaml | Write-Host
+
+      # ── 8b. Assert the patched manifests describe THIS build ─────────────────
+      # `winget validate` (next step) checks the SCHEMA only. It cannot see that an
+      # InstallerSha256 belongs to a different build or that an InstallerUrl 404s.
+      # These are content assertions, and they run BEFORE the release is created so a
+      # mismatch fails while the only sunk cost is a build.
+      - name: Verify patched manifests
+        shell: pwsh
+        run: |
+          $ver   = '${{ steps.version.outputs.version }}'
+          $tag   = "v$ver"
+          $setup = "installer\Output\FocusDesk-Setup-$ver.exe"
+
+          $installerYaml = 'installer\winget\0z00z0.FocusDesk.installer.yaml'
+          $versionYaml   = 'installer\winget\0z00z0.FocusDesk.yaml'
+          $localeYaml    = 'installer\winget\0z00z0.FocusDesk.locale.en-GB.yaml'
+
+          $errors = @()
+
+          function Get-YamlValue([string]$File, [string]$Key) {
+            $content = Get-Content $File -Raw
+            $m = [regex]::Matches($content, "(?m)^[ \t]*(?:-[ \t]+)?$Key[ \t]*:[ \t]*([^\r\n]*)")
+            if ($m.Count -ne 1) { throw "Get-YamlValue: key '$Key' matched $($m.Count) line(s) in $File — expected exactly 1." }
+            $m[0].Groups[1].Value.Trim()
+          }
+
+          # 1. The SHA in the manifest must be the SHA of the installer being shipped.
+          $actualSha   = (Get-FileHash $setup -Algorithm SHA256).Hash.ToUpper()
+          $manifestSha = (Get-YamlValue $installerYaml 'InstallerSha256').ToUpper()
+          if ($manifestSha -ne $actualSha) {
+            $errors += "InstallerSha256 mismatch:`n    manifest: $manifestSha`n    installer: $actualSha"
+          } else {
+            Write-Host "OK  InstallerSha256 matches $setup ($actualSha)"
+          }
+
+          # 2. The URL must point at this tag's asset.
+          $expectedUrl = "https://github.com/${{ github.repository }}/releases/download/$tag/FocusDesk-Setup-$ver.exe"
+          $manifestUrl = Get-YamlValue $installerYaml 'InstallerUrl'
+          if ($manifestUrl -ne $expectedUrl) {
+            $errors += "InstallerUrl mismatch:`n    manifest: $manifestUrl`n    expected: $expectedUrl"
+          } else {
+            Write-Host "OK  InstallerUrl points at $tag"
+          }
+
+          # 3. Every manifest must carry this version.
+          foreach ($f in @($installerYaml, $versionYaml, $localeYaml)) {
+            $pv = Get-YamlValue $f 'PackageVersion'
+            if ($pv -ne $ver) { $errors += "PackageVersion in $f is '$pv', expected '$ver'." }
+            else { Write-Host "OK  PackageVersion $pv in $(Split-Path $f -Leaf)" }
+          }
+          $dv = Get-YamlValue $installerYaml 'DisplayVersion'
+          if ($dv -ne $ver) { $errors += "DisplayVersion is '$dv', expected '$ver'." }
+          else { Write-Host "OK  DisplayVersion $dv" }
+
+          # 4. No mixed line endings. A patch that strips the CR from just the lines it rewrites
+          #    ships a half-CRLF file. All-CRLF or all-LF is fine; a mix means Set-YamlValue has
+          #    regressed.
+          foreach ($f in @($installerYaml, $versionYaml, $localeYaml)) {
+            $bytes = [IO.File]::ReadAllBytes($f)
+            $crlf = 0; $bare = 0
+            for ($i = 0; $i -lt $bytes.Length; $i++) {
+              if ($bytes[$i] -eq 10) {
+                if ($i -gt 0 -and $bytes[$i - 1] -eq 13) { $crlf++ } else { $bare++ }
+              }
+            }
+            if ($crlf -gt 0 -and $bare -gt 0) {
+              $errors += "$f has mixed line endings ($crlf CRLF + $bare bare LF) — Set-YamlValue is stripping CRs again."
+            } else {
+              Write-Host "OK  $(Split-Path $f -Leaf) line endings consistent ($crlf CRLF, $bare LF)"
+            }
+          }
+
+          if ($errors.Count -gt 0) {
+            Write-Host ''
+            foreach ($e in $errors) { Write-Host "FAIL  $e" }
+            throw "Patched winget manifests do not describe this build ($($errors.Count) problem(s)). Refusing to publish."
+          }
+          Write-Host ''
+          Write-Host 'All manifest content assertions passed.'
+
+      # ── 9. Validate winget manifests (against the patched files) ─────────────
+      - name: Validate winget manifests
+        shell: pwsh
+        run: |
+          $wg = Get-Command winget -ErrorAction SilentlyContinue
+          if (-not $wg) {
+            Write-Warning 'winget not found on this runner; skipping manifest validation.'
+          } else {
+            winget validate --manifest installer\winget
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "winget validate failed (exit $LASTEXITCODE)."
+              exit $LASTEXITCODE
+            }
+            Write-Host 'Manifests are valid.'
+          }
+
+      # ── 9b. Release notes ────────────────────────────────────────────────────
+      # RELEASE-NOTES.md is the one source: the application embeds the same file and shows
+      # the running version's section as its "What's new" report, so the report and this
+      # body cannot say different things. A version the file does not name falls back to
+      # the Conventional Commit subjects between the previous tag and this one, so a build
+      # made between releases still publishes something true.
+      # The update dialog renders this body with markdown stripped: headings lose their
+      # marker and bullets survive, so the shape here is what a user sees.
+      - name: Build release notes
+        id: notes
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $sha256  = '${{ steps.sha256.outputs.sha256 }}'
+          $tag     = '${{ github.ref_type == 'tag' && github.ref_name || 'HEAD' }}'
+
+          # The section for this version, if the file names it. The heading is the version
+          # alone; everything up to the next level-two heading belongs to it.
+          $authored = @()
+          if (Test-Path 'RELEASE-NOTES.md') {
+            $inSection = $false
+            foreach ($line in (Get-Content 'RELEASE-NOTES.md')) {
+              if ($line -match '^##\s+(.+?)\s*$') {
+                if ($inSection) { break }
+                $inSection = ($Matches[1] -eq $version)
+                continue
+              }
+              if ($inSection) { $authored += $line }
+            }
+          }
+
+          if ($authored.Count -gt 0) {
+            Write-Host "Using the authored section for $version."
+            $lines = [System.Collections.Generic.List[string]]::new()
+            $lines.Add("## FocusDesk v$version")
+            $lines.Add('')
+            foreach ($line in $authored) { $lines.Add($line) }
+            $lines.Add('')
+            $lines.Add("Download ``FocusDesk-Setup-$version.exe`` below. Per-user installer, no administrator rights required.")
+            $lines.Add('')
+            $lines.Add("**SHA256 (installer):** ``$sha256``")
+
+            $path = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+            $lines -join "`n" | Set-Content -Path $path -Encoding utf8 -NoNewline
+            "path=$path" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+            Write-Host '--- release notes ---'
+            Get-Content $path | Write-Host
+            exit 0
+          }
+
+          Write-Host "RELEASE-NOTES.md names no section for $version; falling back to the commit subjects."
+
+          $prev = git describe --tags --abbrev=0 "$tag^" 2>$null
+          $range = if ($LASTEXITCODE -eq 0 -and $prev) { "$prev..$tag" } else { $tag }
+          Write-Host "Collecting subjects over $range"
+
+          $subjects = @(git log --no-merges --pretty=format:%s $range | Where-Object { $_ })
+
+          # chore/style/test say nothing a user acts on, so they fold into Internal
+          # rather than getting their own heading. Nothing is dropped.
+          $headings = [ordered]@{
+            'feat'     = 'New'
+            'fix'      = 'Fixed'
+            'perf'     = 'Performance'
+            'revert'   = 'Reverted'
+            'refactor' = 'Internal'
+            'chore'    = 'Internal'
+            'style'    = 'Internal'
+            'test'     = 'Internal'
+            'ci'       = 'Build and CI'
+            'build'    = 'Build and CI'
+            'docs'     = 'Documentation'
+          }
+
+          $grouped = [ordered]@{}
+          foreach ($name in @('New','Fixed','Performance','Reverted','Build and CI','Documentation','Internal','Other')) {
+            $grouped[$name] = [System.Collections.Generic.List[string]]::new()
+          }
+
+          foreach ($subject in $subjects) {
+            $m = [regex]::Match($subject, '^(?<type>[a-z]+)(?:\((?<scope>[^)]*)\))?(?<breaking>!)?:\s*(?<text>.+)$')
+            if (-not $m.Success) { $grouped['Other'].Add($subject); continue }
+
+            $type = $m.Groups['type'].Value
+            $head = if ($headings.Contains($type)) { $headings[$type] } else { 'Other' }
+
+            $text = $m.Groups['text'].Value
+            if ($m.Groups['scope'].Success -and $m.Groups['scope'].Value) {
+              $text = "$($m.Groups['scope'].Value): $text"
+            }
+            if ($m.Groups['breaking'].Success) { $text = "BREAKING - $text" }
+            $grouped[$head].Add($text)
+          }
+
+          $lines = [System.Collections.Generic.List[string]]::new()
+          $lines.Add("## FocusDesk v$version")
+          $lines.Add('')
+
+          $any = $false
+          foreach ($head in $grouped.Keys) {
+            if ($grouped[$head].Count -eq 0) { continue }
+            $any = $true
+            $lines.Add("### $head")
+            foreach ($entry in $grouped[$head]) { $lines.Add("- $entry") }
+            $lines.Add('')
+          }
+          if (-not $any) { $lines.Add('No recorded changes since the previous release.'); $lines.Add('') }
+
+          $lines.Add("Download ``FocusDesk-Setup-$version.exe`` below. Per-user installer, no administrator rights required.")
+          $lines.Add('')
+          $lines.Add("**SHA256 (installer):** ``$sha256``")
+
+          $path = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          $lines -join "`n" | Set-Content -Path $path -Encoding utf8 -NoNewline
+          "path=$path" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          Write-Host '--- release notes ---'
+          Get-Content $path | Write-Host
+
+      # ── 10. Create GitHub Release (tag pushes only) ──────────────────────────
+      # A manual workflow_dispatch is a dry-run: it builds, signs, and validates
+      # the manifests but does NOT publish a release.
+      - name: Create GitHub Release
+        if: ${{ github.ref_type == 'tag' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', steps.version.outputs.version) }}
+          name: FocusDesk v${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            installer/Output/FocusDesk-Setup-${{ steps.version.outputs.version }}.exe
+            installer/winget/0z00z0.FocusDesk.installer.yaml
+            installer/winget/0z00z0.FocusDesk.yaml
+            installer/winget/0z00z0.FocusDesk.locale.en-GB.yaml
+          body_path: ${{ steps.notes.outputs.path }}
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Post-release: download the manifest assets from the release and re-validate
+  # ─────────────────────────────────────────────────────────────────────────────
+  validate-manifests:
+    runs-on: windows-latest
+    needs: release
+    # Downloads three small YAML files and an installer, so 15 minutes is ample. Capped
+    # for the same reason as the release job: no job in this repository should be able to
+    # reach GitHub's 6-hour default.
+    timeout-minutes: 15
+    # Only runs for real (tag) releases — a dispatch dry-run publishes no assets.
+    if: ${{ github.ref_type == 'tag' }}
+
+    steps:
+      # Download the three winget manifest assets that were attached to the release
+      - name: Download winget manifests from release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = 'v${{ needs.release.outputs.version }}'
+          $outDir = 'winget-validate'
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+
+          $assets = @(
+            '0z00z0.FocusDesk.installer.yaml',
+            '0z00z0.FocusDesk.yaml',
+            '0z00z0.FocusDesk.locale.en-GB.yaml'
+          )
+          foreach ($a in $assets) {
+            gh release download $tag --repo ${{ github.repository }} --pattern $a --dir $outDir
+          }
+
+      - name: Validate downloaded manifests
+        shell: pwsh
+        run: |
+          $wg = Get-Command winget -ErrorAction SilentlyContinue
+          if (-not $wg) {
+            Write-Warning 'winget not found on this runner; skipping schema validation.'
+          } else {
+            winget validate --manifest winget-validate
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "winget validate failed (exit $LASTEXITCODE)."
+              exit $LASTEXITCODE
+            }
+            Write-Host 'Released manifests pass schema validation.'
+          }
+
+      # The check that actually matters: follow the PUBLISHED manifest's own InstallerUrl,
+      # download whatever is really at the other end, and hash it. `winget validate` above is
+      # schema-only — it cannot tell that a URL 404s or that a SHA belongs to another build.
+      - name: Verify released installer matches released manifest
+        shell: pwsh
+        run: |
+          $manifest = 'winget-validate\0z00z0.FocusDesk.installer.yaml'
+          $content  = Get-Content $manifest -Raw
+
+          function Get-YamlValue([string]$Text, [string]$Key) {
+            $m = [regex]::Matches($Text, "(?m)^[ \t]*(?:-[ \t]+)?$Key[ \t]*:[ \t]*([^\r\n]*)")
+            if ($m.Count -ne 1) { throw "key '$Key' matched $($m.Count) line(s) in the released manifest — expected exactly 1." }
+            $m[0].Groups[1].Value.Trim()
+          }
+
+          $url          = Get-YamlValue $content 'InstallerUrl'
+          $manifestSha  = (Get-YamlValue $content 'InstallerSha256').ToUpper()
+          $expectedTag  = 'v${{ needs.release.outputs.version }}'
+          $expectedSha  = '${{ needs.release.outputs.sha256 }}'.ToUpper()
+
+          Write-Host "Released InstallerUrl: $url"
+
+          if ($url -notlike "*/download/$expectedTag/*") {
+            throw "Released InstallerUrl does not point at $expectedTag — this is the stale-manifest bug: $url"
+          }
+          if ($manifestSha -ne $expectedSha) {
+            throw "Released InstallerSha256 ($manifestSha) != the SHA the build computed ($expectedSha)."
+          }
+
+          # Follow the URL for real. A 404 here means the manifest points at an asset that
+          # does not exist, which no schema check can detect.
+          $dl = Join-Path $env:RUNNER_TEMP 'released-installer.exe'
+          try {
+            Invoke-WebRequest -Uri $url -OutFile $dl -MaximumRedirection 5 -UseBasicParsing
+          } catch {
+            throw "Released InstallerUrl is not downloadable ($url): $($_.Exception.Message)"
+          }
+
+          $actualSha = (Get-FileHash $dl -Algorithm SHA256).Hash.ToUpper()
+          if ($actualSha -ne $manifestSha) {
+            throw "Published installer SHA256 ($actualSha) != released manifest InstallerSha256 ($manifestSha)."
+          }
+
+          Remove-Item $dl -Force
+          Write-Host "OK  $url downloads and hashes to $actualSha, matching the released manifest."

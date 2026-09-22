@@ -1,0 +1,234 @@
+name: CI
+
+# Build on every push to main and on EVERY pull request, whatever its base. Keeps
+# the release path (release.yml) lean — this catches build regressions
+# continuously, not only at release time.
+#
+# `pull_request` deliberately carries NO `branches:` filter. Stacked pull requests are the
+# working pattern here — one based on a feature or integration branch, not main — and
+# `branches: [main]` gives those runs no checks at all, silently dropping the gate from
+# exactly the code that is still moving. Any explicit list would have to be extended for
+# every new base branch, and a base someone forgets fails OPEN — no CI, no failure, no
+# signal. Omitting the filter cannot silently omit anything, and the concurrency group
+# below cancels superseded runs.
+#
+# `push` stays pinned to main on purpose: a feature branch's commits are already
+# covered by its pull request, so widening it would run everything twice.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    # Hard cap on the WHOLE job, not just the steps suspected of stalling. Without one, a job
+    # inherits GitHub's 6-hour default and a single hang burns hours for no signal. Per-step
+    # caps below name the phase; this one guarantees the bound holds for any step, including
+    # ones added later without a cap of their own.
+    timeout-minutes: 20
+
+    # The shared library arrives as packages from GitHub Packages, which authenticates every read.
+    # NuGet takes the credential from this variable rather than from nuget.config, so no token is
+    # written into the repository, and the MSBuild SDK resolver that fetches the build kit reads the
+    # same variable — it has to, because the kit is resolved before any project is evaluated.
+    # Job-level so every restore, build, test and publish step in the job inherits it.
+    #
+    # PACKAGES_READ_TOKEN first, the job's own token second. The packages are private and belong to
+    # another repository in the organisation, so the job's own token reaches them only where each
+    # package grants this repository read access; the secret is the route that does not depend on
+    # that. Whichever is in place, the value is a secret reference and never a literal.
+    env:
+      NuGetPackageSourceCredentials_zerozero: Username=${{ github.actor }};Password=${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.x'
+
+      # The app targets win-x64 with ReadyToRun on Release, which needs the
+      # win-x64 runtime pack — restore/build must specify the RID (NETSDK1112).
+      # Both carry their own caps so a stall here is reported against the step rather than
+      # silently consuming the job budget the test phase needs.
+      - name: Restore
+        timeout-minutes: 5
+        run: dotnet restore FocusDesk.csproj -r win-x64
+
+      - name: Build (Release)
+        timeout-minutes: 5
+        run: dotnet build FocusDesk.csproj -c Release -r win-x64 --no-restore --nologo
+
+      # Restore/Build above are scoped to FocusDesk.csproj, so the test project
+      # is not built by them and needs its own restore (--no-restore there fails with
+      # NETSDK1004, no assets file). Split into three timed steps so a stall names
+      # its phase instead of burning the job's cap anonymously.
+      #
+      # No -r on those: a command-line RID is a GLOBAL property and would override the
+      # empty <RuntimeIdentifier> that FocusDesk.Tests.csproj pins on purpose. The app
+      # project defaults its own RID (win-<arch>) when none is passed, so the win-x64
+      # runtime pack is still restored here and Release/ReadyToRun keeps its pack (NETSDK1112).
+      #
+      # The runtime install below is what keeps the test step from hanging forever. The test host
+      # loads FocusDesk.dll, and that assembly's <Module>..cctor P/Invokes MddBootstrapInitialize2
+      # to locate a Windows App Runtime. A GitHub runner has none, and the bootstrapper's default is
+      # InitializeOptions.OnNoMatch_ShowUI — so it raises a modal "install it" prompt on a session
+      # with no interactive desktop and NEVER RETURNS, while holding the module type-init lock every
+      # other test thread queues behind. Give the runner the runtime and the call returns
+      # immediately, which is why the hang never reproduces on a development machine.
+      #
+      # Chosen over -p:WindowsAppSdkBootstrapInitialize=false because it introduces NO build
+      # divergence: the assembly the gate tests stays byte-identical to the one release.yml
+      # signs and ships. Suppressing the initializer would rewrite bin\FocusDesk.dll without it,
+      # and in release.yml risk shipping an exe that cannot start.
+      #
+      # PINNED to 2.4.0 to match the Microsoft.WindowsAppSDK version the build kit pins for the
+      # whole family — the runtime the bootstrapper asks for (framework package family
+      # Microsoft.WindowsAppRuntime.2, version 2.4.0.0). Not `latest`: that aka.ms link resolves to
+      # a different, larger build, so `latest` would silently drift the runtime out of step with the
+      # SDK the app compiles against. Bump both together — the pin here and the kit version in
+      # global.json move as one change.
+      #
+      # The SHA256 is the measured hash of that pinned download. It makes a re-published
+      # binary at the same version fail here by name instead of changing the gate's
+      # environment silently; if it ever fires, re-verify the download and update the hash.
+      - name: Install Windows App Runtime 2.4.0 (x64)
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $url    = 'https://aka.ms/windowsappsdk/2.4/2.4.0/windowsappruntimeinstall-x64.exe'
+          $sha256 = '851C35B0B0A59CE4C55F9171F601193322FC3413143B0DC3390EA11E14CFA7FC'
+          $exe    = Join-Path $env:RUNNER_TEMP 'WindowsAppRuntimeInstall-x64.exe'
+
+          Invoke-WebRequest -Uri $url -OutFile $exe -UseBasicParsing
+          $actual = (Get-FileHash $exe -Algorithm SHA256).Hash.ToUpper()
+          if ($actual -ne $sha256) {
+            throw "WindowsAppRuntimeInstall-x64.exe SHA256 is $actual, expected $sha256. Refusing to run an unexpected binary."
+          }
+
+          # Inventory before and after. The DELTA is the record of what the install actually
+          # changed — better evidence than the installer's own text, and the first thing worth
+          # reading if the hang ever comes back. It is not decoration: the runner image already
+          # ships a framework package of this very family at a version BELOW the 2.4.0.0 the
+          # bootstrapper asks for, so "a package exists" alone proves nothing about whether this
+          # step did anything.
+          function Show-Runtime([string]$when) {
+            Write-Host "Windows App Runtime packages $when :"
+            $all = Get-AppxPackage | Where-Object { $_.Name -like '*WindowsAppRuntime*' -or $_.Name -like '*WinAppRuntime*' }
+            if (-not $all) { Write-Host '  (none)' }
+            else { $all | Sort-Object Name, Architecture | ForEach-Object { Write-Host "  $($_.Name) $($_.Version) $($_.Architecture)" } }
+          }
+          Show-Runtime 'BEFORE'
+
+          & $exe --quiet
+          if ($LASTEXITCODE -ne 0) { throw "WindowsAppRuntimeInstall failed (exit 0x$('{0:X}' -f $LASTEXITCODE))." }
+
+          Show-Runtime 'AFTER'
+
+          # Assert the bootstrapper's OWN requirement, not merely that something is installed:
+          # MddBootstrapInitialize2 asks family Microsoft.WindowsAppRuntime.2 for a framework
+          # package of at least 2.4.0.0 for this process architecture. Anything weaker passes on
+          # an image that happens to carry an unrelated runtime and would let a silent no-op put
+          # the hang straight back.
+          $fw = Get-AppxPackage -Name 'Microsoft.WindowsAppRuntime.2' |
+                Where-Object { $_.Architecture -eq 'X64' -and [version]$_.Version -ge [version]'2.4.0.0' }
+          if (-not $fw) {
+            throw 'No x64 Microsoft.WindowsAppRuntime.2 framework package >= 2.4.0.0 is registered after install.'
+          }
+          Write-Host "OK  bootstrap requirement satisfied by $($fw[0].Name) $($fw[0].Version) x64"
+
+      - name: Restore tests
+        timeout-minutes: 10
+        run: dotnet restore Tests\FocusDesk.Tests.csproj
+
+      - name: Build tests (Release)
+        timeout-minutes: 10
+        run: dotnet build Tests\FocusDesk.Tests.csproj -c Release --no-restore --nologo
+
+      # The auto-initializer lives in FocusDesk.dll, not in FocusDesk.Tests.dll: the WinUI targets
+      # inject it where WindowsPackageType == None and OutputType is Exe/WinExe, which is the app
+      # project; the test project sets no WindowsPackageType, so it never gets one. Creating a test
+      # class touches an application type, which runs the app module's cctor — which is why no
+      # property inside the test project could stand in for the runtime install above.
+      #
+      # The --blame flags are the bound, not the diagnosis: they end a host that stalls rather than
+      # dies, and write the dump the diagnosis comes from. A plain step timeout could only say
+      # "cancelled".
+      - name: Test
+        timeout-minutes: 10
+        run: dotnet test Tests\FocusDesk.Tests.csproj -c Release --no-build --nologo --blame-hang --blame-hang-timeout 3m --blame-crash
+
+      # The dumps live on the runner and vanish with it, so a hang would still be
+      # undiagnosable. Keep them whenever the gate does not pass.
+      - name: Upload blame dumps
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-blame-dumps
+          path: Tests/TestResults/**
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # The installer script is Pascal inside a preprocessed text file, and nothing in the ordinary
+  # build looks at it. Without this job the script is compiled for the first time by the release
+  # workflow, on a tag, with no way back — which is how a preprocessor collision reaches a release
+  # and stops it. ISPP claims a line beginning with a Pascal #13#10 literal as a directive of its
+  # own, and ISCC exits 2 on it.
+  #
+  # This job compiles the script on every push and pull request. It does NOT publish the app: the
+  # only thing [Files] needs is a folder to glob, so a stub holding one dummy file is enough for
+  # ISCC to preprocess the whole file and compile the entire [Code] section. Any script error —
+  # an unknown directive, an unbalanced #if, a Pascal syntax error, a missing wizard image or
+  # setup icon — fails here in under a minute instead of on the tag. What it cannot catch is an
+  # error that depends on the real publish output, since the stub has none.
+  #
+  # Separate job on purpose: it needs no .NET, no package feed and no Windows App Runtime,
+  # so it runs beside the build rather than lengthening it.
+  installer-script:
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Same source as release.yml, so the compiler that gates here is the compiler that ships.
+      - name: Install Inno Setup 6
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Compile installer script
+        shell: pwsh
+        run: |
+          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe not found at $iscc." }
+
+          # [Files] globs {#PublishDir}\* and Inno rejects a pattern that matches nothing, so give
+          # it one file. The contents are irrelevant - no installer is run and none is kept.
+          $stub = Join-Path $env:RUNNER_TEMP 'stub-publish'
+          $out  = Join-Path $env:RUNNER_TEMP 'iss-out'
+          New-Item -ItemType Directory -Force -Path $stub, $out | Out-Null
+          Set-Content -Path (Join-Path $stub 'FocusDesk.exe') -Value 'stub' -NoNewline
+
+          # The same two defines build-installer.ps1 passes, so this compiles the identical path.
+          & $iscc "/DAppVersion=0.0.0" "/DPublishDir=$stub" "/O$out" installer\FocusDesk.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE): installer\FocusDesk.iss does not compile." }
+
+          # Assert an installer was actually produced. A compiler that exits 0 having written
+          # nothing would leave this gate green while proving nothing.
+          $setup = Join-Path $out 'FocusDesk-Setup-0.0.0.exe'
+          if (-not (Test-Path $setup)) { throw "ISCC exited 0 but produced no $setup." }
+          Write-Host "OK  installer script compiles ($((Get-Item $setup).Length) bytes)"

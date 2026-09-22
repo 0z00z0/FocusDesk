@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+#
+# Installer manifest. Per release: bump PackageVersion, set InstallerUrl to the GitHub
+# Release asset, and fill InstallerSha256 (build-installer.ps1 prints the SHA256).
+PackageIdentifier: 0z00z0.FocusDesk
+PackageVersion: 1.0.0
+InstallerType: inno
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+InstallerSwitches:
+  Silent: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+  SilentWithProgress: /SILENT /SUPPRESSMSGBOXES /NORESTART
+# Lets `winget list` / `winget upgrade` match the per-user uninstall entry Inno registers.
+AppsAndFeaturesEntries:
+  - DisplayName: FocusDesk
+    Publisher: ZeroZero Software
+    DisplayVersion: 1.0.0
+    InstallerType: inno
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/0z00z0/FocusDesk/releases/download/v1.0.0/FocusDesk-Setup-1.0.0.exe
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+ManifestType: installer
+ManifestVersion: 1.6.0
