@@ -90,6 +90,24 @@
     <PackageReference Include="ZeroZero.Update.WinUI" />
   </ItemGroup>
 
+  <!-- The app's own logging, not part of the shared library: NLog, version-pinned in
+       Directory.Packages.props alongside the reasoning for the pin. -->
+  <ItemGroup>
+    <PackageReference Include="NLog" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- NLog auto-discovers nlog.config BESIDE THE EXE at runtime, so it must reach both the build
+         output and the publish output (installer\build-installer.ps1 publishes into <repo>\publish,
+         which ISCC packs with recursesubdirs). Without CopyToOutputDirectory it would stay in the
+         repo, NLog would find no config, and the app's only forensic trail would go silent with no
+         error. AppLog degrades to a code-built config rather than going dark if this ever fails
+         anyway. -->
+    <Content Include="nlog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <!--
     Authenticode-sign the produced executable on Release builds. Delegates to scripts\sign.ps1,
     which signs with the certificate created by 'sign.ps1 -Setup'. ContinueOnError keeps the build
