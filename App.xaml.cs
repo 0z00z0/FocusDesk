@@ -1,10 +1,11 @@
 using Microsoft.UI.Xaml;
+using FocusDesk.Services;
 
 namespace FocusDesk;
 
 /// <summary>
-/// The application object. Holds no behaviour yet — the tray icon, the session engine and the
-/// windows arrive with the code they belong to.
+/// The application object. Holds no behaviour yet beyond logging — the tray icon, the session
+/// engine and the windows arrive with the code they belong to.
 /// </summary>
 public partial class App : Application
 {
@@ -14,7 +15,17 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _window = new MainWindow();
-        _window.Activate();
+        AppLog.Info("FocusDesk starting.");
+
+        try
+        {
+            _window = new MainWindow();
+            _window.Activate();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("OnLaunched", ex);
+            throw;
+        }
     }
 }

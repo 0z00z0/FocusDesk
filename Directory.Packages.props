@@ -25,4 +25,11 @@
     <PackageVersion Include="ZeroZero.Update.WinUI" Version="0.11.0" />
   </ItemGroup>
 
+  <!-- FocusDesk's own logging, not part of the shared library. The MAJOR matters: NLog 6 removed
+       FileTarget.concurrentWrites and silently ignores unknown attributes, so nlog.config's
+       concurrency settings are version-specific — read AppLog's remarks before moving this. -->
+  <ItemGroup>
+    <PackageVersion Include="NLog" Version="6.2.1" />
+  </ItemGroup>
+
 </Project>
