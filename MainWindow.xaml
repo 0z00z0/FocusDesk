@@ -4,10 +4,8 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="FocusDesk">
-    <!-- The stand-in for the tray icon: the one way to reach the Settings window until the tray menu
-         is built. Closing it ends the process, so it is also where the shutdown hangs. -->
-    <StackPanel Padding="24" Spacing="12" HorizontalAlignment="Left" VerticalAlignment="Top">
-        <TextBlock Text="FocusDesk is running." />
-        <Button x:Name="SettingsButton" Content="Settings" Click="OnSettings"/>
-    </StackPanel>
+    <!-- Nothing is drawn here: the window exists so the XAML runtime has one to own, and it is
+         never shown. Everything a person sees is the notification-area icon and the windows it
+         opens. -->
+    <Grid/>
 </Window>

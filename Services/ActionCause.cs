@@ -44,6 +44,10 @@ internal readonly record struct ActionCause
     public static ActionCause SettingsPage(string page) =>
         new($"the {page} page of the Settings window");
 
+    /// <summary>A control on the status window, naming the control.</summary>
+    public static ActionCause StatusWindow(string control) =>
+        new($"the {control} on the status window");
+
     /// <summary>Something a run that ended without tidying up left behind, put back at startup.</summary>
     public static ActionCause StartupRestore(string what) =>
         new($"{what} left by a previous run, put back at startup");

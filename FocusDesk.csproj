@@ -35,8 +35,11 @@
          A project property stays local to this application and never reaches the reference. -->
     <WindowsAppSDKSelfContained Condition="'$(SelfContained)' == 'true'">true</WindowsAppSDKSelfContained>
 
-    <!-- No ApplicationIcon: FocusDesk has no mark of its own yet, and the studio mark is never a
-         product icon. -->
+    <!-- The product's own mark: an open amber ring with a purple dot held clear of it. Drawn by
+         scripts\build-icons.ps1, which also writes the two notification-area variants beside it;
+         the generated files are committed, so no build runs the script. The installer's
+         SetupIconFile points at this same file. -->
+    <ApplicationIcon>Assets\FocusDesk.ico</ApplicationIcon>
   </PropertyGroup>
 
   <!-- Exposes internal types to the unit test project, so tests can exercise them directly without
@@ -69,11 +72,12 @@
        the family's pin, so the graph resolves one of each. Declaring any of those would resolve the
        same assembly twice.
 
-       Two additions below have no other path into the graph: ZeroZero.Startup, the watchdog task
-       wired in App.xaml.cs, and ZeroZero.SettingsShell.WinUI, the settings window shell.
-       ZeroZero.Win32 and ZeroZero.Controls.WinUI stay undeclared here — both are pinned to their
-       new releases in Directory.Packages.props, through transitive pinning, because FocusDesk has
-       no direct caller of either yet. -->
+       Three additions below have no other path into the graph: ZeroZero.Startup, the watchdog task
+       wired in App.xaml.cs, ZeroZero.SettingsShell.WinUI, the settings window shell, and
+       ZeroZero.Tray.WinUI, the notification-area icon's host. ZeroZero.Win32, ZeroZero.Controls.WinUI
+       and ZeroZero.Tray — the plain half of the tray component, which the host brings with it —
+       stay undeclared here: all three are pinned to their releases in Directory.Packages.props,
+       through transitive pinning, because FocusDesk has no direct caller of any of them. -->
   <ItemGroup>
     <PackageReference Include="ZeroZero.Brand.WinUI" />
     <PackageReference Include="ZeroZero.Config.Sections" />
@@ -83,7 +87,7 @@
     <PackageReference Include="ZeroZero.Mqtt.WinUI" />
     <PackageReference Include="ZeroZero.SettingsShell.WinUI" />
     <PackageReference Include="ZeroZero.Startup" />
-    <PackageReference Include="ZeroZero.Tray" />
+    <PackageReference Include="ZeroZero.Tray.WinUI" />
     <PackageReference Include="ZeroZero.Update" />
     <PackageReference Include="ZeroZero.Update.WinUI" />
   </ItemGroup>
@@ -107,6 +111,19 @@
          error. AppLog builds no fallback configuration if this ever fails — a missing or
          unparseable nlog.config means the application logs nothing at all; see Services/AppLog.cs. -->
     <Content Include="nlog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The icon files must reach the build output and the publish output the installer packs. The
+         WinUI tooling already claims everything under Assets\ as content, so this updates those
+         items rather than declaring them a second time: two of the three would otherwise appear
+         twice in the item list. The two notification-area files are read by path at runtime — the
+         tray host reloads its icon from disk after the shell restarts — and the application mark is
+         what a window's title bar is set from, the executable's compiled-in copy being unreachable
+         as a file. -->
+    <Content Update="Assets\*.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
