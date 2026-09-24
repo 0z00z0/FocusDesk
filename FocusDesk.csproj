@@ -84,6 +84,11 @@
     <PackageReference Include="NLog" />
   </ItemGroup>
 
+  <!-- WMI, which the display brightness is read and written through. -->
+  <ItemGroup>
+    <PackageReference Include="System.Management" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- NLog auto-discovers nlog.config BESIDE THE EXE at runtime, so it must reach both the build
          output and the publish output (installer\build-installer.ps1 publishes into <repo>\publish,

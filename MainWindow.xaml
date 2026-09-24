@@ -3,6 +3,11 @@
     x:Class="FocusDesk.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="using:FocusDesk.UI"
     Title="FocusDesk">
-    <Grid/>
+    <!-- The one window there is, and the host for whichever page has been built. The Settings shell
+         and the tray replace it. -->
+    <ScrollViewer Padding="16">
+        <ui:ScreenSettingsPanel x:Name="ScreenPanel"/>
+    </ScrollViewer>
 </Window>

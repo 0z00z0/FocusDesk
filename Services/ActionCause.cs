@@ -36,6 +36,10 @@ internal readonly record struct ActionCause
     /// factories: a trigger arriving from outside the application has one of its own.</summary>
     public static implicit operator ActionCause(string phrase) => new(phrase);
 
+    /// <summary>A control on the Settings window, naming its page.</summary>
+    public static ActionCause SettingsPage(string page) =>
+        new($"the {page} page of the Settings window");
+
     /// <summary>Something a run that ended without tidying up left behind, put back at startup.</summary>
     public static ActionCause StartupRestore(string what) =>
         new($"{what} left by a previous run, put back at startup");
