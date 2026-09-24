@@ -20,23 +20,9 @@ public class AppLogTests
     [Fact]
     public void NLogConfigWritesUnderFocusDesksOwnAppDataFolder()
     {
-        var config = File.ReadAllText(Path.Combine(RepositoryRoot, "nlog.config"));
+        var config = RepoFiles.Read("nlog.config");
 
         Assert.Contains(@"FocusDesk\Logs\app.log", config, StringComparison.Ordinal);
         Assert.DoesNotContain("ChargeKeeper", config, StringComparison.Ordinal);
-    }
-
-    private static readonly string RepositoryRoot = FindRepositoryRoot();
-
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "FocusDesk.csproj")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-        return directory!.FullName;
     }
 }
