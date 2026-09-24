@@ -36,6 +36,10 @@ internal readonly record struct ActionCause
     /// factories: a trigger arriving from outside the application has one of its own.</summary>
     public static implicit operator ActionCause(string phrase) => new(phrase);
 
+    /// <summary>A command from Home Assistant, naming the entity it arrived on.</summary>
+    public static ActionCause HomeAssistant(string entityId) =>
+        new($"Home Assistant, on the '{entityId}' entity");
+
     /// <summary>A control on the Settings window, naming its page.</summary>
     public static ActionCause SettingsPage(string page) =>
         new($"the {page} page of the Settings window");

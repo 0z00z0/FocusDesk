@@ -36,12 +36,20 @@ public class FocusNoLocalWayOutTests
         Assert.Equal(EngineMethods.OrderBy(n => n, StringComparer.Ordinal), declared);
     }
 
-    /// <summary>Every shipped source file a person's own actions can reach: the whole tree but the
-    /// session engine that declares the cancel, and the tests that drive it.</summary>
-    private static IReadOnlyList<string> LocalSurfaces()
+    /// <summary>The only three shipped files that may name the cancel: the engine that declares it,
+    /// the service that forwards it, and the MQTT command seam that is the one route in. A fourth
+    /// is a second way out.</summary>
+    private static readonly string[] MayNameTheCancel =
+    [
+        Path.Combine("Services", "FocusSession.cs"),
+        Path.Combine("Services", "FocusSessionService.cs"),
+        Path.Combine("Services", "MqttCommandActions.cs"),
+    ];
+
+    /// <summary>Every shipped source file, tests excluded — they drive the engine directly.</summary>
+    private static IReadOnlyList<string> ShippedSource()
     {
         string root = RepoFiles.Root;
-        string engine = Path.Combine(root, "Services", "FocusSession.cs");
         string tests = Path.Combine(root, "Tests") + Path.DirectorySeparatorChar;
 
         return [.. Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
@@ -49,30 +57,29 @@ public class FocusNoLocalWayOutTests
                           .Any(segment => segment.Equals("bin", StringComparison.OrdinalIgnoreCase)
                                        || segment.Equals("obj", StringComparison.OrdinalIgnoreCase)
                                        || segment.Equals("publish", StringComparison.OrdinalIgnoreCase)))
-            .Where(p => !p.StartsWith(tests, StringComparison.OrdinalIgnoreCase))
-            .Where(p => !p.Equals(engine, StringComparison.OrdinalIgnoreCase))];
+            .Where(p => !p.StartsWith(tests, StringComparison.OrdinalIgnoreCase))];
     }
 
     [Fact]
-    public void NoSurfaceOnTheMachineAsksToCancelASession()
+    public void ExactlyThreeFilesNameTheCancel_AndNoneOfThemIsAWindow()
     {
         // RequestCancel is the only route to ending a session early, and it belongs to the MQTT
         // command seam alone. A button wired to it would hand the keyboard the way out the feature
-        // exists to refuse. Every window lands inside this sweep as it is built.
-        var offenders = LocalSurfaces()
+        // exists to refuse. Every window lands inside this sweep as it is built, so a fourth name
+        // fails here rather than shipping.
+        var naming = ShippedSource()
             .Where(path => File.ReadAllText(path).Contains("RequestCancel", StringComparison.Ordinal))
             .Select(path => Path.GetRelativePath(RepoFiles.Root, path))
+            .Order(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        Assert.True(offenders.Length == 0,
-            "Nothing on the machine may ask to cancel a session:" + Environment.NewLine
-            + string.Join(Environment.NewLine, offenders));
+        Assert.Equal(MayNameTheCancel.Order(StringComparer.OrdinalIgnoreCase), naming);
     }
 
     [Fact]
     public void TheGuardIsLookingAtFilesThatExist() =>
         // Guards the guard: a sweep that found nothing would pass by reading nothing at all.
-        Assert.NotEmpty(LocalSurfaces());
+        Assert.NotEmpty(ShippedSource());
 
     [Fact]
     public void ASessionRefusesToEndBeforeTheWaitHasRun()
