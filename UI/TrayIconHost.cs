@@ -2,6 +2,7 @@ using FocusDesk.Helpers;
 using FocusDesk.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using ZeroZero.Brand.WinUI;
 using ZeroZero.Tray.WinUI;
 
 namespace FocusDesk.UI;
@@ -98,13 +99,14 @@ internal static class TrayIconHost
     }
 
     /// <summary>What the menu holds. Rebuilt by the host on the right click that opens it, so the
-    /// session's line is current without anything here keeping it so.</summary>
+    /// session's line and the startup check mark are current without anything here keeping them so.</summary>
     private static IEnumerable<TrayMenuItem> Menu()
     {
         var session = FocusSessionService.Current;
 
         // A line of text and never a control. A person at the keyboard cannot end a session, and
-        // nothing may put a way to here because the line looked incomplete without one.
+        // nothing may put a way to here because the line looked incomplete without one. It sits
+        // directly above Settings…, where the eye lands first.
         if (session.IsRunning)
         {
             yield return TrayMenuItem.Command(
@@ -115,6 +117,26 @@ internal static class TrayIconHost
         yield return TrayMenuItem.Command("Status…", StatusWindow.Open);
         yield return TrayMenuItem.Command("Settings…", () => SettingsShellHost.Open());
         yield return TrayMenuItem.Separator();
+
+        bool startsAtLogon = LaunchAtStartup.IsOn;
+        // The state the click is moving to, not a fresh read of the scheduler: a read and a write
+        // cannot then disagree about what was asked for.
+        yield return TrayMenuItem.Toggle(
+            "Launch at startup", startsAtLogon, () => LaunchAtStartup.TrySet(!startsAtLogon));
+
+        yield return TrayMenuItem.Command("About…", ShowAbout);
+        yield return TrayMenuItem.Separator();
         yield return TrayMenuItem.Command("Exit", () => _exit?.Invoke());
+    }
+
+    /// <summary>Opens the shared About popup. No update callback is passed, so the window leaves out
+    /// its "Check for updates" button — FocusDesk has no update channel wired yet.</summary>
+    private static void ShowAbout()
+    {
+        try
+        {
+            new BrandAboutWindow(new BrandAboutOptions { Info = AboutContent.Build() }).Activate();
+        }
+        catch (Exception ex) { AppLog.Error("TrayIconHost.ShowAbout", ex); }
     }
 }
