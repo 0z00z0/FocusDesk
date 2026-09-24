@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Draws the FocusDesk mark and writes the icon assets under Assets\.
 
@@ -12,7 +12,7 @@
 
       Assets\FocusDesk.ico        The application mark, 16/32/48/256. Wired as <ApplicationIcon>
                                   and as the installer's SetupIconFile.
-      Assets\FocusDeskTray.ico    The notification-area icon for a dark taskbar, 16/20/24/28/32 —
+      Assets\FocusDeskTray.ico    The notification-area icon for a dark taskbar, 16/20/24/28/32 -
                                   the slot sizes ZeroZero.Tray.TrayIconSlot reports from 100 % to
                                   200 % display scale.
       Assets\FocusDeskTrayLight.ico
