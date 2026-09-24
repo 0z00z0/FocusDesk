@@ -2,6 +2,7 @@ using FocusDesk.Helpers;
 using FocusDesk.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Imaging;
 using ZeroZero.SettingsShell.WinUI;
 
 namespace FocusDesk.UI;
@@ -45,7 +46,7 @@ internal static class SettingsShellHost
                 new SettingsSection
                 {
                     Tag = FocusTag, Label = "Focus",
-                    Icon = new FontIconSource { Glyph = "" },
+                    Icon = NavIcon("focus"),
                     Build = () => focus = new FocusSettingsPanel(),
                     // The session moves on its own clock, so the page follows it only while it is
                     // the one on screen.
@@ -55,7 +56,7 @@ internal static class SettingsShellHost
                 new SettingsSection
                 {
                     Tag = ScreenTag, Label = "Screen",
-                    Icon = new FontIconSource { Glyph = "" },
+                    Icon = NavIcon("screen"),
                     Build = () => screen = new ScreenSettingsPanel(),
                     // Windows moves the brightness without this application hearing anything.
                     Enter = () => screen?.Reload(),
@@ -69,6 +70,7 @@ internal static class SettingsShellHost
             // over a dark page.
             Theme          = ElementTheme.Default,
             RectStore      = rectStore,
+            ProductMark    = new SvgImageSource(new Uri("ms-appx:///Assets/mark.svg")),
             ProductName    = AppInfo.Name,
             ProductVersion = AppInfo.Version,
             PageMaxWidth   = 720,
@@ -80,6 +82,13 @@ internal static class SettingsShellHost
         if (fitToContent) window.FitToPages();
         window.Activate();
     }
+
+    /// <summary>A pane entry's artwork, by the file name under <c>Assets\nav\</c>. Two-tone, so it
+    /// goes through an image rather than a path icon, which carries one colour only.</summary>
+    private static IconSource NavIcon(string name) => new ImageIconSource
+    {
+        ImageSource = new SvgImageSource(new Uri($"ms-appx:///Assets/nav/{name}.svg")),
+    };
 }
 
 /// <summary>Where the Settings window's rectangle is kept: the application's own settings document,
