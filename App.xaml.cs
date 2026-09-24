@@ -32,6 +32,10 @@ public partial class App : Application
 
         InitializeComponent();
 
+        // Straight after the markup's own dictionary exists and before any window is built: a
+        // control resolves an accent key once, when it is created.
+        AppPalette.Apply(Resources);
+
         // Before any window exists: without this the dispatcher stops with the last window closed,
         // which would end the process the moment the status window or the Settings window is shut.
         // Leaving is the tray menu's Exit and nothing else.
