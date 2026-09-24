@@ -94,8 +94,8 @@
          output and the publish output (installer\build-installer.ps1 publishes into <repo>\publish,
          which ISCC packs with recursesubdirs). Without CopyToOutputDirectory it would stay in the
          repo, NLog would find no config, and the app's only forensic trail would go silent with no
-         error. AppLog degrades to a code-built config rather than going dark if this ever fails
-         anyway. -->
+         error. AppLog builds no fallback configuration if this ever fails — a missing or
+         unparseable nlog.config means the application logs nothing at all; see Services/AppLog.cs. -->
     <Content Include="nlog.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

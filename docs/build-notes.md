@@ -1,7 +1,7 @@
 <!-- lang: en-GB -->
-# FocusDesk.csproj — build reasoning
+# Build and logging reasoning
 
-Long-form reasoning for comments in `FocusDesk.csproj` that would otherwise run past the
+Long-form reasoning for comments across FocusDesk's source that would otherwise run past the
 one-or-two-line cap. Each heading matches the short in-project comment that points here.
 
 ## Compile and None glob removal
@@ -49,3 +49,66 @@ cleanup.
 dependency, which adds `onnxruntime.dll` (20 MB), `DirectML.dll` (18 MB) and friends to the publish
 output. Nothing in FocusDesk calls a `Windows.AI` API; the libraries load on demand only, so
 removing them after publish is safe and saves about 38 MB from the installer.
+
+## nlog.config
+
+Four traps carried over from a sibling project's own concurrent-writer regression, unchanged
+because the same shape of failure — several FocusDesk processes appending to one file — applies
+here too.
+
+**keepFileOpen.** NLog's default, `keepFileOpen="true"`, holds an exclusive handle; a sibling
+process's concurrent writes are then silently lost, not even reported to NLog's own internal log.
+`keepFileOpen="false"` opens the file per write with a share mode that tolerates other writers,
+paired with the `RetryingWrapper` to ride out a collision rather than drop the line.
+
+**concurrentWrites.** Do not restore `concurrentWrites="true"`. That was NLog 5's name for this
+behaviour; NLog 6 removed the property, and an unrecognised attribute is silently ignored unless
+`throwConfigExceptions` is on — so it would look correct, do nothing, and lose lines exactly as the
+default `keepFileOpen` does.
+
+**Archive counting.** Do not swap `maxArchiveFiles` for `maxArchiveDays`. Measured: `maxArchiveDays`
+judges an archive by its creation time, and Windows preserves creation time when the active file is
+moved to its archive name. A log file created weeks ago is archived and deleted in the same write,
+so an upgrade destroys the existing `app.log`, and a week of downtime destroys that week.
+`maxArchiveFiles` counts archives instead and survives both. NLog 6 also renamed the surrounding
+area: `archiveNumbering` and `archiveDateFormat` are obsolete from 6.1.4, replaced by
+`archiveSuffixFormat` — a config written in NLog 5's idiom parses and rotates nothing.
+
+**Layout.** No trailing newline: `lineEnding="LF"` already terminates the entry, and carrying both
+would put a blank line between every pair of entries. The class column comes from an event property
+the `AppLog` facade fills from `[CallerFilePath]` — free, and correct across async boundaries, where
+`${callsite}` costs 2.2x per entry and reports the facade instead of the caller. The timestamp
+carries milliseconds so ordering inside one second stays resolvable.
+
+**Date culture.** `${date}` has no `culture=` parameter because it already defaults to
+`InvariantCulture`, and this timestamp is machine-facing log data that must stay Gregorian/ASCII on
+every locale. An empty `culture=""` is not the fix: it makes NLog fall back to the thread's
+`CurrentCulture`, which stamps a non-Gregorian year under some locales (measured: 1448-02-03 under
+ar-SA on the sibling project this config is drawn from). `culture=Invariant` is not a thing and
+throws.
+
+## AppLog.cs
+
+**Class column via `[CallerFilePath]`.** Supplied by the compiler, so it costs nothing at run time
+and survives async boundaries. `${callsite}` would report this facade instead of the true caller,
+and measured 2.2x the per-entry cost when made to do so.
+
+**`Initialise` must never throw.** It runs from the `_log` field initialiser, so anything thrown
+here escapes as a `TypeInitializationException` at whichever call site touches `AppLog` first —
+several of which are startup and crash paths.
+
+**Failed config load.** Reading `LogManager.Configuration` triggers NLog's auto-discovery of
+`nlog.config` beside the exe. A missing or unparseable file — the latter is a user-editable one, and
+a bad hand-edit must not be what takes the app down — leaves it null or unset, and NLog then logs
+nothing at all for any logger this returns. That silence is the whole of the degradation: nothing
+here builds a second copy of the configuration to fall back to.
+
+## SafeFileAppend.cs
+
+`FileMode.Append` + `FileShare.ReadWrite` is what lets concurrent FocusDesk processes share a file
+for write: the handle uses `FILE_APPEND_DATA`, so every write lands at the current end of file
+whatever another handle is doing, and lines can neither clobber nor tear each other.
+`File.AppendAllText` cannot be used — its default `FileShare.Read` denies concurrent writers.
+
+Only sharing and lock collisions are retried; a missing directory, access denial or a path that is
+too long fails fast. `Append` rethrows the final failure, `TryAppend` reports it as a bool.
