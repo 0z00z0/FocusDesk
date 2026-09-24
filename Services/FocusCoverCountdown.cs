@@ -13,9 +13,11 @@ internal readonly record struct FocusCoverReading(int MinutesLeft, double Fracti
 /// The countdown ring as a value. Separate from the window that draws it so the reading is exercised
 /// without a display: the cover itself is never shown under test.
 /// </summary>
-/// <remarks>The ring empties rather than fills — it is whole at the start of a session and gone at
-/// its end — and takes its colour from a draining scale, so a session running down reads in one
-/// colour language rather than a second one.</remarks>
+/// <remarks><para>The ring empties rather than fills — it is whole at the start of a session and
+/// gone at its end — and takes its colour from a draining scale, so a session running down reads in
+/// one colour language rather than a second one.</para>
+/// <para>Two surfaces draw this same reading: the screen cover and the tray pop-out. One value, so
+/// the two instruments cannot disagree about how much is left.</para></remarks>
 internal static class FocusCoverCountdown
 {
     /// <summary>The reading for a running session, or null when none is.</summary>

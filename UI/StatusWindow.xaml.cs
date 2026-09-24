@@ -1,54 +1,77 @@
+using System.Globalization;
 using FocusDesk.Helpers;
 using FocusDesk.Services;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 using Windows.Graphics;
+using ZeroZero.Brand.Core;
+using ZeroZero.Win32;
 
 namespace FocusDesk.UI;
 
 /// <summary>
-/// What the machine is doing and how to set it going: the session's own line, the start box, and the
-/// sessions that have finished. Reached from the notification-area icon, by a click or from its menu.
+/// The tray pop-out: what the machine is doing and how to set it going. A countdown ring with the
+/// session's own lines beside it, the start box, what the session holds, and the sessions that have
+/// finished. Opened by a click on the notification-area icon or from its menu.
 /// </summary>
 /// <remarks>
-/// <para>One window at a time — a second request brings the open one forward.</para>
+/// <para>One window at a time. Clicking away or pressing Escape hides it rather than closing it, so
+/// the next click re-shows the same window; a long idle spell destroys it and the click after that
+/// builds it again.</para>
 /// <para>Nothing here ends a session. The start box starts one; the way out is Home Assistant's
 /// staged cancel and the session's own clock, and the window says so while one runs.</para>
 /// </remarks>
 internal sealed partial class StatusWindow : Window
 {
-    /// <summary>How many finished sessions the list shows. Enough to see a day's work behind one
-    /// and short enough that the window still opens at its content's height.</summary>
+    /// <summary>How many finished sessions the list shows. Enough to see a day's work behind one and
+    /// short enough that the window still opens at its content's height.</summary>
     private const int HistoryRowCount = 6;
 
-    /// <summary>The window's width in device-independent units: the content panel's cap plus the
-    /// scroller's padding on both sides.</summary>
-    private const int WidthInUnits = 360;
+    /// <summary>The scroller's padding above and below, added to the content's own measured height
+    /// before the window is sized.</summary>
+    private const int VerticalPaddingInUnits = 26;
 
-    /// <summary>What the height is held to whatever the content asks for, so a long history cannot
-    /// drive the window off a small screen. The scroller takes over past this.</summary>
-    private const int MaxHeightInUnits = 640;
+    /// <summary>The ring's geometry inside its 84-unit square.</summary>
+    private const double RingCentre = 42;
+    private const double RingRadius = 35;
+
+    /// <summary>How strongly an active card is tinted, out of 255. An alpha over whatever sits
+    /// behind rather than a blended solid, so it composites correctly over the backdrop.</summary>
+    private const byte ActiveTintAlpha = 20;
+
+    /// <summary>How long the window stays hidden before it is destroyed and its composition
+    /// resources released. A pop-out opened once in the morning should not hold a XAML tree all
+    /// day.</summary>
+    private static readonly TimeSpan IdleCloseAfter = TimeSpan.FromMinutes(20);
 
     private static StatusWindow? _open;
 
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly DispatcherTimer _idleClose = new() { Interval = IdleCloseAfter };
+    private readonly SolidColorBrush _ringFill = new();
+    private readonly SolidColorBrush _activeTint = ActiveTint();
 
-    /// <summary>Opens the status window, or brings the open one forward.</summary>
+    /// <summary>What the history list was last built from, so a tick that changed nothing does not
+    /// rebuild rows under the pointer.</summary>
+    private string? _historyShown;
+
+    /// <summary>Opens the pop-out, or brings the hidden one back.</summary>
     public static void Open()
     {
         if (_open is { } already)
         {
-            already.Activate();
+            already.ShowPopOut();
             return;
         }
 
         var window = new StatusWindow();
         _open = window;
         window.Closed += (_, _) => _open = null;
-        window.Activate();
+        window.ShowPopOut();
     }
 
     private StatusWindow()
@@ -56,31 +79,86 @@ internal sealed partial class StatusWindow : Window
         InitializeComponent();
         Title = $"{AppInfo.Name} status";
 
-        var presenter = OverlappedPresenter.Create();
-        presenter.IsResizable   = false;
-        presenter.IsMaximizable = false;
-        AppWindow.SetPresenter(presenter);
-        // The executable's own mark is compiled into it, which a WinUI window does not pick up; the
-        // title bar is set from the copy of the same file beside the exe.
-        if (File.Exists(AppIcons.Application)) AppWindow.SetIcon(AppIcons.Application);
+        ConfigureChrome();
+
+        RingTrack.Data = RingGeometry.Arc(
+            RingCentre, RingCentre, RingRadius, RingGeometry.StartAngle, RingGeometry.Sweep);
+        RingFill.Stroke = _ringFill;
 
         // The session moves on its own clock and from Home Assistant, so the window follows both:
         // the engine's event for a stage moving, and a tick for the minutes running down.
         FocusSessionService.Changed += OnSessionChanged;
         _tick.Tick += (_, _) => ShowSession();
+        _idleClose.Tick += (_, _) => CloseIfIdle();
 
-        ContentPanel.Loaded += (_, _) =>
-        {
-            Reload();
-            FitToContent();
-            _tick.Start();
-        };
+        Activated += OnActivated;
 
         Closed += (_, _) =>
         {
             _tick.Stop();
+            _idleClose.Stop();
             FocusSessionService.Changed -= OnSessionChanged;
         };
+    }
+
+    /// <summary>A frameless, always-on-top popup rather than a window with a caption: the frame is
+    /// what makes a pop-out read as a pop-out rather than as a window that opened itself.</summary>
+    private void ConfigureChrome()
+    {
+        var presenter = OverlappedPresenter.Create();
+        presenter.IsResizable   = false;
+        presenter.IsMaximizable = false;
+        presenter.IsMinimizable = false;
+        presenter.SetBorderAndTitleBar(false, false);
+        presenter.IsAlwaysOnTop  = true;
+        AppWindow.SetPresenter(presenter);
+
+        // Off the taskbar and out of Alt-Tab: a pop-out is not a window to switch to.
+        AppWindow.IsShownInSwitchers = false;
+    }
+
+    /// <summary>Reads everything the window shows, places it, and brings it forward.</summary>
+    private void ShowPopOut()
+    {
+        _idleClose.Stop();
+        Reload();
+        Place();
+        AppWindow.Show();
+        Activate();
+        _tick.Start();
+    }
+
+    /// <summary>Hides the window so a re-show is cheap, and tells the tray host, which is what stops
+    /// the click that dismissed it opening it again on the mouse-up.</summary>
+    private void Dismiss()
+    {
+        if (!AppWindow.IsVisible) return;
+
+        TrayIconHost.NotePopOutDismissed();
+        _tick.Stop();
+        AppWindow.Hide();
+        // Restarted, so each hide gets a full idle spell measured from itself.
+        _idleClose.Stop();
+        _idleClose.Start();
+    }
+
+    /// <summary>Destroys the window after a long idle spell rather than holding its XAML tree and its
+    /// composition resources for the rest of the run. Reclaiming memory must never be able to take
+    /// the application down with it.</summary>
+    private void CloseIfIdle()
+    {
+        _idleClose.Stop();
+        try
+        {
+            if (AppWindow.IsVisible) return;
+            Close();
+        }
+        catch (Exception ex) { AppLog.Error("StatusWindow.CloseIfIdle", ex); }
+    }
+
+    private void OnActivated(object sender, WindowActivatedEventArgs e)
+    {
+        if (e.WindowActivationState == WindowActivationState.Deactivated) Dismiss();
     }
 
     private void OnSessionChanged() => DispatcherQueue.TryEnqueue(Reload);
@@ -91,13 +169,30 @@ internal sealed partial class StatusWindow : Window
     {
         ShowSession();
         ShowStartBox();
+        ShowLevers();
         ShowHistory();
     }
 
-    /// <summary>The focus row: the session's own line, and the way out beneath it while one runs.</summary>
+    /// <summary>The hero: the ring, the minutes at its centre, the session's own line, and the way
+    /// out beneath it while one runs.</summary>
     private void ShowSession()
     {
         var session = FocusSessionService.Current;
+        var reading = FocusCoverCountdown.For(session, DateTimeOffset.Now);
+
+        if (reading is { } r)
+        {
+            RingFill.Data = RingGeometry.Arc(
+                RingCentre, RingCentre, RingRadius,
+                RingGeometry.StartAngle, RingGeometry.Sweep * r.FractionLeft);
+            _ringFill.Color  = AppColors.FromPacked(r.Argb);
+            MinutesText.Text = r.MinutesLeft.ToString(CultureInfo.CurrentCulture);
+        }
+        else
+        {
+            RingFill.Data = null;
+            MinutesText.Text = "–";
+        }
 
         StatusText.Text = session.IsRunning
             ? FocusSessionStages.Detail(session, DateTimeOffset.Now)
@@ -120,25 +215,49 @@ internal sealed partial class StatusWindow : Window
             s => (s.FocusStartFromDashboard, s.FocusSessionMinutes));
 
         StartBox.Visibility = offered ? Visibility.Visible : Visibility.Collapsed;
-        if (!offered) return;
-
-        FocusLengthChoices.Fill(MinutesCombo, minutes);
+        if (offered) FocusLengthChoices.Fill(MinutesCombo, minutes);
     }
 
-    /// <summary>The finished sessions, newest first.</summary>
+    /// <summary>What the session holds. Tinted while a lever is in force and hairline-bordered while
+    /// none is, so the card carries the state without a word for it.</summary>
+    private void ShowLevers()
+    {
+        var session = FocusSessionService.Current;
+        var held = new List<string>(2);
+        if (session.DimsScreen)   held.Add("dimmed");
+        if (session.CoversScreen) held.Add("covered");
+
+        LeverText.Text = held.Count > 0
+            ? $"The screen is {string.Join(" and ", held)} until the session ends."
+            : "Nothing is held. The screen is as it was.";
+
+        LeverCard.Background = held.Count > 0 ? _activeTint : null;
+    }
+
+    /// <summary>The tint an active card carries: the studio accent at a low alpha.</summary>
+    private static SolidColorBrush ActiveTint()
+    {
+        var accent = AppColors.FromHex(Brand.ColorAmber);
+        return new SolidColorBrush(
+            Windows.UI.Color.FromArgb(ActiveTintAlpha, accent.R, accent.G, accent.B));
+    }
+
+    /// <summary>The finished sessions, newest first. Rebuilt only where the set has changed, so a
+    /// tick never moves a row out from under the pointer.</summary>
     private void ShowHistory()
     {
-        HistoryRows.Children.Clear();
-
         var recent = FocusHistoryService.Recent(HistoryRowCount);
-        if (recent.Count == 0)
-        {
-            HistoryRows.Children.Add(Line("No session has finished yet.", secondary: true));
-            return;
-        }
+        string[] lines = recent.Count == 0
+            ? ["No session has finished yet."]
+            : [.. recent.Select(FocusHistoryService.Describe)];
 
-        foreach (var entry in recent)
-            HistoryRows.Children.Add(Line(FocusHistoryService.Describe(entry), secondary: false));
+        string shown = string.Join('\n', lines);
+        if (shown == _historyShown) return;
+        _historyShown = shown;
+
+        HistoryRows.Children.Clear();
+        foreach (string line in lines)
+            HistoryRows.Children.Add(Line(line, secondary: recent.Count == 0));
     }
 
     /// <summary>One line of the list. The opacity rather than a theme brush: a brush looked up from
@@ -184,32 +303,32 @@ internal sealed partial class StatusWindow : Window
         _                              => "Something the session needed failed to engage. Whatever did engage has been lifted again.",
     };
 
-    private void OnSettings(object sender, RoutedEventArgs e) =>
+    /// <summary>Opens the Settings window, and stands down behind it.</summary>
+    private void OnSettings(object sender, RoutedEventArgs e)
+    {
         SettingsShellHost.Open(SettingsShellHost.FocusTag);
+        Dismiss();
+    }
 
+    /// <summary>Escape dismisses as clicking away does — a hide, not a close, so the next click on
+    /// the icon re-shows this same window.</summary>
     private void OnEscapeInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        Close();
+        Dismiss();
     }
 
-    /// <summary>Sizes the window to what it holds and puts it on the display the pointer is on,
-    /// which is the display the notification area it was opened from sits on.</summary>
-    private void FitToContent()
+    /// <summary>Sizes the window to what it holds and anchors it to the bottom-right of the work area
+    /// of the monitor the pointer is on, which is the monitor whose notification area was clicked.</summary>
+    private void Place()
     {
-        double scale = ContentPanel.XamlRoot?.RasterizationScale ?? 1;
+        ContentPanel.Measure(new Size(PopOutPlacement.WidthInUnits, double.PositiveInfinity));
 
-        ContentPanel.Measure(new Size(WidthInUnits, double.PositiveInfinity));
-        // The scroller's padding on both sides and the content's own measured height.
-        double heightInUnits = Math.Min(MaxHeightInUnits, ContentPanel.DesiredSize.Height + 40);
+        var (work, scale) = MonitorMetrics.ForCursor();
+        var rect = PopOutPlacement.BottomRight(
+            work, scale, ContentPanel.DesiredSize.Height + VerticalPaddingInUnits);
 
-        AppWindow.ResizeClient(new SizeInt32(
-            (int)Math.Round(WidthInUnits * scale),
-            (int)Math.Round(heightInUnits * scale)));
-
-        var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
-        AppWindow.Move(new PointInt32(
-            area.WorkArea.X + ((area.WorkArea.Width  - AppWindow.Size.Width)  / 2),
-            area.WorkArea.Y + ((area.WorkArea.Height - AppWindow.Size.Height) / 2)));
+        AppWindow.Resize(new SizeInt32(rect.Width, rect.Height));
+        AppWindow.Move(new PointInt32(rect.X, rect.Y));
     }
 }
