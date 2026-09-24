@@ -64,6 +64,10 @@ internal static class SettingsShellHost
                 },
             ],
             InitialTag     = tag,
+            // FocusDesk follows the system light/dark setting rather than pinning one. The shell
+            // paints the caption strip from this same value, so the title bar cannot end up light
+            // over a dark page.
+            Theme          = ElementTheme.Default,
             RectStore      = rectStore,
             ProductName    = AppInfo.Name,
             ProductVersion = AppInfo.Version,
