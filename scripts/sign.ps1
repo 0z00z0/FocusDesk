@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Code-signs FocusDesk.exe with a self-signed certificate.
 
@@ -51,15 +51,28 @@ $ErrorActionPreference = "Stop"
 # Returns the newest non-expired code-signing cert matching $Subject, or $null.
 # Filters by the Code Signing EKU (OID 1.3.6.1.5.5.7.3.3) rather than the
 # -CodeSigningCert dynamic parameter, which is unreliable under Windows PowerShell 5.1.
+#
+# $Subject is a display name (a certificate subject, not a stable identifier), and more than one
+# certificate in the store can carry it - a renewal issued before the old one expired, or a second
+# certificate created by mistake. Where that happens the ambiguity is reported, listing every
+# matching thumbprint, rather than silently picking the longest-lived one: a signature made with
+# the wrong one of two valid certificates is not a failure anything downstream would notice.
 function Get-SigningCertificate {
-    Get-ChildItem Cert:\CurrentUser\My -ErrorAction SilentlyContinue |
-        Where-Object {
-            $_.Subject -eq $Subject -and
-            $_.NotAfter -gt (Get-Date) -and
-            $_.EnhancedKeyUsageList.ObjectId -contains '1.3.6.1.5.5.7.3.3'
-        } |
-        Sort-Object NotAfter -Descending |
-        Select-Object -First 1
+    $matches = @(
+        Get-ChildItem Cert:\CurrentUser\My -ErrorAction SilentlyContinue |
+            Where-Object {
+                $_.Subject -eq $Subject -and
+                $_.NotAfter -gt (Get-Date) -and
+                $_.EnhancedKeyUsageList.ObjectId -contains '1.3.6.1.5.5.7.3.3'
+            }
+    )
+
+    if ($matches.Count -gt 1) {
+        $thumbprints = ($matches | Sort-Object NotAfter -Descending | ForEach-Object { $_.Thumbprint }) -join ', '
+        throw "Ambiguous signing certificate: $($matches.Count) non-expired certificates match subject '$Subject' - $thumbprints. Remove or rename all but one."
+    }
+
+    $matches | Select-Object -First 1
 }
 
 # Creates the self-signed cert and trusts it for the current user.

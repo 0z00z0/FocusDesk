@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Builds the per-user Inno Setup installer for FocusDesk.
 
@@ -30,7 +30,23 @@ $proj         = Join-Path $root "FocusDesk.csproj"
 $publishDir   = Join-Path $root "publish"
 $iss          = Join-Path $installerDir "FocusDesk.iss"
 
-# -- 0. Resolve / bump version ------------------------------------------------
+# -- 0. Locate Inno Setup compiler ---------------------------------------------
+# Checked first so a missing install fails in milliseconds, before the version bump, the publish
+# and the signing steps all run for nothing.
+$iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
+if (-not $iscc) {
+    foreach ($p in @(
+        "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",     # winget per-user install
+        "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+        "${env:ProgramFiles}\Inno Setup 6\ISCC.exe")) {
+        if (Test-Path $p) { $iscc = $p; break }
+    }
+}
+if (-not $iscc) {
+    throw "Inno Setup (ISCC.exe) not found. Install it once with:  winget install JRSoftware.InnoSetup"
+}
+
+# -- 1. Resolve / bump version ------------------------------------------------
 $projContent = Get-Content $proj -Raw
 $vMatch      = [regex]::Match($projContent, '<Version>(\d+\.\d+\.\d+)</Version>')
 if (-not $vMatch.Success) { throw "Cannot find <Version>x.y.z</Version> in $proj" }
@@ -45,14 +61,17 @@ if ([string]::IsNullOrEmpty($Version)) {
     Write-Host "==> Using explicit version: $Version" -ForegroundColor Cyan
 }
 
-# Write the new version back to the .csproj (idempotent if already correct)
+# Write the new version back to the .csproj (idempotent if already correct). The version is
+# escaped before use as a regex pattern: unescaped, its '.' characters match any character, so
+# "1.2.3" would also match a literal string like "1x2y3" elsewhere in the file.
 if ($currentVersion -ne $Version) {
-    ($projContent -replace "<Version>$currentVersion</Version>", "<Version>$Version</Version>") |
+    $currentVersionPattern = [regex]::Escape($currentVersion)
+    ($projContent -replace "<Version>$currentVersionPattern</Version>", "<Version>$Version</Version>") |
         Set-Content $proj -NoNewline
     Write-Host "    Updated FocusDesk.csproj: $currentVersion -> $Version" -ForegroundColor DarkGray
 }
 
-# -- 1. Publish the app (fully self-contained, no trim) -----------------------
+# -- 2. Publish the app (fully self-contained, no trim) -----------------------
 Write-Host "==> Publishing app (self-contained win-x64, Windows App SDK bundled)..." -ForegroundColor Cyan
 if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
 # WindowsAppSDKSelfContained is NOT passed here as a -p: global on purpose: a command-line global
@@ -79,7 +98,7 @@ foreach ($brandAsset in @("CascadiaMono.ttf", "LICENCE-OFL.txt")) {
     }
 }
 
-# -- 2. Sign the published exe ------------------------------------------------
+# -- 3. Sign the published exe ------------------------------------------------
 # dotnet publish creates a fresh apphost in the publish folder - a separate binary
 # from the bin\ build output that SignOutput already signed. Sign this copy so the
 # installed exe is not flagged as Unsigned by security tools.
@@ -101,20 +120,6 @@ if (Test-Path $publishedExe) {
     if ($LASTEXITCODE -ne 0) { throw "Signing the published exe failed ($LASTEXITCODE)." }
 }
 
-# -- 3. Locate Inno Setup compiler --------------------------------------------
-$iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
-if (-not $iscc) {
-    foreach ($p in @(
-        "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",     # winget per-user install
-        "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-        "${env:ProgramFiles}\Inno Setup 6\ISCC.exe")) {
-        if (Test-Path $p) { $iscc = $p; break }
-    }
-}
-if (-not $iscc) {
-    throw "Inno Setup (ISCC.exe) not found. Install it once with:  winget install JRSoftware.InnoSetup"
-}
-
 # -- 4. Compile the installer -------------------------------------------------
 # Remove any previous versioned setup files so the Output folder stays clean.
 Get-ChildItem (Join-Path $installerDir "Output") -Filter "FocusDesk-Setup-*.exe" -ErrorAction SilentlyContinue |
@@ -126,7 +131,7 @@ if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)." }
 
 $setup = Join-Path $installerDir "Output\FocusDesk-Setup-$Version.exe"
 
-# -- 5. Sign the installer exe ------------------------------------------------
+# -- 5. Sign the installer exe -------------------------------------------------
 # Sign before computing the SHA so the printed hash matches the distributed file.
 if (Test-Path $setup) {
     Write-Host "==> Signing installer..." -ForegroundColor Cyan

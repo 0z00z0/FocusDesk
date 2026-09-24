@@ -91,10 +91,10 @@ BeveledLabel=ZeroZero Software - Small tools. Zero bloat.
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
-; Per-user "All apps" Start-menu entry. IconFilename points at the exe itself, which embeds the
-; icon via <ApplicationIcon> in the project file — the same pattern as the desktop shortcut below
-; and UninstallDisplayIcon above. Pointing at a loose {app}\AppIcon.ico would not work: the icon
-; publishes into {app}\Assets\, never the install root.
+; Per-user "All apps" Start-menu entry. IconFilename points at the exe itself, the same pattern as
+; the desktop shortcut below and UninstallDisplayIcon above. FocusDesk sets no <ApplicationIcon> yet
+; (HANDOVER.md's open question on what FocusDesk's own icon is), so this shows the exe's default
+; icon until one is added and wired up.
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\{#AppExe}"; Comment: "{#AppName}"
 ; Optional desktop shortcut (off by default; ticked via the task below).
 Name: "{userdesktop}\{#AppName}";  Filename: "{app}\{#AppExe}"; IconFilename: "{app}\{#AppExe}"; Tasks: desktopicon

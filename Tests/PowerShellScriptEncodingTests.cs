@@ -30,6 +30,36 @@ public class PowerShellScriptEncodingTests
             "PowerShell scripts must be ASCII only:" + Environment.NewLine + string.Join(Environment.NewLine, offenders));
     }
 
+    /// <summary>
+    /// Being ASCII only stops a non-ASCII character from shipping, but says nothing about a script
+    /// that carries no BOM at all: such a script still decodes correctly today because it happens
+    /// to hold no byte above 0x7F, and silently regains the parse-failure risk the moment somebody
+    /// adds one, with nothing here to catch it before it ships. Requiring the BOM up front closes
+    /// that gap for every script the repository holds, present or future.
+    /// </summary>
+    [Fact]
+    public void EveryPowerShellScriptHasAUtf8Bom()
+    {
+        var offenders = RepositoryScripts()
+            .Where(path => !HasUtf8Bom(path))
+            .Select(path => Path.GetRelativePath(RepositoryRoot, path))
+            .ToArray();
+
+        Assert.True(
+            offenders.Length == 0,
+            "PowerShell scripts must carry a UTF-8 byte-order mark:" + Environment.NewLine + string.Join(Environment.NewLine, offenders));
+    }
+
+    private static readonly byte[] Utf8Bom = [0xEF, 0xBB, 0xBF];
+
+    private static bool HasUtf8Bom(string path)
+    {
+        Span<byte> head = stackalloc byte[Utf8Bom.Length];
+        using var stream = File.OpenRead(path);
+        var read = stream.Read(head);
+        return read == Utf8Bom.Length && head.SequenceEqual(Utf8Bom);
+    }
+
     private static string[] RepositoryScripts() =>
         Directory.EnumerateFiles(RepositoryRoot, "*.ps1", SearchOption.AllDirectories)
             .Where(p => !p.Split(Path.DirectorySeparatorChar)
@@ -38,10 +68,15 @@ public class PowerShellScriptEncodingTests
                                        || segment.Equals("publish", StringComparison.OrdinalIgnoreCase)))
             .ToArray();
 
+    // 0x7F (DEL) is the top of the ASCII range; anything above it is non-ASCII. Written as
+    // '\u007F' rather than the raw control character, which renders as an apparently-empty
+    // literal and can be silently dropped by a tool that strips control characters.
+    private const char AsciiUpperBound = '\u007F';
+
     private static int[] NonAsciiLines(string path) =>
         File.ReadAllLines(path, Encoding.UTF8)
             .Select((line, index) => new { line, number = index + 1 })
-            .Where(x => x.line.Any(c => c > ''))
+            .Where(x => x.line.Any(c => c > AsciiUpperBound))
             .Select(x => x.number)
             .ToArray();
 
