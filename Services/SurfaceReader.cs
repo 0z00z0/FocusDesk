@@ -38,6 +38,12 @@ internal static class SurfaceReader
         return SettingsService.Read(s => From(s, focus, brightness, now));
     }
 
+    /// <summary>What this machine can honour. Throws rather than answering when the display cannot be
+    /// asked, so the announcement keeps the disposition already recorded instead of withdrawing the
+    /// brightness entities on one unanswered query.</summary>
+    public static PublishCapabilities Capabilities() =>
+        new(ScreenBrightness: ScreenBrightnessService.IsSupported);
+
     /// <summary>
     /// The projection itself, over supplied state rather than the singletons, so what does and does
     /// not reach an entity is testable.
