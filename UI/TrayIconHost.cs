@@ -79,6 +79,11 @@ internal static class TrayIconHost
         _host = null;
     }
 
+    /// <summary>Called from the pop-out as it hides. A pop-out that hides on losing focus loses it to
+    /// the mouse-down of a click on the icon, and the mouse-up would open it straight back: the host
+    /// drops a click inside the guard this starts.</summary>
+    public static void NotePopOutDismissed() => _host?.NotePopOutDismissed();
+
     private static void OnSessionChanged() => _dispatcher?.TryEnqueue(RefreshTooltip);
 
     private static void RefreshTooltip()

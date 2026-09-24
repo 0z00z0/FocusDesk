@@ -8,29 +8,72 @@
         <MicaBackdrop Kind="BaseAlt" />
     </Window.SystemBackdrop>
 
-    <Grid KeyboardAcceleratorPlacementMode="Hidden">
+    <Grid x:Name="RootGrid" KeyboardAcceleratorPlacementMode="Hidden">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="Escape" Invoked="OnEscapeInvoked"/>
         </Grid.KeyboardAccelerators>
 
-        <!-- A scroller beneath the content, so a short work area still shows all of it. The window
-             is sized to its content on opening, so this is the floor rather than the plan. -->
-        <ScrollViewer Padding="20" VerticalScrollBarVisibility="Auto"
+        <!-- A scroller beneath the content, so a work area too short for the whole pop-out still
+             shows all of it. The window is sized to its content, so this is the floor rather than
+             the plan. -->
+        <ScrollViewer Padding="14,12,14,14" VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled">
 
-            <!-- MaxWidth pins the wrapping paragraphs to a stable width. Without it they wrap
-                 against the scroller's transient viewport during the layout pass the sizing reads,
-                 which reports a height of dozens of near-empty lines. -->
-            <StackPanel x:Name="ContentPanel" Spacing="18" MaxWidth="320">
+        <!-- MaxWidth pins the wrapping paragraphs to a stable width. Without it they wrap against
+             the transient viewport during the layout pass the sizing reads, which reports a height
+             of dozens of near-empty lines. -->
+        <StackPanel x:Name="ContentPanel" Spacing="12" MaxWidth="332">
 
-                <!-- What the session is doing. No control here ends one: that is the feature's
-                     central property, not an omission. -->
-                <StackPanel Spacing="4">
+            <!-- The header: the mark, the product, and the way to the Settings window. -->
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Image Grid.Column="0" Width="18" Height="18" VerticalAlignment="Center"
+                       Source="ms-appx:///Assets/mark.svg"
+                       AutomationProperties.AccessibilityView="Raw"/>
+                <TextBlock Grid.Column="1" Text="FocusDesk" VerticalAlignment="Center"
+                           FontSize="13" FontWeight="SemiBold"
+                           Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                <Button Grid.Column="2" x:Name="SettingsButton"
+                        Width="28" Height="28" Padding="0"
+                        Style="{StaticResource QuickButtonStyle}"
+                        ToolTipService.ToolTip="Settings"
+                        AutomationProperties.Name="Settings"
+                        Click="OnSettings">
+                    <FontIcon Glyph="&#xE713;" FontSize="14"/>
+                </Button>
+            </Grid>
+
+            <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+
+            <!-- The hero: the ring on the left, the session's own lines beside it. No control here
+                 ends a session — that is the feature's central property, not an omission. -->
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Grid Grid.Column="0" Width="84" Height="84">
+                    <Path x:Name="RingTrack" StrokeThickness="7" StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round" Opacity="0.22"
+                          Stroke="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <Path x:Name="RingFill" StrokeThickness="7" StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"/>
+                    <TextBlock x:Name="MinutesText" HorizontalAlignment="Center"
+                               VerticalAlignment="Center" FontSize="24"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                </Grid>
+
+                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
                     <TextBlock Text="FOCUS SESSION"
-                               FontSize="11" FontWeight="SemiBold"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                               FontSize="10" FontWeight="SemiBold" CharacterSpacing="100"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
                     <TextBlock x:Name="StatusText"
-                               FontSize="16" TextWrapping="Wrap"
+                               FontSize="13" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                     <TextBlock x:Name="WayOutText"
                                Text="Nothing on this computer ends a session. Home Assistant ends one early, after a five-minute wait and a second request."
@@ -38,12 +81,17 @@
                                Visibility="Collapsed"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
+            </Grid>
 
-                <!-- The start box, shown only where the Focus settings page has turned it on. -->
-                <StackPanel x:Name="StartBox" Spacing="8">
+            <!-- The session card: a Start control and nothing that stops one. Shown only where the
+                 Focus settings page has turned the start box on. -->
+            <Border x:Name="StartBox" CornerRadius="6" Padding="10,5"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                <StackPanel Spacing="8">
                     <TextBlock Text="START A SESSION"
-                               FontSize="11" FontWeight="SemiBold"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                               FontSize="10" FontWeight="SemiBold" CharacterSpacing="100"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
                     <Grid ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -53,7 +101,7 @@
                                   HorizontalAlignment="Stretch"
                                   AutomationProperties.Name="Session length"/>
                         <Button Grid.Column="1" x:Name="StartButton"
-                                Content="Start" MinWidth="88"
+                                Content="Start" MinWidth="80"
                                 Style="{StaticResource AccentButtonStyle}"
                                 Click="OnStart"/>
                     </Grid>
@@ -62,19 +110,31 @@
                                Visibility="Collapsed"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
+            </Border>
 
-                <!-- The finished sessions, newest first. This list belongs here rather than on the
-                     Focus settings page: it is a reading, not a setting. -->
-                <StackPanel Spacing="6">
-                    <TextBlock Text="RECENT SESSIONS"
-                               FontSize="11" FontWeight="SemiBold"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                    <StackPanel x:Name="HistoryRows" Spacing="3"/>
+            <!-- The screen card: what a session holds, as a reading. Tinted while a lever is in
+                 force, hairline-bordered while it is not. -->
+            <Border x:Name="LeverCard" CornerRadius="6" Padding="10,5"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                <StackPanel Spacing="2">
+                    <TextBlock Text="SCREEN"
+                               FontSize="10" FontWeight="SemiBold" CharacterSpacing="100"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+                    <TextBlock x:Name="LeverText" FontSize="12" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                 </StackPanel>
+            </Border>
 
-                <Button x:Name="SettingsButton" Content="Settings…"
-                        HorizontalAlignment="Stretch" Click="OnSettings"/>
+            <!-- The finished sessions, newest first. A reading, not a setting, which is why it lives
+                 here rather than on the Focus settings page. -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="RECENT SESSIONS"
+                           FontSize="10" FontWeight="SemiBold" CharacterSpacing="100"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+                <StackPanel x:Name="HistoryRows" Spacing="3"/>
             </StackPanel>
+        </StackPanel>
         </ScrollViewer>
     </Grid>
 </Window>
