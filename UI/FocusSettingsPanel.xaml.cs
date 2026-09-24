@@ -13,15 +13,6 @@ namespace FocusDesk.UI;
 /// leaves.</remarks>
 public sealed partial class FocusSettingsPanel : UserControl
 {
-    /// <summary>The lengths offered, in the order they are offered. A duration set from Home
-    /// Assistant can be any whole number of minutes, so one that is not here is added to the
-    /// list rather than rounded to a neighbour.</summary>
-    private static readonly (string Label, int Value)[] MinutesPresets =
-    [
-        ("15 min", 15), ("25 min", 25), ("45 min", 45), ("1 hour", 60),
-        ("90 min", 90), ("2 hours", 120), ("3 hours", 180), ("4 hours", 240),
-    ];
-
     private bool _updating;
     private bool _watching;
 
@@ -67,7 +58,7 @@ public sealed partial class FocusSettingsPanel : UserControl
                 s => (s.FocusSessionMinutes, s.FocusDimsScreen, s.FocusCoversScreen,
                       s.FocusStartFromDashboard));
 
-            LoadMinutes(minutes);
+            FocusLengthChoices.Fill(FocusMinutesCombo, minutes);
 
             // A running session reports the levers it actually owns; with none running the two show
             // the defaults the next session would start from.
@@ -81,29 +72,10 @@ public sealed partial class FocusSettingsPanel : UserControl
         finally { _updating = false; }
     }
 
-    /// <summary>Fills the list and selects the stored length, adding it as a choice of its own where
-    /// it is not one of the presets.</summary>
-    private void LoadMinutes(int stored)
-    {
-        FocusMinutesCombo.Items.Clear();
-
-        var offered = MinutesPresets.ToList();
-        if (!offered.Any(p => p.Value == stored))
-        {
-            int at = offered.FindIndex(p => p.Value > stored);
-            offered.Insert(at < 0 ? offered.Count : at, ($"{stored} min", stored));
-        }
-
-        foreach (var (label, value) in offered)
-            FocusMinutesCombo.Items.Add(new ComboBoxItem { Content = label, Tag = value });
-
-        FocusMinutesCombo.SelectedIndex = offered.FindIndex(p => p.Value == stored);
-    }
-
     private void OnFocusMinutesChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_updating) return;
-        if (FocusMinutesCombo.SelectedItem is not ComboBoxItem { Tag: int minutes }) return;
+        if (FocusLengthChoices.Selected(FocusMinutesCombo) is not { } minutes) return;
 
         SettingsService.Update(s => s.FocusSessionMinutes = minutes);
     }

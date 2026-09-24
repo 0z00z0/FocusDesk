@@ -48,11 +48,10 @@ OutputBaseFilename=FocusDesk-Setup-{#AppVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-; Setup icon and the studio wizard bitmaps. Commented out until FocusDesk has an icon and a banner
-; of its own: SetupIconFile is Setup.exe's own file icon, and the two bitmaps are the studio-look
-; wizard art. Inno fails the compile on a file it cannot find, so each line stays inert rather than
-; naming a path that does not exist. Restore all three once the artwork lands.
-;SetupIconFile=..\Assets\SetupIcon.ico
+; Setup.exe's own file icon: the product mark, the same file the executable is built with. The two
+; studio wizard bitmaps stay commented out until that artwork lands — Inno fails the compile on a
+; file it cannot find, so each line stays inert rather than naming a path that does not exist.
+SetupIconFile=..\Assets\FocusDesk.ico
 ;WizardImageFile=wizard\wizimg-492x942.bmp
 ;WizardSmallImageFile=wizard\wizsmall-165x174.bmp
 ; Restart Manager is NOT used to close the running app. Setup runs unelevated
@@ -92,9 +91,8 @@ Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubd
 
 [Icons]
 ; Per-user "All apps" Start-menu entry. IconFilename points at the exe itself, the same pattern as
-; the desktop shortcut below and UninstallDisplayIcon above. FocusDesk sets no <ApplicationIcon> yet
-; (HANDOVER.md's open question on what FocusDesk's own icon is), so this shows the exe's default
-; icon until one is added and wired up.
+; the desktop shortcut below and UninstallDisplayIcon above, so all three show the product mark the
+; executable carries as its <ApplicationIcon>.
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\{#AppExe}"; Comment: "{#AppName}"
 ; Optional desktop shortcut (off by default; ticked via the task below).
 Name: "{userdesktop}\{#AppName}";  Filename: "{app}\{#AppExe}"; IconFilename: "{app}\{#AppExe}"; Tasks: desktopicon

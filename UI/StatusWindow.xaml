@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Window
+    x:Class="FocusDesk.UI.StatusWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop Kind="BaseAlt" />
+    </Window.SystemBackdrop>
+
+    <Grid KeyboardAcceleratorPlacementMode="Hidden">
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="Escape" Invoked="OnEscapeInvoked"/>
+        </Grid.KeyboardAccelerators>
+
+        <!-- A scroller beneath the content, so a short work area still shows all of it. The window
+             is sized to its content on opening, so this is the floor rather than the plan. -->
+        <ScrollViewer Padding="20" VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+
+            <!-- MaxWidth pins the wrapping paragraphs to a stable width. Without it they wrap
+                 against the scroller's transient viewport during the layout pass the sizing reads,
+                 which reports a height of dozens of near-empty lines. -->
+            <StackPanel x:Name="ContentPanel" Spacing="18" MaxWidth="320">
+
+                <!-- What the session is doing. No control here ends one: that is the feature's
+                     central property, not an omission. -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="FOCUS SESSION"
+                               FontSize="11" FontWeight="SemiBold"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock x:Name="StatusText"
+                               FontSize="16" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                    <TextBlock x:Name="WayOutText"
+                               Text="Nothing on this computer ends a session. Home Assistant ends one early, after a five-minute wait and a second request."
+                               FontSize="11" TextWrapping="Wrap"
+                               Visibility="Collapsed"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+
+                <!-- The start box, shown only where the Focus settings page has turned it on. -->
+                <StackPanel x:Name="StartBox" Spacing="8">
+                    <TextBlock Text="START A SESSION"
+                               FontSize="11" FontWeight="SemiBold"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Grid.Column="0" x:Name="MinutesCombo"
+                                  HorizontalAlignment="Stretch"
+                                  AutomationProperties.Name="Session length"/>
+                        <Button Grid.Column="1" x:Name="StartButton"
+                                Content="Start" MinWidth="88"
+                                Style="{StaticResource AccentButtonStyle}"
+                                Click="OnStart"/>
+                    </Grid>
+                    <TextBlock x:Name="RefusalText"
+                               FontSize="11" TextWrapping="Wrap"
+                               Visibility="Collapsed"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+
+                <!-- The finished sessions, newest first. This list belongs here rather than on the
+                     Focus settings page: it is a reading, not a setting. -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="RECENT SESSIONS"
+                               FontSize="11" FontWeight="SemiBold"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <StackPanel x:Name="HistoryRows" Spacing="3"/>
+                </StackPanel>
+
+                <Button x:Name="SettingsButton" Content="Settings…"
+                        HorizontalAlignment="Stretch" Click="OnSettings"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>

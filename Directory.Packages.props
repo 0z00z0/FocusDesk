@@ -13,9 +13,11 @@
        declared as a PackageReference — the MQTT discovery layer and client, the primitives and the
        dump registration — because declaring one resolves the same assembly twice.
 
-       ZeroZero.Startup and ZeroZero.SettingsShell.WinUI are genuine direct references — the
-       watchdog task, wired in App.xaml.cs, and the settings window shell — and each carries a
-       PackageReference below. ZeroZero.Win32 and ZeroZero.Controls.WinUI are pinned here without
+       ZeroZero.Startup, ZeroZero.SettingsShell.WinUI and ZeroZero.Tray.WinUI are genuine direct
+       references — the watchdog task, wired in App.xaml.cs, the settings window shell, and the
+       notification-area icon's host — and each carries a PackageReference below. ZeroZero.Tray, the
+       plain half of the tray component, arrives with the host and keeps its pin here because the
+       host's own floor must not decide it. ZeroZero.Win32 and ZeroZero.Controls.WinUI are pinned here without
        one: both already arrive transitively (Win32 through Mqtt.WinUI, Brand.WinUI and
        SettingsShell.WinUI, Controls.WinUI through Mqtt.WinUI and SettingsShell.WinUI), FocusDesk
        has no direct caller of either yet, and the family's own pin file declares no version for
@@ -37,6 +39,7 @@
     <PackageVersion Include="ZeroZero.SettingsShell.WinUI" Version="0.7.0" />
     <PackageVersion Include="ZeroZero.Startup" Version="0.8.1" />
     <PackageVersion Include="ZeroZero.Tray" Version="0.7.0" />
+    <PackageVersion Include="ZeroZero.Tray.WinUI" Version="0.7.0" />
     <PackageVersion Include="ZeroZero.Update" Version="0.11.0" />
     <PackageVersion Include="ZeroZero.Update.WinUI" Version="0.11.0" />
     <PackageVersion Include="ZeroZero.Win32" Version="0.9.1" />
