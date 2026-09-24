@@ -302,6 +302,15 @@ public class FocusSessionTests
         Assert.Equal(FocusSessionStage.Off, bed.Engine.Snapshot().Stage);
     }
 
+    [Fact]
+    public void TheCoverLeverRefusesWhereNothingIsAttachedToCover()
+    {
+        // A lever that changes nothing is refused rather than armed: a session counting down over
+        // no cover at all is indistinguishable from a broken one.
+        Assert.NotNull(new FocusCoverLever(() => false, _ => true, _ => true).Refusal());
+        Assert.Null(new FocusCoverLever(() => true, _ => true, _ => true).Refusal());
+    }
+
     // ── The length a start request runs for ─────────────────────────────────────────────────────
 
     [Fact]
