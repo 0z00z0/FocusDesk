@@ -73,6 +73,12 @@ public partial class App : Application
 
             FocusSessionService.Start();
 
+            // After the session engine and the screen services, whose current values its first
+            // announcement reads. Home Assistant is the only way a session is ended early, so this is
+            // what makes the application's own description true.
+            MqttService.Start();
+            Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
+
             // Created but never activated: it is what the XAML runtime owns, not something to look
             // at. The icon is what a person sees.
             _hostWindow = new MainWindow();
@@ -98,6 +104,15 @@ public partial class App : Application
         try { TrayIconHost.Stop(); }
         catch (Exception ex) { AppLog.Error("Shutdown.TrayIconHost", ex); }
 
+        try
+        {
+            Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+            // Before the session engine: the last thing published is the state the session is
+            // actually in, and then the device goes offline rather than timing out on its will.
+            MqttService.Stop();
+        }
+        catch (Exception ex) { AppLog.Error("Shutdown.MqttService", ex); }
+
         try { FocusSessionService.Stop(); }
         catch (Exception ex) { AppLog.Error("Shutdown.FocusSessionService", ex); }
 
@@ -105,5 +120,17 @@ public partial class App : Application
         catch (Exception ex) { AppLog.Error("Shutdown.HostWindow", ex); }
 
         Exit();
+    }
+
+    /// <summary>A resume from standby. The broker connection is told so it stops waiting out a
+    /// backoff the machine slept through and reconnects at once.</summary>
+    /// <remarks>Raised on SystemEvents' own hidden-window thread, and nothing it reaches touches the
+    /// UI, so it runs where it arrives.</remarks>
+    private static void OnPowerModeChanged(object? sender, Microsoft.Win32.PowerModeChangedEventArgs e)
+    {
+        if (e.Mode != Microsoft.Win32.PowerModes.Resume) return;
+
+        try { MqttService.OnPowerResume(); }
+        catch (Exception ex) { AppLog.Error("App.OnPowerModeChanged", ex); }
     }
 }
