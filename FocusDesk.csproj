@@ -126,6 +126,16 @@
     <Content Update="Assets\*.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+
+    <!-- The pane artwork and the product mark, addressed as ms-appx URIs. An unpackaged WinUI
+         application resolves ms-appx against its own folder, so the files have to sit beside the
+         exe in the build output and in the publish output the installer packs. -->
+    <Content Update="Assets\*.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\nav\*.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <!-- Authenticode-signs the Release bin\ output via scripts\sign.ps1. ContinueOnError keeps the

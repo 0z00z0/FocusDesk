@@ -7,6 +7,8 @@
     xmlns:controls="using:CommunityToolkit.WinUI.Controls">
 
     <StackPanel Spacing="4">
+        <TextBlock Text="Screen" Style="{StaticResource SectionHeaderStyle}"/>
+
         <!-- The unsupported line and the two controls swap: a machine whose only screen is an
              external monitor gets the explanation instead of a slider that would reach nothing. -->
         <controls:SettingsCard x:Name="ScreenUnsupportedCard"

@@ -7,6 +7,10 @@
     xmlns:controls="using:CommunityToolkit.WinUI.Controls">
 
     <StackPanel Spacing="4">
+        <TextBlock Text="Focus" Style="{StaticResource SectionHeaderStyle}"/>
+
+        <zz:SettingsSectionHeader Heading="The session" ShowDivider="False"/>
+
         <!-- Status, and nothing to press. A person at the keyboard cannot end a session: that is the
              feature's central property, not an omission to be filled in. -->
         <controls:SettingsCard Header="Status"
@@ -20,6 +24,8 @@
             <ComboBox x:Name="FocusMinutesCombo" MinWidth="110"
                       SelectionChanged="OnFocusMinutesChanged"/>
         </controls:SettingsCard>
+
+        <zz:SettingsSectionHeader Heading="What a session holds"/>
 
         <!-- One switch per lever, settable here or from Home Assistant — both write through the same
              settings value, so the two stay one. Locked for the length of a session once it starts:
@@ -51,10 +57,12 @@
                           MinWidth="0" Toggled="OnFocusStartFromStatusToggled"/>
         </controls:SettingsCard>
 
+        <zz:SettingsSectionHeader Heading="If you are stuck"/>
+
         <!-- The published way out, in the words of whoever is sitting at the machine. The firewall
-             lines belong to the network lever, which this build does not have. -->
-        <controls:SettingsCard Header="If you are stuck"
-                               ContentAlignment="Vertical"
+             lines belong to the network lever, which this build does not have. The group heading
+             above names this card, so the card carries none of its own. -->
+        <controls:SettingsCard ContentAlignment="Vertical"
                                HorizontalContentAlignment="Stretch">
             <StackPanel Spacing="6">
                 <TextBlock TextWrapping="Wrap" FontSize="12"
