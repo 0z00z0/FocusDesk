@@ -1,6 +1,7 @@
 using FocusDesk.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using ZeroZero.Diagnostics;
 
 namespace FocusDesk;
 
@@ -13,14 +14,29 @@ public partial class App : Application
 {
     private Window? _window;
 
-    public App() => InitializeComponent();
+    // Held for the life of the process: the arms stay registered until it ends.
+    private readonly CrashHandlers _crashHandlers;
+
+    public App()
+    {
+        InitializeComponent();
+
+        // AppDomain and unobserved-task arms come from the shared library; the WinUI arm is the
+        // application's own and reports through the same sink.
+        _crashHandlers = CrashHandlers.Register(new CrashHandlerOptions { Sink = new AppLogSink() });
+        UnhandledException += (_, e) =>
+        {
+            _crashHandlers.Report("Application.UnhandledException", e.Exception);
+            // Leave e.Handled = false: crashing visibly beats running corrupt.
+        };
+    }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        AppLog.Info("FocusDesk starting.");
-
         try
         {
+            AppLog.Info("FocusDesk starting.");
+
             // First: Windows keeps a brightness across a restart, so a level a run that died left
             // displaced stays displaced until this puts it back. A session that is resuming then
             // dims it again and parks the level it found.
