@@ -37,8 +37,6 @@ public class SettingsFileShapeTests : IDisposable
         // The store's own document key, written first. This application's Version key is not written
         // by this build; where a document already carries one it survives beside this.
         "ConfigVersion",
-        "Screen",
-        "Screen.ScreenSavedBrightness",
         "Focus",
         "Focus.FocusSessionMinutes",
         "Focus.FocusDimsScreen",
@@ -48,6 +46,14 @@ public class SettingsFileShapeTests : IDisposable
         "Focus.FocusSessionEndsAt",
         "Focus.FocusSessionDimmedScreen",
         "Focus.FocusSessionCoveredScreen",
+        "Screen",
+        "Screen.ScreenSavedBrightness",
+        // Not a page: where the Settings window was last left. It trails the pages for that reason.
+        "Window",
+        "Window.SettingsWindowX",
+        "Window.SettingsWindowY",
+        "Window.SettingsWindowWidth",
+        "Window.SettingsWindowHeight",
     ];
 
     /// <summary>Group name then each of its keys, in the order they appear in the written file.</summary>
