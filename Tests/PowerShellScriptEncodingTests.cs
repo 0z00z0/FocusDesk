@@ -80,17 +80,5 @@ public class PowerShellScriptEncodingTests
             .Select(x => x.number)
             .ToArray();
 
-    private static readonly string RepositoryRoot = FindRepositoryRoot();
-
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "FocusDesk.csproj")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-        return directory!.FullName;
-    }
+    private static readonly string RepositoryRoot = RepoFiles.Root;
 }
