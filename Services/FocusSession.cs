@@ -64,6 +64,8 @@ internal sealed class FocusSessionEngine(
     /// <summary>Long enough that a failure elsewhere costs an afternoon rather than a weekend.</summary>
     public const int MaxMinutes = 240;
 
+    public const int DefaultMinutes = 60;
+
     private readonly Lock _gate = new();
 
     private FocusSessionRecord? _session;
