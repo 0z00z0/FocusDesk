@@ -10,20 +10,36 @@
   <!-- The shared library, one pin per component. A component's package version is its own tag
        without the prefix, so the numbers move independently and a bump here is a deliberate
        adoption. Every direct reference has its pin here. What arrives transitively is never
-       declared — the MQTT discovery layer and client, the controls, the primitives, the Win32
-       layer, the dump registration and the single-type settings store — because declaring one
-       resolves the same assembly twice. -->
+       declared as a PackageReference — the MQTT discovery layer and client, the primitives and the
+       dump registration — because declaring one resolves the same assembly twice.
+
+       ZeroZero.Startup and ZeroZero.SettingsShell.WinUI are genuine direct references — the
+       watchdog task, wired in App.xaml.cs, and the settings window shell — and each carries a
+       PackageReference below. ZeroZero.Win32 and ZeroZero.Controls.WinUI are pinned here without
+       one: both already arrive transitively (Win32 through Mqtt.WinUI, Brand.WinUI and
+       SettingsShell.WinUI, Controls.WinUI through Mqtt.WinUI and SettingsShell.WinUI), FocusDesk
+       has no direct caller of either yet, and the family's own pin file declares no version for
+       either — so without CentralPackageTransitivePinningEnabled the whole graph would keep
+       resolving whatever floor Mqtt.WinUI 0.7.3 happens to specify, never the newer releases
+       pinned here. -->
+  <PropertyGroup>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
   <ItemGroup Label="ZeroZero shared library">
     <PackageVersion Include="ZeroZero.Brand.WinUI" Version="0.10.0" />
     <PackageVersion Include="ZeroZero.Config.Sections" Version="0.8.0" />
     <PackageVersion Include="ZeroZero.Config.Watch" Version="0.8.0" />
+    <PackageVersion Include="ZeroZero.Controls.WinUI" Version="0.8.0" />
     <PackageVersion Include="ZeroZero.Diagnostics" Version="0.7.0" />
     <PackageVersion Include="ZeroZero.Lifecycle" Version="0.7.1" />
     <PackageVersion Include="ZeroZero.Mqtt.WinUI" Version="0.7.3" />
     <PackageVersion Include="ZeroZero.SettingsShell.WinUI" Version="0.7.0" />
+    <PackageVersion Include="ZeroZero.Startup" Version="0.8.1" />
     <PackageVersion Include="ZeroZero.Tray" Version="0.7.0" />
     <PackageVersion Include="ZeroZero.Update" Version="0.11.0" />
     <PackageVersion Include="ZeroZero.Update.WinUI" Version="0.11.0" />
+    <PackageVersion Include="ZeroZero.Win32" Version="0.9.1" />
   </ItemGroup>
 
   <!-- FocusDesk's own logging, not part of the shared library. The MAJOR matters: NLog 6 removed

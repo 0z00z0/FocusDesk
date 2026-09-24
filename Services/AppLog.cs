@@ -48,9 +48,8 @@ internal static class AppLog
         return LogManager.GetLogger(name);
     }
 
-    // callerFilePath is supplied by the compiler, so the class column costs nothing at run time and
-    // survives async boundaries. ${callsite} would report this facade instead, and measured 2.2x the
-    // per-entry cost when made to report the true caller.
+    // callerFilePath costs nothing at run time and survives async boundaries; see
+    // docs/build-notes.md ("AppLog.cs") for the ${callsite} cost measurement.
     public static void Info(string message, [CallerFilePath] string callerFilePath = "") =>
         Write(_log, LogLevel.Info, message, callerFilePath);
 
@@ -80,18 +79,14 @@ internal static class AppLog
         return name.IsEmpty ? UnknownClass : name.ToString();
     }
 
-    // Runs from the _log field initialiser, so anything thrown here escapes as a
-    // TypeInitializationException at whichever call site touches AppLog first — several of which are
-    // startup and crash paths. It must never throw.
+    // Runs from the _log field initialiser and must never throw — see docs/build-notes.md
+    // ("AppLog.cs") for why.
     private static Logger Initialise()
     {
         try
         {
-            // Reading LogManager.Configuration triggers NLog's auto-discovery of nlog.config beside
-            // the exe. A missing or unparseable file — the latter is a user-editable one, and a bad
-            // hand-edit must not be what takes the app down — leaves it null or unset, and NLog then
-            // logs nothing at all for any logger this returns. That silence is the whole of the
-            // degradation: nothing here builds a second copy of the configuration to fall back to.
+            // A missing or unparseable nlog.config leaves NLog unconfigured — it then logs nothing,
+            // with no fallback. See docs/build-notes.md ("AppLog.cs").
             _ = LogManager.Configuration;
         }
         catch { /* left unconfigured; see the remarks above */ }

@@ -67,7 +67,13 @@
        ZeroZero.Config.Sections and ZeroZero.Config.Watch bring the settings store;
        ZeroZero.SettingsShell.WinUI brings the same controls and Win32 layer a second time over, at
        the family's pin, so the graph resolves one of each. Declaring any of those would resolve the
-       same assembly twice. -->
+       same assembly twice.
+
+       Two additions below have no other path into the graph: ZeroZero.Startup, the watchdog task
+       wired in App.xaml.cs, and ZeroZero.SettingsShell.WinUI, the settings window shell.
+       ZeroZero.Win32 and ZeroZero.Controls.WinUI stay undeclared here — both are pinned to their
+       new releases in Directory.Packages.props, through transitive pinning, because FocusDesk has
+       no direct caller of either yet. -->
   <ItemGroup>
     <PackageReference Include="ZeroZero.Brand.WinUI" />
     <PackageReference Include="ZeroZero.Config.Sections" />
@@ -76,6 +82,7 @@
     <PackageReference Include="ZeroZero.Lifecycle" />
     <PackageReference Include="ZeroZero.Mqtt.WinUI" />
     <PackageReference Include="ZeroZero.SettingsShell.WinUI" />
+    <PackageReference Include="ZeroZero.Startup" />
     <PackageReference Include="ZeroZero.Tray" />
     <PackageReference Include="ZeroZero.Update" />
     <PackageReference Include="ZeroZero.Update.WinUI" />
@@ -97,8 +104,8 @@
          output and the publish output (installer\build-installer.ps1 publishes into <repo>\publish,
          which ISCC packs with recursesubdirs). Without CopyToOutputDirectory it would stay in the
          repo, NLog would find no config, and the app's only forensic trail would go silent with no
-         error. AppLog degrades to a code-built config rather than going dark if this ever fails
-         anyway. -->
+         error. AppLog builds no fallback configuration if this ever fails — a missing or
+         unparseable nlog.config means the application logs nothing at all; see Services/AppLog.cs. -->
     <Content Include="nlog.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

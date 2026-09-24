@@ -1,16 +1,7 @@
 namespace FocusDesk.Helpers;
 
-/// <summary>
-/// The single safe file-append primitive behind <see cref="FocusDesk.Services.AppLog"/> and any
-/// later CSV-style store. <see cref="FileMode.Append"/> + <see cref="FileShare.ReadWrite"/> is what
-/// lets concurrent FocusDesk processes share a file for write: the handle uses FILE_APPEND_DATA, so
-/// every write lands at the current end of file whatever another handle is doing, and lines can
-/// neither clobber nor tear each other. <c>File.AppendAllText</c> cannot be used — its default
-/// <see cref="FileShare.Read"/> denies concurrent writers.
-/// <para>Only sharing and lock collisions are retried; a missing directory, access denial or long
-/// path fails fast. <see cref="Append"/> rethrows the final failure, <see cref="TryAppend"/> reports
-/// it as a bool.</para>
-/// </summary>
+/// <summary>Safe, share-tolerant file-append primitive behind <see cref="FocusDesk.Services.CsvSampleStore"/>.
+/// See docs/build-notes.md ("SafeFileAppend.cs") for the design reasoning.</summary>
 internal static class SafeFileAppend
 {
     private const int MaxAttempts = 5;
