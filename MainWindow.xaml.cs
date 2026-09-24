@@ -1,11 +1,12 @@
 using FocusDesk.Services;
+using FocusDesk.UI;
 using Microsoft.UI.Xaml;
 
 namespace FocusDesk;
 
 /// <summary>
-/// The one window there is. It hosts whichever page has been built, and is replaced by the Settings
-/// shell and the tray.
+/// The window that stands in for the tray icon: it opens the Settings window and it is what closing
+/// ends the process by. The tray menu replaces it.
 /// </summary>
 public sealed partial class MainWindow : Window
 {
@@ -13,12 +14,10 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         Closed += (_, _) =>
-        {
-            // A slider position the debounce is still holding would otherwise be lost with the window.
-            ScreenPanel.Flush();
             // Closing this window ends the process while there is no tray icon, so the session's
             // own shutdown runs here. The session record stays on disk; the next start resumes it.
             FocusSessionService.Stop();
-        };
     }
+
+    private void OnSettings(object sender, RoutedEventArgs e) => SettingsShellHost.Open();
 }

@@ -8,8 +8,8 @@ namespace FocusDesk;
 
 /// <summary>
 /// The application object. Starts the services a session depends on, in the order they depend on
-/// each other, and owns the one window there is — the tray icon and the Settings shell arrive with
-/// the code they belong to.
+/// each other, and owns the window the process runs behind. That window is a stand-in launcher for
+/// the Settings shell; the tray icon replaces it with the code it belongs to.
 /// </summary>
 public partial class App : Application
 {

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="FocusDesk.UI.FocusSettingsPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:zz="using:ZeroZero.Controls.WinUI"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls">
+
+    <StackPanel Spacing="4">
+        <!-- Status, and nothing to press. A person at the keyboard cannot end a session: that is the
+             feature's central property, not an omission to be filled in. -->
+        <controls:SettingsCard Header="Status"
+                               Description="A session runs for the length it was given. Nothing on this computer ends one early.">
+            <TextBlock x:Name="FocusStatusValue" VerticalAlignment="Center"
+                       MaxWidth="320" TextTrimming="CharacterEllipsis"/>
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="Length"
+                               Description="How long the next session runs. Changing this while one runs changes the next one only.">
+            <ComboBox x:Name="FocusMinutesCombo" MinWidth="110"
+                      SelectionChanged="OnFocusMinutesChanged"/>
+        </controls:SettingsCard>
+
+        <!-- One switch per lever, settable here or from Home Assistant — both write through the same
+             settings value, so the two stay one. Locked for the length of a session once it starts:
+             a lever turned off part-way through would leave its record parked with nothing owning
+             it. -->
+        <controls:SettingsCard Header="Dims the screen"
+                               Description="Lowers the built-in screen's brightness for the length of a session and puts it back afterwards.">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <zz:InfoIcon Subject="the screen dim"
+                             Info="A lever cannot change while a session runs: its record would be left with nothing owning it."/>
+                <ToggleSwitch x:Name="FocusDimsScreenToggle" OnContent="" OffContent=""
+                              MinWidth="0" Toggled="OnFocusDimsScreenToggled"/>
+            </StackPanel>
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="Covers the screen"
+                               Description="Puts a black window over every display for the length of a session.">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <zz:InfoIcon Subject="the screen cover"
+                             Info="A lever cannot change while a session runs: its record would be left with nothing owning it."/>
+                <ToggleSwitch x:Name="FocusCoversScreenToggle" OnContent="" OffContent=""
+                              MinWidth="0" Toggled="OnFocusCoversScreenToggled"/>
+            </StackPanel>
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="Start a session from the status window"
+                               Description="Adds a Start button to the status window. It starts a session; ending one still needs Home Assistant.">
+            <ToggleSwitch x:Name="FocusStartFromStatusToggle" OnContent="" OffContent=""
+                          MinWidth="0" Toggled="OnFocusStartFromStatusToggled"/>
+        </controls:SettingsCard>
+
+        <!-- The published way out, in the words of whoever is sitting at the machine. The firewall
+             lines belong to the network lever, which this build does not have. -->
+        <controls:SettingsCard Header="If you are stuck"
+                               ContentAlignment="Vertical"
+                               HorizontalContentAlignment="Stretch">
+            <StackPanel Spacing="6">
+                <TextBlock TextWrapping="Wrap" FontSize="12"
+                           Text="End it early from Home Assistant: send the request, wait five minutes, send it again within ten seconds."/>
+                <TextBlock TextWrapping="Wrap" FontSize="12"
+                           Text="Turn the screen brightness back up by hand."/>
+                <TextBlock TextWrapping="Wrap" FontSize="12"
+                           Text="Exit FocusDesk to take the black cover down. The session keeps running."/>
+            </StackPanel>
+        </controls:SettingsCard>
+    </StackPanel>
+</UserControl>

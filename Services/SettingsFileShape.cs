@@ -21,23 +21,29 @@ internal sealed class SettingsFile
     public const int CurrentVersion = 1;
 
     public const string VersionKey = "Version";
-    public const string ScreenKey  = "Screen";
     public const string FocusKey   = "Focus";
+    public const string ScreenKey  = "Screen";
+    public const string WindowKey  = "Window";
 
     /// <summary>The section names, in the order the document carries them. The store binds a section
     /// by its exact spelling, and one spelled in another case binds nothing and hands back
     /// defaults.</summary>
-    public static readonly string[] SectionNames = [ScreenKey, FocusKey];
+    public static readonly string[] SectionNames = [FocusKey, ScreenKey, WindowKey];
 
     /// <summary>First key in the file, so the shape is read rather than inferred.</summary>
     [JsonPropertyName(VersionKey), JsonPropertyOrder(0)]
     public int Version { get; set; } = CurrentVersion;
 
-    [JsonPropertyName(ScreenKey), JsonPropertyOrder(1)]
+    [JsonPropertyName(FocusKey), JsonPropertyOrder(1)]
+    public FocusGroup Focus { get; set; } = new();
+
+    [JsonPropertyName(ScreenKey), JsonPropertyOrder(2)]
     public ScreenGroup Screen { get; set; } = new();
 
-    [JsonPropertyName(FocusKey), JsonPropertyOrder(2)]
-    public FocusGroup Focus { get; set; } = new();
+    /// <summary>Not a page: where the Settings window was last left. It trails the pages for that
+    /// reason.</summary>
+    [JsonPropertyName(WindowKey), JsonPropertyOrder(3)]
+    public WindowGroup Window { get; set; } = new();
 
     internal sealed class ScreenGroup
     {
@@ -63,12 +69,27 @@ internal sealed class SettingsFile
         [JsonPropertyOrder(8)] public bool FocusSessionCoveredScreen { get; set; }
     }
 
+    internal sealed class WindowGroup
+    {
+        [JsonPropertyOrder(1)] public int? SettingsWindowX      { get; set; }
+        [JsonPropertyOrder(2)] public int? SettingsWindowY      { get; set; }
+        [JsonPropertyOrder(3)] public int? SettingsWindowWidth  { get; set; }
+        [JsonPropertyOrder(4)] public int? SettingsWindowHeight { get; set; }
+    }
+
     public static SettingsFile From(AppSettings s)
     {
         ArgumentNullException.ThrowIfNull(s);
         return new SettingsFile
         {
             Screen = new ScreenGroup { ScreenSavedBrightness = s.ScreenSavedBrightness },
+            Window = new WindowGroup
+            {
+                SettingsWindowX      = s.SettingsWindowX,
+                SettingsWindowY      = s.SettingsWindowY,
+                SettingsWindowWidth  = s.SettingsWindowWidth,
+                SettingsWindowHeight = s.SettingsWindowHeight,
+            },
             Focus = new FocusGroup
             {
                 FocusSessionMinutes       = s.FocusSessionMinutes,
@@ -95,6 +116,11 @@ internal sealed class SettingsFile
         FocusSessionEndsAt        = Focus.FocusSessionEndsAt,
         FocusSessionDimmedScreen  = Focus.FocusSessionDimmedScreen,
         FocusSessionCoveredScreen = Focus.FocusSessionCoveredScreen,
+
+        SettingsWindowX      = Window.SettingsWindowX,
+        SettingsWindowY      = Window.SettingsWindowY,
+        SettingsWindowWidth  = Window.SettingsWindowWidth,
+        SettingsWindowHeight = Window.SettingsWindowHeight,
     };
 
     /// <summary>The shape of a file, read from its version key rather than inferred from which keys

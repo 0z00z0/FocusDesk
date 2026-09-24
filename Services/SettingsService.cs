@@ -40,6 +40,20 @@ internal sealed class AppSettings
 
     /// <inheritdoc cref="FocusSessionDimmedScreen"/>
     public bool FocusSessionCoveredScreen { get; set; }
+
+    /// <summary>The Settings window's outer rectangle in physical pixels, as the window manager
+    /// last reported it. All four are set together or none is: a partial rectangle is treated as
+    /// nothing saved, and the window opens centred on the monitor under the cursor.</summary>
+    public int? SettingsWindowX { get; set; }
+
+    /// <inheritdoc cref="SettingsWindowX"/>
+    public int? SettingsWindowY { get; set; }
+
+    /// <inheritdoc cref="SettingsWindowX"/>
+    public int? SettingsWindowWidth { get; set; }
+
+    /// <inheritdoc cref="SettingsWindowX"/>
+    public int? SettingsWindowHeight { get; set; }
 }
 
 /// <summary>Loads and saves <see cref="AppSettings"/> to <c>%AppData%\FocusDesk\settings.json</c> —

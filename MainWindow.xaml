@@ -3,11 +3,11 @@
     x:Class="FocusDesk.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:ui="using:FocusDesk.UI"
     Title="FocusDesk">
-    <!-- The one window there is, and the host for whichever page has been built. The Settings shell
-         and the tray replace it. -->
-    <ScrollViewer Padding="16">
-        <ui:ScreenSettingsPanel x:Name="ScreenPanel"/>
-    </ScrollViewer>
+    <!-- The stand-in for the tray icon: the one way to reach the Settings window until the tray menu
+         is built. Closing it ends the process, so it is also where the shutdown hangs. -->
+    <StackPanel Padding="24" Spacing="12" HorizontalAlignment="Left" VerticalAlignment="Top">
+        <TextBlock Text="FocusDesk is running." />
+        <Button x:Name="SettingsButton" Content="Settings" Click="OnSettings"/>
+    </StackPanel>
 </Window>

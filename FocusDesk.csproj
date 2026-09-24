@@ -64,13 +64,16 @@
        version is pinned centrally in Directory.Packages.props, and a version here fails the build
        (ZZB006). ZeroZero.Mqtt.WinUI brings the MQTT discovery layer and client, the controls, the
        primitives and the Win32 layer with it; ZeroZero.Diagnostics brings the dump registration;
-       ZeroZero.Config.Sections and ZeroZero.Config.Watch bring the settings store. Declaring any of
-       those would resolve the same assembly twice.
+       ZeroZero.Config.Sections and ZeroZero.Config.Watch bring the settings store;
+       ZeroZero.SettingsShell.WinUI brings the same controls and Win32 layer a second time over, at
+       the family's pin, so the graph resolves one of each. Declaring any of those would resolve the
+       same assembly twice.
 
-       ZeroZero.Startup is the one addition below: the watchdog task, wired in App.xaml.cs, with no
-       other path into the graph. ZeroZero.Win32 and ZeroZero.Controls.WinUI stay undeclared here —
-       both are pinned to their new releases in Directory.Packages.props, through transitive
-       pinning, because FocusDesk has no direct caller of either yet. -->
+       Two additions below have no other path into the graph: ZeroZero.Startup, the watchdog task
+       wired in App.xaml.cs, and ZeroZero.SettingsShell.WinUI, the settings window shell.
+       ZeroZero.Win32 and ZeroZero.Controls.WinUI stay undeclared here — both are pinned to their
+       new releases in Directory.Packages.props, through transitive pinning, because FocusDesk has
+       no direct caller of either yet. -->
   <ItemGroup>
     <PackageReference Include="ZeroZero.Brand.WinUI" />
     <PackageReference Include="ZeroZero.Config.Sections" />
@@ -78,6 +81,7 @@
     <PackageReference Include="ZeroZero.Diagnostics" />
     <PackageReference Include="ZeroZero.Lifecycle" />
     <PackageReference Include="ZeroZero.Mqtt.WinUI" />
+    <PackageReference Include="ZeroZero.SettingsShell.WinUI" />
     <PackageReference Include="ZeroZero.Startup" />
     <PackageReference Include="ZeroZero.Tray" />
     <PackageReference Include="ZeroZero.Update" />
