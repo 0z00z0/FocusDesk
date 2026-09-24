@@ -19,6 +19,10 @@ public partial class App : Application
 
         try
         {
+            // Before any window: Windows keeps a brightness across a restart, so a level a run that
+            // died left displaced stays displaced until this puts it back.
+            ScreenBrightnessService.Start();
+
             _window = new MainWindow();
             _window.Activate();
         }
