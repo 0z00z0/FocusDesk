@@ -38,6 +38,9 @@ internal interface IWindowInspector
     /// <summary>Whether one window is a window a person could work in.</summary>
     bool IsActionable(IntPtr window);
 
+    /// <summary>Whether one window is minimised already, so it is not minimised again.</summary>
+    bool IsMinimised(IntPtr window);
+
     /// <summary>The facts about one window, or null where it has gone.</summary>
     WindowFacts? Facts(IntPtr window);
 }
@@ -82,6 +85,7 @@ internal sealed class WindowInspector : IWindowInspector
     [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr parent, EnumWindowsProc callback, IntPtr data);
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr window);
+    [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
     [DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr window, uint flags);
     [DllImport("user32.dll")] private static extern IntPtr GetWindow(IntPtr window, uint command);
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] private static extern IntPtr GetWindowLongPtr(IntPtr window, int index);
@@ -151,6 +155,12 @@ internal sealed class WindowInspector : IWindowInspector
 
             return true;
         }
+        catch { return false; }
+    }
+
+    public bool IsMinimised(IntPtr window)
+    {
+        try { return IsIconic(window); }
         catch { return false; }
     }
 
