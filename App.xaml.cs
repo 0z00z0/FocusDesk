@@ -39,10 +39,6 @@ public partial class App : Application
 
         InitializeComponent();
 
-        // Straight after the markup's own dictionary exists and before any window is built: a
-        // control resolves an accent key once, when it is created.
-        AppPalette.Apply(Resources);
-
         // Before any window exists: without this the dispatcher stops with the last window closed,
         // which would end the process the moment the status window or the Settings window is shut.
         // Leaving is the tray menu's Exit and nothing else.
@@ -68,6 +64,13 @@ public partial class App : Application
     {
         try
         {
+            // The accent keys, before any window is built: a control resolves one once, when it is
+            // created. Not from the constructor — Microsoft.UI.Xaml.dll 3.2.3.0 fails
+            // Application.Resources with E_UNEXPECTED while the initialisation callback is still
+            // running, and the stowed exception ends the process at 0xC000027B before the crash arms
+            // can report it.
+            AppPalette.Apply(Resources);
+
             // General crash-resilience infrastructure, independent of any focus-session lever: a
             // deliberate start re-arms resurrection, and the watchdog task itself is (re)registered
             // unconditionally on every start, whether or not a session is running.
