@@ -45,6 +45,7 @@ public class SettingsFileShapeTests : IDisposable
         "Focus.FocusProgramsDefaultAction",
         "Focus.FocusDimsScreen",
         "Focus.FocusCoversScreen",
+        "Focus.FocusCoverVisual",
         "Focus.FocusBlocksInput",
         "Focus.FocusStartFromDashboard",
         "Focus.FocusSessionStartedAt",
@@ -169,6 +170,7 @@ public class SettingsFileShapeTests : IDisposable
             ],
             FocusProgramsDefaultAction = FocusProgramAction.AskToClose,
             FocusDimsScreen           = false,
+            FocusCoverVisual          = CoverVisual.FocusPoint,
             FocusBlocksInput          = true,
             FocusSessionEndsAt        = new DateTimeOffset(2026, 9, 20, 13, 0, 0, TimeSpan.Zero),
             FocusSessionCoveredScreen = true,
@@ -219,7 +221,8 @@ public class SettingsFileShapeTests : IDisposable
     private static string Describe(AppSettings s) => string.Join('|',
         s.ScreenSavedBrightness, s.FocusSessionMinutes, s.FocusBlocksNetwork,
         string.Join(';', s.FocusPrograms), s.FocusProgramsDefaultAction, s.FocusSessionBlockedNetwork,
-        s.FocusDimsScreen, s.FocusCoversScreen, s.FocusLimitsPrograms, s.FocusSessionLimitedPrograms,
+        s.FocusDimsScreen, s.FocusCoversScreen, s.FocusCoverVisual, s.FocusLimitsPrograms,
+        s.FocusSessionLimitedPrograms,
         s.FocusBlocksInput, s.FocusStartFromDashboard, s.FocusSessionStartedAt, s.FocusSessionEndsAt,
         s.FocusSessionDimmedScreen, s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput);
 

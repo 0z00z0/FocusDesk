@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="nb-NO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fokuspunkt</title>
+<style>
+  :root {
+    --bg: #0b0e11;          /* dyp blågrå, ikke ren svart – mindre kontrastslitasje */
+    --dot: #e8e4da;         /* varm off-white */
+    --ring: #3a4450;        /* dempet stålblå */
+    --ring-active: #7fa08c; /* rolig salviegrønn under nedtelling */
+    --text: #4a5560;
+    --time: #6b7784;
+    --glow-soft: rgba(232,228,218,0.18);
+    --glow-mid: rgba(232,228,218,0.25);
+    --glow-strong: rgba(232,228,218,0.30);
+  }
+  /* Dempet palett. Verten slår den på når skjermens egen lysstyrke ikke senkes, slik at dekket
+     ikke lyser opp en skjerm ingen har bedt om å få dempet. */
+  html[data-dim="1"] {
+    --dot: #8d8a83;
+    --ring: #232a31;
+    --ring-active: #4c6054;
+    --text: #2f363d;
+    --time: #414a53;
+    --glow-soft: rgba(141,138,131,0.10);
+    --glow-mid: rgba(141,138,131,0.14);
+    --glow-strong: rgba(141,138,131,0.17);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    overflow: hidden;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    cursor: default;
+  }
+  /* Svak radiell vignett som leder blikket innover */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center,
+      transparent 0%, transparent 40%, rgba(0,0,0,0.45) 100%);
+    pointer-events: none;
+  }
+  .stage {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .target {
+    position: relative;
+    width: 220px; height: 220px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .track { fill: none; stroke: var(--ring); stroke-width: 1.5; opacity: 0.5; }
+  .progress {
+    fill: none;
+    stroke: var(--ring-active);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-dasharray: 641; /* 2πr, r=102 */
+    stroke-dashoffset: 641;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+    transition: stroke-dashoffset 0.25s linear;
+  }
+  .dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--dot);
+    box-shadow: 0 0 24px var(--glow-mid);
+  }
+  /* Nesten umerkelig puls (~6 pust/min-rytme) for å roe fysiologien */
+  @media (prefers-reduced-motion: no-preference) {
+    .dot.running {
+      animation: breathe 10s ease-in-out infinite;
+    }
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 20px var(--glow-soft); }
+    50%      { transform: scale(1.18); box-shadow: 0 0 30px var(--glow-strong); }
+  }
+  .hud {
+    position: fixed;
+    bottom: 6vh;
+    left: 0; right: 0;
+    text-align: center;
+    color: var(--text);
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    user-select: none;
+    transition: opacity 0.8s ease;
+  }
+  .hud .time { font-size: 15px; color: var(--time); }
+  .hud.dim { opacity: 0; }
+  .done-msg {
+    position: fixed;
+    top: 8vh; left: 0; right: 0;
+    text-align: center;
+    color: var(--ring-active);
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    user-select: none;
+  }
+  .done-msg.show { opacity: 1; }
+</style>
+</head>
+<body>
+  <div class="done-msg" id="doneMsg">Ferdig — start arbeidet</div>
+  <div class="stage" id="stage">
+    <div class="target">
+      <svg viewBox="0 0 220 220">
+        <circle class="track" cx="110" cy="110" r="102"/>
+        <circle class="progress" id="progress" cx="110" cy="110" r="102"/>
+      </svg>
+      <div class="dot" id="dot"></div>
+    </div>
+  </div>
+  <div class="hud" id="hud">
+    <div id="hint">Klikk for å starte · 60 s</div>
+    <div class="time" id="time"></div>
+  </div>
+
+<script>
+  const DURATION = 60;
+  const CIRC = 641;
+  let running = false, startTs = null, raf = null;
+
+  // Økta verten driver, når det er en vert. Se broen nederst i fila.
+  const session = { active: false, total: 0, remaining: 0, at: 0, raf: null,
+                    hint: 'Hold blikket på punktet · blunking er greit' };
+
+  const progress = document.getElementById('progress');
+  const dot = document.getElementById('dot');
+  const hud = document.getElementById('hud');
+  const hint = document.getElementById('hint');
+  const timeEl = document.getElementById('time');
+  const doneMsg = document.getElementById('doneMsg');
+
+  function tick(ts) {
+    if (!startTs) startTs = ts;
+    const elapsed = (ts - startTs) / 1000;
+    const remaining = Math.max(0, DURATION - elapsed);
+    progress.style.strokeDashoffset = CIRC * (remaining / DURATION);
+    timeEl.textContent = Math.ceil(remaining) + ' s';
+    if (remaining > 0) {
+      raf = requestAnimationFrame(tick);
+    } else {
+      finish();
+    }
+  }
+
+  function start() {
+    if (running) return;
+    running = true;
+    doneMsg.classList.remove('show');
+    dot.classList.add('running');
+    hint.textContent = 'Hold blikket på punktet · blunking er greit';
+    setTimeout(() => hud.classList.add('dim'), 4000);
+    startTs = null;
+    raf = requestAnimationFrame(tick);
+  }
+
+  function finish() {
+    running = false;
+    dot.classList.remove('running');
+    hud.classList.remove('dim');
+    hint.textContent = 'Klikk for ny runde';
+    timeEl.textContent = '';
+    doneMsg.classList.add('show');
+    if (navigator.vibrate) navigator.vibrate(80);
+  }
+
+  function reset() {
+    cancelAnimationFrame(raf);
+    running = false;
+    progress.style.strokeDashoffset = CIRC;
+    start();
+  }
+
+  document.body.addEventListener('click', () => (running || session.active) ? null : reset());
+  document.body.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      if (!running && !session.active) reset();
+    }
+  });
+
+  /* ---------------------------------------------------------------------------
+     Økt-broen. Uten vert teller siden ned sine egne 60 sekunder, nøyaktig som før.
+     En vert som driver den — skjermdekket i FokusDesk — sender
+     {type:'focus-session', totalSeconds, remainingSeconds, dim, hintText, doneText}
+     omtrent én gang i sekundet, og nedtellingen følger økta i stedet. hintText og
+     doneText er teksten på vertens språk; uten dem står sidens egen norske tekst.
+     Begge veier tas imot:
+     window.postMessage, som gjør at siden kan drives fra en nettleser eller en
+     ramme rundt, og window.chrome.webview, som er der WebView2 leverer
+     PostWebMessageAsJson.
+     Mellom meldingene regnes gjenstående tid ut lokalt, slik at ringen beveger seg
+     jevnt i stedet for å hoppe ett sekund av gangen.
+  --------------------------------------------------------------------------- */
+  function readSession(data) {
+    if (!data || data.type !== 'focus-session') return;
+
+    const total = Number(data.totalSeconds);
+    const remaining = Number(data.remainingSeconds);
+    if (!isFinite(total) || !isFinite(remaining) || total <= 0) return;
+
+    document.documentElement.dataset.dim = data.dim ? '1' : '0';
+
+    if (typeof data.hintText === 'string' && data.hintText) {
+      session.hint = data.hintText;
+      if (session.active && hint.textContent) hint.textContent = data.hintText;
+    }
+    if (typeof data.doneText === 'string' && data.doneText) doneMsg.textContent = data.doneText;
+
+    session.total = total;
+    session.remaining = Math.max(0, Math.min(remaining, total));
+    session.at = performance.now();
+
+    if (!session.active) enterSessionMode();
+
+    // Løkka startes på nytt for hver melding, slik at den ikke blir liggende stoppet
+    // etter at ringen har nådd null.
+    cancelAnimationFrame(session.raf);
+    session.raf = requestAnimationFrame(sessionTick);
+  }
+
+  function enterSessionMode() {
+    session.active = true;
+    cancelAnimationFrame(raf);
+    running = false;
+    doneMsg.classList.remove('show');
+    dot.classList.add('running');
+    hint.textContent = session.hint;
+    setTimeout(() => hud.classList.add('dim'), 4000);
+  }
+
+  function sessionTick(ts) {
+    const left = Math.max(0, session.remaining - (ts - session.at) / 1000);
+    progress.style.strokeDashoffset = CIRC * (left / session.total);
+    timeEl.textContent = left >= 60 ? Math.ceil(left / 60) + ' min' : Math.ceil(left) + ' s';
+
+    if (left <= 0) {
+      dot.classList.remove('running');
+      hud.classList.remove('dim');
+      hint.textContent = '';
+      doneMsg.classList.add('show');
+      return;
+    }
+    session.raf = requestAnimationFrame(sessionTick);
+  }
+
+  window.addEventListener('message', (e) => readSession(e.data));
+  if (window.chrome && window.chrome.webview) {
+    window.chrome.webview.addEventListener('message', (e) => readSession(e.data));
+  }
+</script>
+</body>
+</html>

@@ -151,6 +151,13 @@
     <Content Update="Assets\nav\*.svg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+
+    <!-- The screen cover's focus-point page. A plain file beside the executable rather than an
+         embedded resource: the embedded browser is pointed at this folder through a virtual host
+         mapping, and the same file opens in any browser on its own. -->
+    <Content Update="Assets\FocusPoint\focus-point.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <!-- Authenticode-signs the Release bin\ output via scripts\sign.ps1. ContinueOnError keeps the

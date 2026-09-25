@@ -71,22 +71,25 @@ internal sealed class SettingsFile
         [JsonPropertyOrder(5)] public FocusProgramAction? FocusProgramsDefaultAction { get; set; }
         [JsonPropertyOrder(6)] public bool? FocusDimsScreen         { get; set; }
         [JsonPropertyOrder(7)] public bool? FocusCoversScreen       { get; set; }
-        [JsonPropertyOrder(8)] public bool? FocusBlocksInput        { get; set; }
-        [JsonPropertyOrder(9)] public bool? FocusStartFromDashboard { get; set; }
+        // The cover's visual, written as its name rather than as a number: a document a person opens
+        // reads "ring" or "focus-point", and a name unknown to this build falls back to the dial.
+        [JsonPropertyOrder(8)] public string? FocusCoverVisual      { get; set; }
+        [JsonPropertyOrder(9)] public bool? FocusBlocksInput        { get; set; }
+        [JsonPropertyOrder(10)] public bool? FocusStartFromDashboard { get; set; }
         // The running session and the firewall state it displaced. State rather than settings:
         // nothing on the page edits these, so they trail the visible rows.
-        [JsonPropertyOrder(10)] public DateTimeOffset? FocusSessionStartedAt { get; set; }
-        [JsonPropertyOrder(11)] public DateTimeOffset? FocusSessionEndsAt    { get; set; }
-        [JsonPropertyOrder(12)] public bool FocusSessionBlockedNetwork { get; set; }
-        [JsonPropertyOrder(13)] public bool FocusSessionDimmedScreen   { get; set; }
-        [JsonPropertyOrder(14)] public bool FocusSessionCoveredScreen  { get; set; }
-        [JsonPropertyOrder(15)] public bool FocusSessionBlockedInput   { get; set; }
-        [JsonPropertyOrder(16)] public bool FocusSessionLimitedPrograms { get; set; }
-        [JsonPropertyOrder(17)] public List<FirewallProfileSetting>? FocusSavedFirewall { get; set; }
+        [JsonPropertyOrder(11)] public DateTimeOffset? FocusSessionStartedAt { get; set; }
+        [JsonPropertyOrder(12)] public DateTimeOffset? FocusSessionEndsAt    { get; set; }
+        [JsonPropertyOrder(13)] public bool FocusSessionBlockedNetwork { get; set; }
+        [JsonPropertyOrder(14)] public bool FocusSessionDimmedScreen   { get; set; }
+        [JsonPropertyOrder(15)] public bool FocusSessionCoveredScreen  { get; set; }
+        [JsonPropertyOrder(16)] public bool FocusSessionBlockedInput   { get; set; }
+        [JsonPropertyOrder(17)] public bool FocusSessionLimitedPrograms { get; set; }
+        [JsonPropertyOrder(18)] public List<FirewallProfileSetting>? FocusSavedFirewall { get; set; }
 
         // An earlier document's path list, read to migrate and never written: null on every write,
         // and a null key is left out. The store keeps the earlier bytes where they stand.
-        [JsonPropertyOrder(18), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyOrder(19), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<string>? FocusAllowedPrograms { get; set; }
     }
 
@@ -141,6 +144,7 @@ internal sealed class SettingsFile
                 FocusProgramsDefaultAction = s.FocusProgramsDefaultAction,
                 FocusDimsScreen           = s.FocusDimsScreen,
                 FocusCoversScreen         = s.FocusCoversScreen,
+                FocusCoverVisual          = CoverAppearance.NameOf(s.FocusCoverVisual),
                 FocusBlocksInput          = s.FocusBlocksInput,
                 FocusStartFromDashboard   = s.FocusStartFromDashboard,
                 FocusSessionStartedAt     = s.FocusSessionStartedAt,
@@ -168,6 +172,7 @@ internal sealed class SettingsFile
         FocusProgramsDefaultAction = Focus.FocusProgramsDefaultAction ?? FocusProgramAction.Minimise,
         FocusDimsScreen           = Focus.FocusDimsScreen ?? true,
         FocusCoversScreen         = Focus.FocusCoversScreen ?? true,
+        FocusCoverVisual          = CoverAppearance.ParseVisual(Focus.FocusCoverVisual),
         FocusBlocksInput          = Focus.FocusBlocksInput ?? false,
         FocusStartFromDashboard   = Focus.FocusStartFromDashboard ?? true,
         FocusSessionStartedAt     = Focus.FocusSessionStartedAt,
