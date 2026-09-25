@@ -39,11 +39,15 @@ itself and patches the manifests with it.
 - Stops a running instance before replacing files, through an elevated `taskkill`, and offers a
   retry rather than failing mid-copy on a locked executable.
 
-## Pending artwork
+## Artwork
 
-`SetupIconFile`, `WizardImageFile` and `WizardSmallImageFile` are commented out in `FocusDesk.iss`.
-FocusDesk has no icon and no wizard banner of its own yet, and the studio mark is never a product
-icon. Restore all three lines, and add the generator that draws them, once the artwork exists.
+- `SetupIconFile` is `Assets\FocusDesk.ico`, the product mark the executable carries, drawn by
+  `scripts\build-icons.ps1`.
+- `WizardImageFile` and `WizardSmallImageFile` are the two bitmaps in `wizard\`, drawn by
+  `scripts\build-wizard-images.ps1`: the side banner holds the studio mark above the product mark,
+  and the inner-page header holds the product mark alone on white.
+- Both scripts draw the mark from `scripts\FocusDeskMark.ps1`, and their output is committed, so no
+  build runs either. Run them only when the artwork changes.
 
 ## Releasing
 

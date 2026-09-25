@@ -117,9 +117,10 @@ internal static class SettingsShellHost
             RectStore      = rectStore,
             ProductMark    = new SvgImageSource(new Uri("ms-appx:///Assets/mark.svg")),
             ProductName    = AppInfo.Name,
-            ProductVersion = AppInfo.Version,
+            ProductVersion = $"v{AppInfo.Version}",
             PageMaxWidth   = 720,
         });
+        AppTitleBar.Apply(window);
 
         _window = window;
         window.Closed += (_, _) =>

@@ -1,3 +1,4 @@
+using FocusDesk.Services;
 using ZeroZero.Brand.Core;
 
 namespace FocusDesk.Helpers;
@@ -13,13 +14,24 @@ internal static class AboutContent
     /// row does not wrap mid-row. A property of the control, so both hosts use this one number.</summary>
     internal const int ContentWidthDip = 460;
 
+    private const string RepoUrl = "https://github.com/0z00z0/FocusDesk";
+
+    internal const string WhatsNewLabel = "What's new";
+
+    /// <summary>The GitHub release page of the running version. Releases are tagged <c>v</c> and the
+    /// version.</summary>
+    internal static Uri ReleaseNotesPage { get; } = new($"{RepoUrl}/releases/tag/v{AppInfo.Version}");
+
     /// <summary>The About payload. Pure data — no input and no output, so it cannot fail.</summary>
+    /// <remarks>"What's new" is a button of this application's that opens the release page. The
+    /// control's own button stays hidden: it wants plain-text notes, which GitHub does not serve.</remarks>
     internal static AboutInfo Build() => new()
     {
         AppName     = AppInfo.Name,
         Version     = AppInfo.Version,
         Description = "Holds the machine in a chosen state for a stretch of time. A session runs for the length it was given; nothing on this computer ends one early.",
-        RepoUrl     = "https://github.com/0z00z0/FocusDesk",
+        RepoUrl     = RepoUrl,
+        Buttons     = [new AboutButton(WhatsNewLabel, () => AppUpdates.OpenInBrowser(ReleaseNotesPage))],
         ExternalLibraries =
         [
             new ExternalLibrary("H.NotifyIcon.WinUI", "HavenDV", "The notification-area icon and its native menu", "MIT", "https://github.com/HavenDV/H.NotifyIcon"),

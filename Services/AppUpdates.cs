@@ -256,9 +256,10 @@ internal static class AppUpdates
         Log             = new AppLogSink(),
     };
 
-    private static void OpenInBrowser(Uri uri)
+    /// <summary>Opens an address in the default browser. Never throws.</summary>
+    internal static void OpenInBrowser(Uri uri)
     {
         try { Process.Start(new ProcessStartInfo(uri.ToString()) { UseShellExecute = true }); }
-        catch (Exception ex) { AppLog.Error("AppUpdates.OpenReleasePage", ex); }
+        catch (Exception ex) { AppLog.Error("AppUpdates.OpenInBrowser", ex); }
     }
 }

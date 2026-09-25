@@ -5,6 +5,16 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:brand="using:ZeroZero.Brand.WinUI">
 
+    <UserControl.Resources>
+        <!-- A faint rounded frame for the About control's coloured header block alone, applied to
+             that block from code-behind; everything under it stays unframed. -->
+        <Style x:Key="AboutHeaderFrameStyle" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}"/>
+        </Style>
+    </UserControl.Resources>
+
     <StackPanel Spacing="4" HorizontalAlignment="Left">
         <TextBlock Text="About" Style="{StaticResource SectionHeaderStyle}"/>
 

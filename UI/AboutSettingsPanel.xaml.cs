@@ -30,6 +30,7 @@ public sealed partial class AboutSettingsPanel : UserControl
 
         About.SetInfo(AboutContent.Build());
         About.Width = AboutContent.ContentWidthDip;
+        FrameHeader();
 
         Show(UpdateButtonPolicy.Rest);
         CheckForUpdatesButton.Click += (_, _) => OnClick();
@@ -48,6 +49,15 @@ public sealed partial class AboutSettingsPanel : UserControl
         _detached = true;
         if (AppUpdates.Checks is { } checks) checks.CheckStarted -= Follow;
         About.CancelPendingFetch();
+    }
+
+    /// <summary>Frames the control's coloured header block. The control offers no frame of its own
+    /// and names no part of itself: the block is the first child of its root panel. A later layout
+    /// without that shape is left unframed rather than failing.</summary>
+    private void FrameHeader()
+    {
+        if (About.Content is Panel { Children.Count: > 0 } root && root.Children[0] is Border header)
+            header.Style = (Style)Resources["AboutHeaderFrameStyle"];
     }
 
     private void OnClick()
