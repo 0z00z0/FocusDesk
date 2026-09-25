@@ -56,6 +56,28 @@ internal static class TrayIconPromotion
     }
 
     /// <summary>
+    /// Puts the promotion back at startup where the row is on and the shell's value has gone — a
+    /// Windows update or a profile reset clears it and leaves the row saying on. A value the shell
+    /// holds, false included, is left alone: a person dragging the icon into the overflow writes it.
+    /// </summary>
+    /// <param name="applied">True where the value was written again.</param>
+    /// <returns>The record to keep, which is <paramref name="existing"/> unless a first record had
+    /// to be taken.</returns>
+    public static TrayPromotionRecord? Reapply(
+        ITrayPromotionStore store, Guid icon, bool wanted, TrayPromotionRecord? existing,
+        out bool applied)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+
+        applied = false;
+        if (!wanted || store.Read(icon) is not null) return existing;
+
+        var record = TurnOn(store, icon, existing);
+        applied = store.Read(icon) == true;
+        return record;
+    }
+
+    /// <summary>
     /// Switches promotion off by putting back what the record holds. A record taken for another icon,
     /// or none at all, leaves the shell alone: this only undoes what it did.
     /// </summary>

@@ -78,6 +78,30 @@ public class TrayIconPromotionTests
         Assert.Equal(record, TrayIconPromotion.TurnOff(store, Icon, record));
     }
 
+    /// <summary>A value the shell holds is left alone at startup, zero included: a person dragging
+    /// the icon into the overflow writes that zero, and overriding it on every start would take the
+    /// choice away. Only a value that has gone is put back.</summary>
+    [Fact]
+    public void StartupPutsBackOnlyAValueThatHasGone()
+    {
+        var demoted = new FakeStore { Promoted = false };
+        TrayIconPromotion.Reapply(demoted, Icon, wanted: true, existing: null, out bool touched);
+        Assert.False(touched);
+        Assert.False(demoted.Promoted);
+
+        var gone = new FakeStore();
+        var held = new TrayPromotionRecord(Icon, Promoted: false);
+        var kept = TrayIconPromotion.Reapply(gone, Icon, wanted: true, held, out bool applied);
+        Assert.True(applied);
+        Assert.True(gone.Promoted);
+        Assert.Equal(held, kept);
+
+        var off = new FakeStore();
+        TrayIconPromotion.Reapply(off, Icon, wanted: false, existing: null, out bool untouched);
+        Assert.False(untouched);
+        Assert.Null(off.Promoted);
+    }
+
     private sealed class FakeStore : ITrayPromotionStore
     {
         public bool? Promoted { get; set; }
