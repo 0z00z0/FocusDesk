@@ -49,6 +49,8 @@ public class MqttEntityCatalogTests
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:monitor-off"),
         new(MqttEntityCatalog.FocusSessionBlocksInput, "switch", "Focus session blocks input",
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:keyboard-off"),
+        new(MqttEntityCatalog.FocusSessionLimitsPrograms, "switch", "Focus session limits programs",
+            MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:apps"),
         new(MqttEntityCatalog.FocusSessionState, "sensor", "Focus session state",
             MqttPublishGroups.Focus, MqttEntityCategory.Diagnostic,
             Icon: "mdi:progress-clock", DeviceClass: "enum"),
@@ -74,13 +76,13 @@ public class MqttEntityCatalogTests
     };
 
     [Fact]
-    public void TheTable_HoldsExactlyTheTenEntitiesTheAppPublishes() =>
+    public void TheTable_HoldsExactlyTheElevenEntitiesTheAppPublishes() =>
         Assert.Equal(
             _table.Select(r => r.EntityId).Order(StringComparer.Ordinal),
             MqttTestBed.Declared().All.Select(e => e.EntityId).Order(StringComparer.Ordinal));
 
     [Fact]
-    public void TheEntityMix_IsFiveSwitchesTwoSensorsTwoNumbersAndAButton()
+    public void TheEntityMix_IsSixSwitchesTwoSensorsTwoNumbersAndAButton()
     {
         var byPlatform = MqttTestBed.Declared().All
             .GroupBy(e => e.Platform)
@@ -89,7 +91,7 @@ public class MqttEntityCatalogTests
         Assert.Equal(
             new Dictionary<string, int>(StringComparer.Ordinal)
             {
-                ["switch"] = 5, ["sensor"] = 2, ["number"] = 2, ["button"] = 1,
+                ["switch"] = 6, ["sensor"] = 2, ["number"] = 2, ["button"] = 1,
             },
             byPlatform);
     }
@@ -180,9 +182,10 @@ public class MqttEntityCatalogTests
         MqttTestBed.Run(MqttTestBed.Command(set, MqttEntityCatalog.FocusSessionMinutes).Accept("90"));
         MqttTestBed.Run(MqttTestBed.Command(set, MqttEntityCatalog.FocusSessionDimsScreen).Accept("OFF"));
         MqttTestBed.Run(MqttTestBed.Command(set, MqttEntityCatalog.FocusSessionCoversScreen).Accept("ON"));
+        MqttTestBed.Run(MqttTestBed.Command(set, MqttEntityCatalog.FocusSessionLimitsPrograms).Accept("ON"));
 
         Assert.Equal(
-            ["FocusSessionMinutes=90", "FocusDimsScreen=False", "FocusCoversScreen=True"],
+            ["FocusSessionMinutes=90", "FocusDimsScreen=False", "FocusCoversScreen=True", "FocusLimitsPrograms=True"],
             actions.Calls);
     }
 

@@ -40,6 +40,7 @@ public class SettingsFileShapeTests : IDisposable
         "Focus",
         "Focus.FocusSessionMinutes",
         "Focus.FocusBlocksNetwork",
+        "Focus.FocusLimitsPrograms",
         "Focus.FocusPrograms",
         "Focus.FocusProgramsDefaultAction",
         "Focus.FocusDimsScreen",
@@ -52,6 +53,7 @@ public class SettingsFileShapeTests : IDisposable
         "Focus.FocusSessionDimmedScreen",
         "Focus.FocusSessionCoveredScreen",
         "Focus.FocusSessionBlockedInput",
+        "Focus.FocusSessionLimitedPrograms",
         "Focus.FocusSavedFirewall",
         "Screen",
         "Screen.ScreenSavedBrightness",
@@ -172,6 +174,8 @@ public class SettingsFileShapeTests : IDisposable
             FocusSessionCoveredScreen = true,
             FocusSessionBlockedInput  = true,
             FocusSessionBlockedNetwork = true,
+            FocusLimitsPrograms       = true,
+            FocusSessionLimitedPrograms = true,
         };
         Assert.True(SettingsService.WriteTo(before, File_));
 
@@ -215,7 +219,7 @@ public class SettingsFileShapeTests : IDisposable
     private static string Describe(AppSettings s) => string.Join('|',
         s.ScreenSavedBrightness, s.FocusSessionMinutes, s.FocusBlocksNetwork,
         string.Join(';', s.FocusPrograms), s.FocusProgramsDefaultAction, s.FocusSessionBlockedNetwork,
-        s.FocusDimsScreen, s.FocusCoversScreen,
+        s.FocusDimsScreen, s.FocusCoversScreen, s.FocusLimitsPrograms, s.FocusSessionLimitedPrograms,
         s.FocusBlocksInput, s.FocusStartFromDashboard, s.FocusSessionStartedAt, s.FocusSessionEndsAt,
         s.FocusSessionDimmedScreen, s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput);
 

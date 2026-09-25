@@ -39,6 +39,7 @@ public class MqttEntityNamingTests
         "focusdesk_office_x1_focus_session_dims_screen",
         "focusdesk_office_x1_focus_session_covers_screen",
         "focusdesk_office_x1_focus_session_blocks_input",
+        "focusdesk_office_x1_focus_session_limits_programs",
         "focusdesk_office_x1_focus_session_state",
         "focusdesk_office_x1_focus_session_remaining",
     ];
@@ -133,8 +134,8 @@ public class MqttEntityNamingTests
     [Fact]
     public void TheConfigurationRows_SortAsOneUninterruptedBlock()
     {
-        // All five are Configuration, and the receiver sorts a section by display name. Nothing
-        // else in that section leads with the word, so the five stand together.
+        // All six are Configuration, and the receiver sorts a section by display name. Nothing
+        // else in that section leads with the word, so the six stand together.
         var configuration = MqttTestBed.Declared().All
             .Where(e => e.Category == MqttEntityCategory.Config)
             .Select(e => e.Name!)
@@ -143,7 +144,7 @@ public class MqttEntityNamingTests
 
         Assert.Equal(
             ["Focus session blocks input", "Focus session blocks network", "Focus session covers screen",
-             "Focus session dims screen", "Focus session minutes"],
+             "Focus session dims screen", "Focus session limits programs", "Focus session minutes"],
             configuration);
     }
 }

@@ -193,6 +193,7 @@ internal static class ScreenCoverService
         if (session.DimsScreen)   levers.Add("the screen is dimmed");
         if (session.CoversScreen) levers.Add("the screen is covered");
         if (session.BlocksInput)  levers.Add("the mouse and keyboard are blocked");
+        if (session.LimitsPrograms) levers.Add(AppText.Get("CoverProgramsLimited"));
         return levers.Count == 0 ? "" : $"While it runs, {string.Join(", ", levers)}.";
     }
 }
