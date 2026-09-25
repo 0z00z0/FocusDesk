@@ -1,6 +1,6 @@
 // The web-app test on a shortcut's target and arguments is adapted from PowerToys Command Palette's
 // Win32Program.IsWebApplication (src/modules/cmdpal/ext/Microsoft.CmdPal.Ext.Apps/Programs/Win32Program.cs):
-// Copyright (c) Microsoft Corporation. Licensed under the MIT licence.
+// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT licence; see THIRD-PARTY-NOTICES.md.
 
 using System.Diagnostics;
 using FocusDesk.Helpers;

@@ -1,5 +1,5 @@
 // Adapted from PowerToys Workspaces' IterateAppsFolder (src/modules/Workspaces/WorkspacesLib/AppUtils.cpp):
-// Copyright (c) Microsoft Corporation. Licensed under the MIT licence.
+// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT licence; see THIRD-PARTY-NOTICES.md.
 
 using Windows.ApplicationModel;
 using Windows.Management.Deployment;
