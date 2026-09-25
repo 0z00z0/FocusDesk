@@ -17,7 +17,8 @@ internal static class SettingsShellHost
 {
     public const string FocusTag  = "focus";
     public const string ScreenTag = "screen";
-    public const string MqttTag   = "mqtt";
+    public const string MqttTag       = "mqtt";
+    public const string AppearanceTag = "appearance";
 
     private static SettingsWindow? _window;
 
@@ -34,6 +35,7 @@ internal static class SettingsShellHost
         FocusSettingsPanel? focus = null;
         ScreenSettingsPanel? screen = null;
         MqttSettingsPage? mqtt = null;
+        AppearanceSettingsPanel? appearance = null;
 
         var rectStore = new SettingsWindowRectStore();
         // Only a first open is sized to its content: fitting a remembered rectangle would grow the
@@ -76,6 +78,15 @@ internal static class SettingsShellHost
                     // the panel writes its settings file.
                     Enter = () => mqtt?.Refresh(),
                     // No Leave hook. Cancel is final and belongs to the window closing, below.
+                },
+                new SettingsSection
+                {
+                    Tag = AppearanceTag, Label = "Appearance",
+                    Icon = NavIcon("appearance"),
+                    Build = () => appearance = new AppearanceSettingsPanel(),
+                    // settings.json roams, so the stored wish can arrive from another machine while
+                    // the page is open.
+                    Enter = () => appearance?.Reload(),
                 },
             ],
             InitialTag     = tag,

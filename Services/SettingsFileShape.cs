@@ -20,15 +20,16 @@ internal sealed class SettingsFile
 {
     public const int CurrentVersion = 1;
 
-    public const string VersionKey = "Version";
-    public const string FocusKey   = "Focus";
-    public const string ScreenKey  = "Screen";
-    public const string WindowKey  = "Window";
+    public const string VersionKey    = "Version";
+    public const string FocusKey      = "Focus";
+    public const string ScreenKey     = "Screen";
+    public const string AppearanceKey = "Appearance";
+    public const string WindowKey     = "Window";
 
     /// <summary>The section names, in the order the document carries them. The store binds a section
     /// by its exact spelling, and one spelled in another case binds nothing and hands back
     /// defaults.</summary>
-    public static readonly string[] SectionNames = [FocusKey, ScreenKey, WindowKey];
+    public static readonly string[] SectionNames = [FocusKey, ScreenKey, AppearanceKey, WindowKey];
 
     /// <summary>First key in the file, so the shape is read rather than inferred.</summary>
     [JsonPropertyName(VersionKey), JsonPropertyOrder(0)]
@@ -40,9 +41,12 @@ internal sealed class SettingsFile
     [JsonPropertyName(ScreenKey), JsonPropertyOrder(2)]
     public ScreenGroup Screen { get; set; } = new();
 
+    [JsonPropertyName(AppearanceKey), JsonPropertyOrder(3)]
+    public AppearanceGroup Appearance { get; set; } = new();
+
     /// <summary>Not a page: where the Settings window was last left. It trails the pages for that
     /// reason.</summary>
-    [JsonPropertyName(WindowKey), JsonPropertyOrder(3)]
+    [JsonPropertyName(WindowKey), JsonPropertyOrder(4)]
     public WindowGroup Window { get; set; } = new();
 
     internal sealed class ScreenGroup
@@ -69,6 +73,17 @@ internal sealed class SettingsFile
         [JsonPropertyOrder(8)] public bool FocusSessionCoveredScreen { get; set; }
     }
 
+    internal sealed class AppearanceGroup
+    {
+        // Nullable so a document written before the page existed reads the application's own default
+        // rather than a choice nobody made.
+        [JsonPropertyOrder(1)] public bool? PromoteTrayIcon { get; set; }
+        // State rather than a setting: what the shell held before the row was first switched on, so
+        // switching it off puts that back. Nothing on the page edits these, so they trail the row.
+        [JsonPropertyOrder(2)] public string? TrayIconPromotionRestoreFor   { get; set; }
+        [JsonPropertyOrder(3)] public bool?   TrayIconPromotionRestoreValue { get; set; }
+    }
+
     internal sealed class WindowGroup
     {
         [JsonPropertyOrder(1)] public int? SettingsWindowX      { get; set; }
@@ -83,6 +98,12 @@ internal sealed class SettingsFile
         return new SettingsFile
         {
             Screen = new ScreenGroup { ScreenSavedBrightness = s.ScreenSavedBrightness },
+            Appearance = new AppearanceGroup
+            {
+                PromoteTrayIcon               = s.PromoteTrayIcon,
+                TrayIconPromotionRestoreFor   = s.TrayIconPromotionRestoreFor,
+                TrayIconPromotionRestoreValue = s.TrayIconPromotionRestoreValue,
+            },
             Window = new WindowGroup
             {
                 SettingsWindowX      = s.SettingsWindowX,
@@ -116,6 +137,10 @@ internal sealed class SettingsFile
         FocusSessionEndsAt        = Focus.FocusSessionEndsAt,
         FocusSessionDimmedScreen  = Focus.FocusSessionDimmedScreen,
         FocusSessionCoveredScreen = Focus.FocusSessionCoveredScreen,
+
+        PromoteTrayIcon               = Appearance.PromoteTrayIcon ?? false,
+        TrayIconPromotionRestoreFor   = Appearance.TrayIconPromotionRestoreFor,
+        TrayIconPromotionRestoreValue = Appearance.TrayIconPromotionRestoreValue,
 
         SettingsWindowX      = Window.SettingsWindowX,
         SettingsWindowY      = Window.SettingsWindowY,

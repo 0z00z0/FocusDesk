@@ -174,9 +174,10 @@ internal sealed class SettingsStore
 
         var file = new SettingsFile
         {
-            Focus  = Bind<SettingsFile.FocusGroup>(SettingsFile.FocusKey),
-            Screen = Bind<SettingsFile.ScreenGroup>(SettingsFile.ScreenKey),
-            Window = Bind<SettingsFile.WindowGroup>(SettingsFile.WindowKey),
+            Focus      = Bind<SettingsFile.FocusGroup>(SettingsFile.FocusKey),
+            Screen     = Bind<SettingsFile.ScreenGroup>(SettingsFile.ScreenKey),
+            Appearance = Bind<SettingsFile.AppearanceGroup>(SettingsFile.AppearanceKey),
+            Window     = Bind<SettingsFile.WindowGroup>(SettingsFile.WindowKey),
         };
         return (file, conflict);
     }
@@ -199,9 +200,10 @@ internal sealed class SettingsStore
             stalled ??= name;
         }
 
-        Put(SettingsFile.FocusKey,  file.Focus);
-        Put(SettingsFile.ScreenKey, file.Screen);
-        Put(SettingsFile.WindowKey, file.Window);
+        Put(SettingsFile.FocusKey,      file.Focus);
+        Put(SettingsFile.ScreenKey,     file.Screen);
+        Put(SettingsFile.AppearanceKey, file.Appearance);
+        Put(SettingsFile.WindowKey,     file.Window);
 
         if (landed) return true;
 

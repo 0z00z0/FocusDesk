@@ -48,6 +48,12 @@ public class SettingsFileShapeTests : IDisposable
         "Focus.FocusSessionCoveredScreen",
         "Screen",
         "Screen.ScreenSavedBrightness",
+        "Appearance",
+        "Appearance.PromoteTrayIcon",
+        // State rather than a setting: what the shell held before the row above was first switched
+        // on. It trails the row for that reason.
+        "Appearance.TrayIconPromotionRestoreFor",
+        "Appearance.TrayIconPromotionRestoreValue",
         // Not a page: where the Settings window was last left. It trails the pages for that reason.
         "Window",
         "Window.SettingsWindowX",
