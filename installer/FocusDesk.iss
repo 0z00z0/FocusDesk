@@ -48,12 +48,14 @@ OutputBaseFilename=FocusDesk-Setup-{#AppVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-; Setup.exe's own file icon: the product mark, the same file the executable is built with. The two
-; studio wizard bitmaps stay commented out until that artwork lands — Inno fails the compile on a
-; file it cannot find, so each line stays inert rather than naming a path that does not exist.
+; Setup.exe's own file icon: the product mark, the same file the executable is built with.
 SetupIconFile=..\Assets\FocusDesk.ico
-;WizardImageFile=wizard\wizimg-492x942.bmp
-;WizardSmallImageFile=wizard\wizsmall-165x174.bmp
+; The wizard's side banner and inner-page header, drawn by scripts\build-wizard-images.ps1 and
+; committed. Each is one bitmap at 300 % of Inno's image area, so Inno only ever scales it down;
+; WizardImageStretch=yes is what fits the banner to the area rather than showing its middle ninth.
+WizardImageFile=wizard\wizimg-492x942.bmp
+WizardSmallImageFile=wizard\wizsmall-165x174.bmp
+WizardImageStretch=yes
 ; Restart Manager is NOT used to close the running app. Setup runs unelevated
 ; (PrivilegesRequired=lowest) while the app is requireAdministrator, so Restart Manager cannot
 ; terminate it: it logs "Can use RestartManager to avoid reboot? No (1: Permission Denied)" and
