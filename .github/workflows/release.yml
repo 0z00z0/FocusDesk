@@ -193,9 +193,14 @@ jobs:
           if (-not $signtool) { throw 'signtool.exe not found under Windows Kits.' }
           Write-Host "Using signtool: $signtool"
 
+          # The studio certificate carries no password and GitHub refuses an empty secret, so /p is
+          # passed only when CODE_SIGN_PASSWORD holds a value. Without /p, signtool opens the
+          # passwordless PFX and signs with a timestamp.
+          $passwordSwitch = @(if ($env:CODE_SIGN_PASSWORD) { '/p', $env:CODE_SIGN_PASSWORD })
+
           function Invoke-Sign([string]$path) {
             & $signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
-              /f $pfxPath /p $env:CODE_SIGN_PASSWORD $path
+              /f $pfxPath @passwordSwitch $path
             if ($LASTEXITCODE -ne 0) { throw "signtool failed on $path ($LASTEXITCODE)." }
           }
 
@@ -222,9 +227,10 @@ jobs:
       # ref_type == 'tag'), so it keeps warning — failing it would take a useful
       # build/validate check away from anyone without the signing secrets.
       #
-      # CODE_SIGN_PASSWORD needs no guard of its own: the sign step runs whenever
-      # the PFX is present, and signtool exits non-zero on a wrong/empty password,
-      # which the sign step already turns into a throw.
+      # CODE_SIGN_PASSWORD needs no guard of its own: the studio certificate has no
+      # password, so the secret is absent by design, and a PFX that does need one and
+      # gets none or a wrong one makes signtool exit non-zero, which the sign step
+      # already turns into a throw.
       - name: Fail if unsigned (tagged release)
         if: ${{ env.CODE_SIGN_PFX == '' && github.ref_type == 'tag' }}
         shell: pwsh
@@ -421,10 +427,11 @@ jobs:
           }
 
       # ── 9b. Release notes ────────────────────────────────────────────────────
-      # RELEASE-NOTES.md is the one source: the application embeds the same file and shows
-      # the running version's section as its "What's new" report, so the report and this
-      # body cannot say different things. A version the file does not name falls back to
-      # the Conventional Commit subjects between the previous tag and this one, so a build
+      # RELEASE-NOTES.md is the one source: the About page's "What's new" opens this
+      # release's page, so the body built here is the application's report of what changed.
+      # A section never carries a SHA-256 of its own: the updater refuses a body holding more
+      # than one, and this step adds the installer's. A version the file does not name falls
+      # back to the Conventional Commit subjects between the previous tag and this one, so a build
       # made between releases still publishes something true.
       # The update dialog renders this body with markdown stripped: headings lose their
       # marker and bullets survive, so the shape here is what a user sees.
