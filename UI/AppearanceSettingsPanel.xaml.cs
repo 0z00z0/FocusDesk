@@ -36,11 +36,11 @@ public sealed partial class AppearanceSettingsPanel : UserControl
         if (_updating) return;
 
         bool wanted = PromoteToggle.IsOn;
-        var icon = TrayIconIdentity.Value;
         var held = RecordIn(SettingsService.Current);
 
-        var record = wanted
-            ? TrayIconPromotion.TurnOn(_store, icon, held)
+        // The wish is kept even with no icon to write for; the next start applies it.
+        var record = TrayIconHost.ShellId is not { } icon ? held
+            : wanted ? TrayIconPromotion.TurnOn(_store, icon, held)
             : TrayIconPromotion.TurnOff(_store, icon, held);
 
         SettingsService.Update(s =>
@@ -52,17 +52,16 @@ public sealed partial class AppearanceSettingsPanel : UserControl
 
     /// <summary>Puts the promotion back where the row is on and the shell's value has gone. At
     /// startup, after the icon is registered: the shell's entry for it exists only once it has been
-    /// seen.</summary>
+    /// seen, and is keyed on the identity the shell holds, which is known only from then.</summary>
     internal static void ReapplyAtStartup(ITrayPromotionStore store)
     {
         ArgumentNullException.ThrowIfNull(store);
 
         var settings = SettingsService.Current;
-        if (!settings.PromoteTrayIcon) return;
+        if (!settings.PromoteTrayIcon || TrayIconHost.ShellId is not { } icon) return;
 
         var held = RecordIn(settings);
-        var record = TrayIconPromotion.Reapply(store, TrayIconIdentity.Value, wanted: true, held,
-                                               out bool applied);
+        var record = TrayIconPromotion.Reapply(store, icon, wanted: true, held, out bool applied);
         if (applied) AppLog.Info("TrayIconPromotion: the shell's value had gone; promotion re-applied.");
         if (record != held) SettingsService.Update(s => Store(s, record));
     }

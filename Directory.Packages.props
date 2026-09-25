@@ -29,17 +29,17 @@
   </PropertyGroup>
 
   <ItemGroup Label="ZeroZero shared library">
-    <PackageVersion Include="ZeroZero.Brand.WinUI" Version="0.10.0" />
+    <PackageVersion Include="ZeroZero.Brand.WinUI" Version="0.11.0" />
     <PackageVersion Include="ZeroZero.Config.Sections" Version="0.8.0" />
     <PackageVersion Include="ZeroZero.Config.Watch" Version="0.8.0" />
     <PackageVersion Include="ZeroZero.Controls.WinUI" Version="0.8.0" />
     <PackageVersion Include="ZeroZero.Diagnostics" Version="0.7.0" />
     <PackageVersion Include="ZeroZero.Lifecycle" Version="0.7.1" />
     <PackageVersion Include="ZeroZero.Mqtt.WinUI" Version="0.7.3" />
-    <PackageVersion Include="ZeroZero.SettingsShell.WinUI" Version="0.7.0" />
+    <PackageVersion Include="ZeroZero.SettingsShell.WinUI" Version="0.8.0" />
     <PackageVersion Include="ZeroZero.Startup" Version="0.8.1" />
-    <PackageVersion Include="ZeroZero.Tray" Version="0.7.0" />
-    <PackageVersion Include="ZeroZero.Tray.WinUI" Version="0.7.0" />
+    <PackageVersion Include="ZeroZero.Tray" Version="0.8.0" />
+    <PackageVersion Include="ZeroZero.Tray.WinUI" Version="0.8.0" />
     <PackageVersion Include="ZeroZero.Update" Version="0.11.0" />
     <PackageVersion Include="ZeroZero.Update.WinUI" Version="0.11.0" />
     <PackageVersion Include="ZeroZero.Win32" Version="0.9.1" />

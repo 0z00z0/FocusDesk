@@ -6,12 +6,17 @@ using Microsoft.UI.Xaml.Media;
 namespace FocusDesk.Helpers;
 
 /// <summary>
-/// Mica tinted with FocusDesk's own ground, for the Settings window and the dialog it opens. Stock
+/// Mica tinted with FocusDesk's own ground, for the program picker the Settings window opens. Stock
 /// Mica Alt carries no tint on the dark theme, so the desktop wallpaper's colour shows through the
 /// whole window while it is active: dark blue on the default wallpaper.
 /// </summary>
-/// <remarks>The fallback — an inactive window, or transparency effects switched off — is the same
-/// tone, so the window changes only by the material's grain when it loses focus.</remarks>
+/// <remarks>
+/// <para>The fallback — an inactive window, or transparency effects switched off — is the same
+/// tone, so the window changes only by the material's grain when it loses focus.</para>
+/// <para>The Settings window itself takes the same ground through the shared shell's own backdrop
+/// colour, whose backdrop type is not public; the picker is FocusDesk's own window, so it keeps this
+/// one.</para>
+/// </remarks>
 internal sealed partial class AppBackdrop : SystemBackdrop
 {
     // Enough of the tone to hold the wallpaper's hue down, and enough material left to read as Mica.

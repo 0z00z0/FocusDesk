@@ -6,12 +6,13 @@
     xmlns:brand="using:ZeroZero.Brand.WinUI">
 
     <UserControl.Resources>
-        <!-- A faint rounded frame for the About control's coloured header block alone, applied to
-             that block from code-behind; everything under it stays unframed. -->
+        <!-- A faint frame for the About control's coloured header block alone, applied to that
+             block from code-behind; everything under it stays unframed. The rounding is set there
+             too: the control's markup gives the block a local corner radius, which a setter cannot
+             override. -->
         <Style x:Key="AboutHeaderFrameStyle" TargetType="Border">
             <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}"/>
         </Style>
     </UserControl.Resources>
 
@@ -19,13 +20,9 @@
         <TextBlock Text="About" Style="{StaticResource SectionHeaderStyle}"/>
 
         <!-- Inline rather than behind a button opening a second window: the page is already the
-             place someone went looking. -->
-        <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1"
-                CornerRadius="{ThemeResource ControlCornerRadius}"
-                Padding="16">
-            <brand:BrandAboutControl x:Name="About"/>
-        </Border>
+             place someone went looking. Not wrapped in a border: the control draws its own frame,
+             and code-behind narrows that to the header block. -->
+        <brand:BrandAboutControl x:Name="About"/>
 
         <!-- Under the card rather than inside it: the version it compares against is the card's, but
              the check is an action and the card is a statement. -->

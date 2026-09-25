@@ -30,9 +30,15 @@ internal readonly record struct TrayPromotionRecord(Guid Icon, bool? Promoted);
 /// Pulls the notification-area icon out of the overflow flyout, and puts back what was there before.
 /// Windows publishes no interface for this, so it is done by writing the shell's own setting.
 /// </summary>
-/// <remarks>Undocumented throughout: the key, the value and when the shell reads them are all
+/// <remarks>
+/// <para>Undocumented throughout: the key, the value and when the shell reads them are all
 /// observed rather than specified. Every path degrades to doing nothing, because the alternative is
-/// an application that fails over a preference about where an icon sits.</remarks>
+/// an application that fails over a preference about where an icon sits.</para>
+/// <para>Measured by the shared tray library on Windows 11 build 26220.6682: the value is written
+/// and reads back, and the shell does not act on it within the session. Whether a sign-in makes it
+/// take effect is untested, which is why the shared library ships no call for it and this copy
+/// stays local.</para>
+/// </remarks>
 internal static class TrayIconPromotion
 {
     /// <summary>
@@ -105,8 +111,10 @@ internal static class TrayIconPromotion
 /// </summary>
 /// <remarks>
 /// <para>The subkeys are opaque numbers, so the icon is found by the <c>IconGuid</c> each one
-/// carries rather than by its name or its path. A subkey appears only once the shell has seen the
-/// icon, so there is nothing to write before the first run.</para>
+/// carries rather than by its name or its path. That is the identity the shell holds
+/// (<see cref="UI.TrayIconHost.ShellId"/>), not necessarily the one handed to the tray host. A
+/// subkey appears only once the shell has seen the icon, so there is nothing to write before the
+/// first run.</para>
 /// <para><c>IsPromoted</c> is a DWORD. It is the whole of what is written; the snapshot and the
 /// tooltip beside it belong to the shell.</para>
 /// </remarks>

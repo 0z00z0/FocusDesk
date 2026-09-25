@@ -6,7 +6,6 @@ using ZeroZero.Brand.WinUI;
 using ZeroZero.Mqtt;
 using ZeroZero.Tray;
 using ZeroZero.Tray.WinUI;
-using ZeroZero.Win32;
 
 namespace FocusDesk.UI;
 
@@ -17,9 +16,9 @@ namespace FocusDesk.UI;
 /// </summary>
 /// <remarks>
 /// <para>The shared host owns the icon's lifecycle, the taskbar theme and display listeners, the
-/// shell-restart repair, the tooltip's length and the menu's rebuild. What is FocusDesk's is which
-/// file is shown, what the tooltip says, what the menu holds, the menu's light or dark theme and what
-/// a click does.</para>
+/// shell-restart repair, the tooltip's length and the menu's rebuild, which it draws in the taskbar's
+/// light or dark theme. What is FocusDesk's is which file is shown, what the tooltip says, what the
+/// menu holds and what a click does. Setting the menu's theme here as well would fight the host's.</para>
 /// <para>Leaving from the menu is not a way out of a session: the levers a session holds are put
 /// back by the process ending, but the session's record stays on disk and the next start resumes
 /// it. That is the point — nothing on this machine ends a session.</para>
@@ -95,6 +94,11 @@ internal static class TrayIconHost
     /// drops a click inside the guard this starts.</summary>
     public static void NotePopOutDismissed() => _host?.NotePopOutDismissed();
 
+    /// <summary>The identity the shell holds the icon under, which its per-icon settings are keyed
+    /// on; null until the icon is registered. Not necessarily the identity handed to the host: the
+    /// notify-icon library registers one of its own.</summary>
+    public static Guid? ShellId => _host?.ShellId;
+
     private static void OnSessionChanged() => _dispatcher?.TryEnqueue(RefreshTooltip);
 
     private static void OnBrokerChanged(MqttConnectionState _) => _dispatcher?.TryEnqueue(RefreshTooltip);
@@ -112,8 +116,6 @@ internal static class TrayIconHost
     /// session's line and the startup check mark are current without anything here keeping them so.</summary>
     private static IEnumerable<TrayMenuItem> Menu()
     {
-        FollowTaskbarTheme();
-
         var session = FocusSessionService.Current;
 
         // A line of text and never a control. A person at the keyboard cannot end a session, and
@@ -151,14 +153,6 @@ internal static class TrayIconHost
         yield return TrayMenuItem.Separator();
         yield return TrayMenuItem.Command("Exit", () => _exit?.Invoke());
     }
-
-    /// <summary>Puts the native menu in the system light or dark theme, the one the taskbar and the
-    /// icon follow. Run on every rebuild, which precedes every opening, so a theme switched while the
-    /// application runs reaches the next menu.</summary>
-    /// <remarks>The host's menu is a Win32 popup, light unless the process opts in. A forced mode rather
-    /// than the follow-the-apps mode: that one reads a policy uxtheme caches for the process's life.</remarks>
-    private static void FollowTaskbarTheme() => DarkChrome.Apply(
-        TaskbarThemes.Read() == TaskbarTheme.Dark ? DarkChromeMode.ForceDark : DarkChromeMode.ForceLight);
 
     /// <summary>Starts the shared check, or joins the one running, and lets it report in the update
     /// component's own window. Not awaited: the menu closes on the click and the window is the

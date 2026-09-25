@@ -114,6 +114,7 @@ internal static class SettingsShellHost
             // paints the caption strip from this same value, so the title bar cannot end up light
             // over a dark page.
             Theme          = ElementTheme.Default,
+            BackdropTint   = BackdropTint,
             RectStore      = rectStore,
             ProductMark    = new SvgImageSource(new Uri("ms-appx:///Assets/mark.svg")),
             ProductName    = AppInfo.Name,
@@ -121,7 +122,6 @@ internal static class SettingsShellHost
             PageMaxWidth   = 720,
         });
         AppTitleBar.Apply(window);
-        AppBackdrop.ApplyTo(window);
 
         _window = window;
         window.Closed += (_, _) =>
@@ -138,6 +138,18 @@ internal static class SettingsShellHost
         if (fitToContent) window.FitToPages();
         window.Activate();
     }
+
+    /// <summary>The colour behind the Settings window, one per theme: FocusDesk's own purple-grey
+    /// ground, the one the caption strip is painted in and the program picker is tinted with, rather
+    /// than the colour Windows mixes from the wallpaper.</summary>
+    internal static BackdropTint BackdropTint { get; } = new()
+    {
+        Light = Colour(AppPalette.GroundTint(isDark: false)),
+        Dark  = Colour(AppPalette.GroundTint(isDark: true)),
+    };
+
+    private static BackdropColour Colour(uint argb) =>
+        new((byte)(argb >> 16), (byte)(argb >> 8), (byte)argb);
 
     /// <summary>A pane entry's artwork, by the file name under <c>Assets\nav\</c>. Two-tone, so it
     /// goes through an image rather than a path icon, which carries one colour only.</summary>

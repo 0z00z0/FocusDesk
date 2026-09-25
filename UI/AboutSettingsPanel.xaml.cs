@@ -10,8 +10,8 @@ using ZeroZero.Update.Win32;
 namespace FocusDesk.UI;
 
 /// <summary>
-/// The About page: the shared About control inside a card, and the Check for updates button under
-/// it. The button joins the one check every surface shares, so it shows a check the
+/// The About page: the shared About control with only its header block framed, and the Check for
+/// updates button under it. The button joins the one check every surface shares, so it shows a check the
 /// notification-area menu started as readily as one it started itself.
 /// </summary>
 /// <remarks>The coordinator lives for the process, so <see cref="Detach"/> must run when the window
@@ -53,18 +53,24 @@ public sealed partial class AboutSettingsPanel : UserControl
         About.CancelPendingFetch();
     }
 
-    /// <summary>Frames the control's coloured header block and paints it in FocusDesk's dark tone
-    /// rather than the studio navy. The control offers neither and names no part of itself: the block
-    /// is the first child of its root panel. A later layout without that shape is left as it comes
-    /// rather than failing.</summary>
-    /// <remarks>The navy is a local value in the control's markup, which a style setter cannot
-    /// override, so the gradient is assigned here.</remarks>
+    /// <summary>Moves the control's frame from the whole card to its coloured header block alone, and
+    /// paints the block in FocusDesk's dark tone rather than the studio navy. The control offers
+    /// neither and names no part of itself: its content is the framing border, holding a panel whose
+    /// first child is the block. A later layout without that shape is left as it comes rather than
+    /// failing.</summary>
+    /// <remarks>The navy and the block's corner radius are local values in the control's markup,
+    /// which a style setter cannot override, so both are assigned here.</remarks>
     private void FrameHeader()
     {
-        if (About.Content is not Panel { Children.Count: > 0 } root || root.Children[0] is not Border header)
+        if (About.Content is not Border { Child: Panel { Children.Count: > 0 } body } frame ||
+            body.Children[0] is not Border header)
             return;
 
+        // Nothing below the block is framed, and the body keeps no background of its own.
+        frame.BorderThickness = new Thickness(0);
+
         header.Style = (Style)Resources["AboutHeaderFrameStyle"];
+        header.CornerRadius = frame.CornerRadius;
 
         var (top, bottom) = AppPalette.AboutHeader;
         header.Background = new LinearGradientBrush
