@@ -10,10 +10,17 @@ namespace FocusDesk.Helpers;
 /// </summary>
 internal static class AppTitleBar
 {
-    /// <summary>The platform's dark caption, with the glyphs of an inactive window kept at full
-    /// strength rather than greyed.</summary>
+    /// <summary>The platform's dark caption on FocusDesk's own dark ground, the one the window's
+    /// backdrop is tinted with, with the glyphs of an inactive window kept at full strength rather
+    /// than greyed.</summary>
     internal static TitleBarPalette Palette { get; } = TitleBarPalette.Dark with
     {
+        Background               = AppPalette.DarkCaption.Ground,
+        InactiveBackground       = AppPalette.DarkCaption.Ground,
+        ButtonBackground         = AppPalette.DarkCaption.Ground,
+        ButtonInactiveBackground = AppPalette.DarkCaption.Ground,
+        ButtonHoverBackground    = AppPalette.DarkCaption.Hover,
+        ButtonPressedBackground  = AppPalette.DarkCaption.Pressed,
         InactiveForeground       = TitleBarPalette.Dark.Foreground,
         ButtonInactiveForeground = TitleBarPalette.Dark.ButtonForeground,
     };
