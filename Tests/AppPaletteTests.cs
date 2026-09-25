@@ -12,6 +12,30 @@ namespace FocusDesk.Tests;
 public class AppPaletteTests
 {
     private static readonly string AppMarkup = RepoFiles.Read("App.xaml");
+    private static readonly string AppCode = RepoFiles.Read("App.xaml.cs");
+
+    /// <summary>The application's constructor, from its signature to the next member.</summary>
+    private static string Constructor
+    {
+        get
+        {
+            int start = AppCode.IndexOf("public App()", StringComparison.Ordinal);
+            int end = AppCode.IndexOf("protected override void OnLaunched", StringComparison.Ordinal);
+            Assert.InRange(start, 0, end);
+            return AppCode[start..end];
+        }
+    }
+
+    /// <summary>Reading <c>Application.Resources</c> from the constructor fails with E_UNEXPECTED
+    /// while the initialisation callback runs: Microsoft.UI.Xaml stows the failure and ends the
+    /// process at 0xC000027B, before the crash arms are registered and with nothing written to the
+    /// log. The application never reaches its notification-area icon.</summary>
+    [Fact]
+    public void TheAccentIsNotAppliedFromTheConstructor()
+    {
+        Assert.DoesNotContain("Resources", Constructor, StringComparison.Ordinal);
+        Assert.Contains("AppPalette.Apply(Resources);", AppCode, StringComparison.Ordinal);
+    }
 
     [Fact]
     public void TheBrandDictionaryIsMerged() =>
