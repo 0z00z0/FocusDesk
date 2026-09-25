@@ -124,7 +124,7 @@ internal static class ProgramCatalogue
                 string? path = process.MainModule?.FileName;
                 if (!IsOfferable(path)) continue;
 
-                found.Add(new ProgramChoice(path!, FocusAllowedPrograms.DisplayName(path!), true));
+                found.Add(new ProgramChoice(path!, Path.GetFileNameWithoutExtension(path!), true));
             }
             catch
             {

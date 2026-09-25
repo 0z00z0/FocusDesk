@@ -57,12 +57,17 @@ public class ProgramCatalogueTests
             [Entry(Reader, "Reader"), Entry(Packaged, "Store thing"),
              Entry(@"C:\Program Files\Example\notes.txt", "Notes"), Entry("editor.exe", "Relative")]);
 
-        var list = new List<string>();
+        var list = new List<FocusProgramEntry>();
         foreach (var entry in offered)
             Assert.Equal(FocusAllowVerdict.Added,
-                         FocusAllowedPrograms.Add(list, entry.Path, sessionRunning: false));
+                         FocusAllowedPrograms.Add(list, new FocusProgramEntry
+                         {
+                             Kind = FocusProgramKind.ProgramFile, Id = entry.Path,
+                             CanRun = true, CanUseNetwork = true,
+                         }, sessionRunning: false));
 
-        var rules = FocusFirewallRules.For("198.51.100.7", 8883, "198.51.100.1", list);
+        var rules = FocusFirewallRules.For("198.51.100.7", 8883, "198.51.100.1",
+                                           FocusAllowedPrograms.NetworkPaths(list));
         string[] named = [.. rules.Where(r => r.ApplicationPath.Length > 0)
                                   .Select(r => r.ApplicationPath)];
 
