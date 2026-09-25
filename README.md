@@ -3,16 +3,17 @@
 
 A Windows tray application that holds the machine in a chosen state for a chosen length of time.
 
-A focus session runs for one duration and takes up to four levers:
+A focus session runs for one duration and takes up to five levers:
 
 - Block every network connection except the MQTT broker and a named list of programs.
 - Dim the screen.
 - Cover every display with a black window.
 - Block the mouse and keyboard.
+- Let only chosen programs be worked in, minimising every other program's window.
 
 A session ends when its time runs out, or early from Home Assistant through a staged cancel. The
 machine itself offers no way to end one. FocusDesk does not defend against a determined
-administrator, and it does not block per application or per site.
+administrator, never closes a program, and does not block per site.
 
 ## Install
 
