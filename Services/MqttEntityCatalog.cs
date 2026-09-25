@@ -21,7 +21,7 @@ internal sealed record MqttEntitySources
 }
 
 /// <summary>
-/// FocusDesk's published surface: nine entities, their groups, their capability gates and the domain
+/// FocusDesk's published surface: ten entities, their groups, their capability gates and the domain
 /// seam each inbound command lands on. Pure — nothing here touches a broker or a settings singleton,
 /// so the same table composes in a test.
 /// </summary>
@@ -42,6 +42,7 @@ internal static class MqttEntityCatalog
 
     public const string FocusSession             = "focus_session";
     public const string FocusSessionMinutes      = "focus_session_minutes";
+    public const string FocusSessionBlocksNetwork = "focus_session_blocks_network";
     public const string FocusSessionDimsScreen   = "focus_session_dims_screen";
     public const string FocusSessionCoversScreen = "focus_session_covers_screen";
     public const string FocusSessionBlocksInput  = "focus_session_blocks_input";
@@ -100,6 +101,17 @@ internal static class MqttEntityCatalog
                 Mode = MqttNumberMode.Box, Debounce = MqttConnection.ReflectDebounce,
                 Read = () => surface()?.FocusSessionMinutes,
                 Apply = value => MqttCommandVerdict.Accept(() => set.SetFocusSessionMinutes(Whole(value))),
+            },
+            new MqttSwitch
+            {
+                // Not gated: whether the firewall accepts the block is decided at arming time. A
+                // refused block leaves the session running, and this reads off while it runs.
+                EntityId = FocusSessionBlocksNetwork, Name = "Focus session blocks network",
+                Group = MqttPublishGroups.Focus,
+                Category = MqttEntityCategory.Config, Icon = "mdi:lan-disconnect",
+                Debounce = MqttConnection.ReflectDebounce,
+                Read = () => surface()?.FocusBlocksNetwork,
+                Apply = on => MqttCommandVerdict.Accept(() => set.SetFocusBlocksNetwork(on)),
             },
             new MqttSwitch
             {

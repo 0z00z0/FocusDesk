@@ -13,6 +13,15 @@ internal sealed class AppSettings
     /// backstop against a session that never ends.</summary>
     public int FocusSessionMinutes { get; set; } = FocusSessionEngine.DefaultMinutes;
 
+    /// <summary>Whether the next focus session blocks every network connection but the broker and
+    /// the allowed programs. Off by default: it rewrites the machine's firewall. Where the firewall
+    /// refuses the block the session runs on without it.</summary>
+    public bool FocusBlocksNetwork { get; set; }
+
+    /// <summary>The programs that keep the network while a session blocks everything else, each by
+    /// its executable's full path. Empty blocks everything but the broker.</summary>
+    public List<string> FocusAllowedPrograms { get; set; } = [];
+
     /// <summary>Whether the next focus session dims the screen. A default the session starts from,
     /// not a standing state: the choice is made per session from Home Assistant.</summary>
     public bool FocusDimsScreen { get; set; } = true;
@@ -48,6 +57,13 @@ internal sealed class AppSettings
 
     /// <inheritdoc cref="FocusSessionDimmedScreen"/>
     public bool FocusSessionBlockedInput { get; set; }
+
+    /// <inheritdoc cref="FocusSessionDimmedScreen"/>
+    public bool FocusSessionBlockedNetwork { get; set; }
+
+    /// <summary>The firewall profile settings displaced by a network block, saved before anything
+    /// changes so a crash cannot lose them. Null means nothing is displaced.</summary>
+    public List<FirewallProfileSetting>? FocusSavedFirewall { get; set; }
 
     /// <summary>Whether the notification-area icon is asked to sit in the main tray rather than in
     /// the overflow flyout. Windows offers no supported way to ask, so this is honoured by writing

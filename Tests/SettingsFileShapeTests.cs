@@ -39,15 +39,19 @@ public class SettingsFileShapeTests : IDisposable
         "ConfigVersion",
         "Focus",
         "Focus.FocusSessionMinutes",
+        "Focus.FocusBlocksNetwork",
+        "Focus.FocusAllowedPrograms",
         "Focus.FocusDimsScreen",
         "Focus.FocusCoversScreen",
         "Focus.FocusBlocksInput",
         "Focus.FocusStartFromDashboard",
         "Focus.FocusSessionStartedAt",
         "Focus.FocusSessionEndsAt",
+        "Focus.FocusSessionBlockedNetwork",
         "Focus.FocusSessionDimmedScreen",
         "Focus.FocusSessionCoveredScreen",
         "Focus.FocusSessionBlockedInput",
+        "Focus.FocusSavedFirewall",
         "Screen",
         "Screen.ScreenSavedBrightness",
         "Appearance",
@@ -118,20 +122,22 @@ public class SettingsFileShapeTests : IDisposable
                              .Replace("not in any group: []  in a group but not persisted: []", "", StringComparison.Ordinal));
     }
 
-    /// <summary>The excluded network lever has no key at all. It is absent rather than stored off:
-    /// a key written now would be read by the build that reintroduces it as a deliberate
-    /// choice.</summary>
-    [Theory]
-    [InlineData("FocusBlocksNetwork")]
-    [InlineData("FocusSessionBlockedNetwork")]
-    [InlineData("FocusSavedFirewall")]
-    [InlineData("FocusAllowedPrograms")]
-    public void TheDocumentCarriesNoKeyForALeverThisBuildDoesNotHave(string key)
+    /// <summary>The firewall state a block displaced survives the document, profile by profile and by
+    /// name. A record lost or misread here is a firewall nothing puts back.</summary>
+    [Fact]
+    public void TheSavedFirewallStateSurvivesARoundTrip()
     {
         Directory.CreateDirectory(_dir);
-        Assert.True(SettingsService.WriteTo(new AppSettings(), File_));
+        FirewallProfileSetting[] saved =
+        [
+            new(FirewallProfile.Domain, BlockOutbound: false, BlockAllInbound: true),
+            new(FirewallProfile.Private, BlockOutbound: false, BlockAllInbound: false),
+            new(FirewallProfile.Public, BlockOutbound: true, BlockAllInbound: false),
+        ];
+        Assert.True(SettingsService.WriteTo(new AppSettings { FocusSavedFirewall = [.. saved] }, File_));
 
-        Assert.DoesNotContain($"\"{key}\"", System.IO.File.ReadAllText(File_), StringComparison.Ordinal);
+        Assert.Contains("\"Public\"", System.IO.File.ReadAllText(File_), StringComparison.Ordinal);
+        Assert.Equal(saved, SettingsService.ReadFrom(File_)!.FocusSavedFirewall);
     }
 
     /// <summary>A round trip must not quietly lower a value. The defaults are what an installation
@@ -144,11 +150,14 @@ public class SettingsFileShapeTests : IDisposable
         {
             ScreenSavedBrightness     = 42,
             FocusSessionMinutes       = 90,
+            FocusBlocksNetwork        = true,
+            FocusAllowedPrograms      = [@"C:\Program Files\Example\editor.exe"],
             FocusDimsScreen           = false,
             FocusBlocksInput          = true,
             FocusSessionEndsAt        = new DateTimeOffset(2026, 9, 20, 13, 0, 0, TimeSpan.Zero),
             FocusSessionCoveredScreen = true,
             FocusSessionBlockedInput  = true,
+            FocusSessionBlockedNetwork = true,
         };
         Assert.True(SettingsService.WriteTo(before, File_));
 
@@ -159,7 +168,9 @@ public class SettingsFileShapeTests : IDisposable
     }
 
     private static string Describe(AppSettings s) => string.Join('|',
-        s.ScreenSavedBrightness, s.FocusSessionMinutes, s.FocusDimsScreen, s.FocusCoversScreen,
+        s.ScreenSavedBrightness, s.FocusSessionMinutes, s.FocusBlocksNetwork,
+        string.Join(';', s.FocusAllowedPrograms), s.FocusSessionBlockedNetwork,
+        s.FocusDimsScreen, s.FocusCoversScreen,
         s.FocusBlocksInput, s.FocusStartFromDashboard, s.FocusSessionStartedAt, s.FocusSessionEndsAt,
         s.FocusSessionDimmedScreen, s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput);
 

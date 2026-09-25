@@ -9,7 +9,7 @@ using ZeroZero.Mqtt.Discovery;
 namespace FocusDesk.Tests;
 
 /// <summary>
-/// The published surface as a declaration: the nine entity ids, the component each is announced
+/// The published surface as a declaration: the ten entity ids, the component each is announced
 /// under, and the discovery keys that decide how a receiver draws it.
 /// </summary>
 /// <remarks>
@@ -41,6 +41,8 @@ public class MqttEntityCatalogTests
             MqttPublishGroups.Focus, MqttEntityCategory.Primary, Icon: "mdi:meditation"),
         new(MqttEntityCatalog.FocusSessionMinutes, "number", "Focus session minutes",
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:timer-outline", Unit: "min"),
+        new(MqttEntityCatalog.FocusSessionBlocksNetwork, "switch", "Focus session blocks network",
+            MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:lan-disconnect"),
         new(MqttEntityCatalog.FocusSessionDimsScreen, "switch", "Focus session dims screen",
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:brightness-2"),
         new(MqttEntityCatalog.FocusSessionCoversScreen, "switch", "Focus session covers screen",
@@ -72,20 +74,13 @@ public class MqttEntityCatalogTests
     };
 
     [Fact]
-    public void TheTable_HoldsExactlyTheNineEntitiesTheAppPublishes() =>
+    public void TheTable_HoldsExactlyTheTenEntitiesTheAppPublishes() =>
         Assert.Equal(
             _table.Select(r => r.EntityId).Order(StringComparer.Ordinal),
             MqttTestBed.Declared().All.Select(e => e.EntityId).Order(StringComparer.Ordinal));
 
-    /// <summary>The lever this build does not have. Absent rather than announced and inert: a
-    /// receiver given a switch that changes nothing is worse off than one given no switch.</summary>
     [Fact]
-    public void NoEntityIsAnnouncedForTheNetworkLeverThisBuildDoesNotHave() =>
-        Assert.DoesNotContain(MqttTestBed.Declared().All,
-                              e => e.EntityId == "focus_session_blocks_network");
-
-    [Fact]
-    public void TheEntityMix_IsFourSwitchesTwoSensorsTwoNumbersAndAButton()
+    public void TheEntityMix_IsFiveSwitchesTwoSensorsTwoNumbersAndAButton()
     {
         var byPlatform = MqttTestBed.Declared().All
             .GroupBy(e => e.Platform)
@@ -94,7 +89,7 @@ public class MqttEntityCatalogTests
         Assert.Equal(
             new Dictionary<string, int>(StringComparer.Ordinal)
             {
-                ["switch"] = 4, ["sensor"] = 2, ["number"] = 2, ["button"] = 1,
+                ["switch"] = 5, ["sensor"] = 2, ["number"] = 2, ["button"] = 1,
             },
             byPlatform);
     }

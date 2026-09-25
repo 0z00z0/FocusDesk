@@ -50,8 +50,6 @@ internal sealed class InputBlock(
     /// lock before signalling would deadlock against the caller holding it.</summary>
     private volatile bool _took;
 
-    internal TimeSpan RenewalWindow => _renewalWindow;
-
     /// <summary>Whether a block is being held right now.</summary>
     internal bool IsBlocking
     {

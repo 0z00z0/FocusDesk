@@ -10,9 +10,15 @@ namespace FocusDesk.Services;
 /// time whether or not the machine is awake to watch it.</param>
 /// <param name="BlocksInput">Whether the session holds the mouse and keyboard. Cleared while the
 /// session runs if the block is lost and cannot be taken again, so it says what is held.</param>
+/// <param name="BlocksNetwork">Whether the session holds the network block. Cleared where the block
+/// could not be written or put back, for the same reason.</param>
 internal readonly record struct FocusSessionRecord(
     DateTimeOffset StartedAt, DateTimeOffset EndsAt, bool DimsScreen, bool CoversScreen,
-    bool BlocksInput = false);
+    bool BlocksInput = false, bool BlocksNetwork = false)
+{
+    /// <summary>Whether the session holds any lever at all.</summary>
+    public bool HoldsAnything => DimsScreen || CoversScreen || BlocksInput || BlocksNetwork;
+}
 
 /// <summary>Where a running session is kept so nothing but the clock can end it.</summary>
 internal interface IFocusSessionRecord
@@ -61,13 +67,15 @@ internal interface IFocusLever
 /// while the application does: the running timer ends a session that expires while the application
 /// is up, and <see cref="Start"/> is what ends one that expired while it was not.</para>
 /// <para>Two kinds of lever. The screen and the cover refuse the whole session when they cannot
-/// engage, and a failure rolls back whatever did. The input block fails safe instead: where it is
-/// refused, fails or is lost, the session runs on without it and reports it as not held.</para>
+/// engage, and a failure rolls back whatever did. The network block and the input block fail safe
+/// instead: where one is refused, fails or is lost, the session runs on without it and reports it
+/// as not held. Only a session left holding nothing at all is refused.</para>
 /// </remarks>
 /// <param name="history">Where a finished session is written down. Behind a seam, so the three
 /// endings are exercised without a file.</param>
 internal sealed class FocusSessionEngine(
-    IFocusLever screen, IFocusLever cover, IFocusLever input, IFocusSessionRecord record,
+    IFocusLever screen, IFocusLever cover, IFocusLever input, IFocusLever network,
+    IFocusSessionRecord record,
     Func<DateTimeOffset> now, Action<string, ActionCause> log,
     Action<FocusHistoryEntry>? history = null)
 {
@@ -129,6 +137,7 @@ internal sealed class FocusSessionEngine(
                 screen.Lift(leftBehind);
                 cover.Lift(leftBehind);
                 input.Lift(leftBehind);
+                network.Lift(leftBehind);
             }
 
             changed = Sync();
@@ -139,14 +148,14 @@ internal sealed class FocusSessionEngine(
     /// <summary>Starts a session for <paramref name="minutes"/> using whichever levers are chosen.
     /// Nothing is armed unless every chosen lever can be.</summary>
     public FocusArmOutcome Arm(int minutes, bool dimsScreen, bool coversScreen, bool blocksInput,
-                               ActionCause cause)
+                               bool blocksNetwork, ActionCause cause)
     {
         FocusArmOutcome outcome;
         bool changed;
 
         lock (_gate)
         {
-            outcome = ArmLocked(minutes, dimsScreen, coversScreen, blocksInput, cause);
+            outcome = ArmLocked(minutes, dimsScreen, coversScreen, blocksInput, blocksNetwork, cause);
             changed = Sync();
         }
 
@@ -210,9 +219,12 @@ internal sealed class FocusSessionEngine(
 
                     // The input block lapses unless this renews it, so a hung application lifts it
                     // within seconds; one that lapsed while the session still owns it is taken again.
-                    if (session.BlocksInput && !input.Hold(session.EndsAt, "the session's own clock"))
+                    ActionCause clock = "the session's own clock";
+                    if (session.BlocksInput && !input.Hold(session.EndsAt, clock))
                         DropInput("the mouse and keyboard block was lost and could not be taken again",
-                                  "the session's own clock");
+                                  clock);
+                    if (session.BlocksNetwork && !network.Hold(session.EndsAt, clock))
+                        DropNetwork("the network block was lost and could not be put back", clock);
                 }
             }
 
@@ -234,12 +246,12 @@ internal sealed class FocusSessionEngine(
     }
 
     private FocusArmOutcome ArmLocked(int minutes, bool dimsScreen, bool coversScreen,
-                                      bool blocksInput, ActionCause cause)
+                                      bool blocksInput, bool blocksNetwork, ActionCause cause)
     {
         if (_session is not null) return FocusArmOutcome.AlreadyRunning;
 
         // A switch that turns on and does nothing but count down looks identical to a broken one.
-        if (!dimsScreen && !coversScreen && !blocksInput)
+        if (!dimsScreen && !coversScreen && !blocksInput && !blocksNetwork)
         {
             log("Focus session refused: no lever at all was chosen, so the session would do nothing "
               + "but count down", cause);
@@ -258,16 +270,16 @@ internal sealed class FocusSessionEngine(
             return FocusArmOutcome.LeverRefused;
         }
 
-        // Fails safe: a refused input block leaves the mouse and keyboard free and the session runs
-        // on the other levers. Alone, it would leave a session that only counts down.
+        // Fails safe: a refused network or input block is left off and the session runs on the
+        // other levers.
+        if (blocksNetwork && network.Refusal() is { } networkRefusal)
+        {
+            log($"Focus session leaves the network open: {networkRefusal}", cause);
+            blocksNetwork = false;
+        }
+
         if (blocksInput && input.Refusal() is { } inputRefusal)
         {
-            if (!dimsScreen && !coversScreen)
-            {
-                log($"Focus session refused: {inputRefusal}", cause);
-                return FocusArmOutcome.LeverRefused;
-            }
-
             log($"Focus session leaves the mouse and keyboard free: {inputRefusal}", cause);
             blocksInput = false;
         }
@@ -275,7 +287,15 @@ internal sealed class FocusSessionEngine(
         var started = now();
         var session = new FocusSessionRecord(
             started, started.AddMinutes(Math.Clamp(minutes, MinMinutes, MaxMinutes)),
-            dimsScreen, coversScreen, blocksInput);
+            dimsScreen, coversScreen, blocksInput, blocksNetwork);
+
+        // Every chosen lever refused: the session would only count down.
+        if (!session.HoldsAnything)
+        {
+            log("Focus session refused: no chosen lever could be engaged, so the session would do "
+              + "nothing but count down", cause);
+            return FocusArmOutcome.LeverRefused;
+        }
 
         // The record reaches disk before a lever moves: a crash between the two has to leave a
         // session the next start can end, never a lever nothing owns.
@@ -292,12 +312,14 @@ internal sealed class FocusSessionEngine(
         if (dimsScreen && !screen.Engage(cause)) return Rollback(session, cause);
         if (coversScreen && !cover.Engage(cause)) return Rollback(session, cause);
 
+        if (blocksNetwork && !network.Engage(cause))
+            DropNetwork("the firewall would not take the block", cause);
+
         // Last, so nothing above can fail while the machine already answers nothing.
         if (blocksInput && !input.Engage(cause))
-        {
-            if (!dimsScreen && !coversScreen) return Rollback(session, cause);
             DropInput("Windows refused to block the mouse and keyboard", cause);
-        }
+
+        if (_session is not { HoldsAnything: true }) return Rollback(session, cause);
 
         log($"Focus session started, running until "
           + $"{session.EndsAt.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)}", cause);
@@ -310,6 +332,7 @@ internal sealed class FocusSessionEngine(
         if (session.DimsScreen) screen.Lift(cause);
         if (session.CoversScreen) cover.Lift(cause);
         if (session.BlocksInput) input.Lift(cause);
+        if (session.BlocksNetwork) network.Lift(cause);
         record.Clear();
         _session = null;
         _cancelRequestedAt = null;
@@ -326,6 +349,8 @@ internal sealed class FocusSessionEngine(
         ActionCause cause = "resuming a session the machine was switched off during";
         if (session.DimsScreen) screen.Resume(cause);
         if (session.CoversScreen) cover.Resume(cause);
+        if (session.BlocksNetwork && !network.Resume(cause))
+            DropNetwork("the network block could not be put back", cause);
         if (session.BlocksInput && !input.Resume(cause))
             DropInput("the mouse and keyboard block could not be taken again", cause);
         log($"Focus session resumed, running until "
@@ -347,6 +372,8 @@ internal sealed class FocusSessionEngine(
         if (session.BlocksInput && !input.Lift(cause))
             log("The mouse and keyboard block did not release at once — it lapses by itself within "
               + "seconds", cause);
+        if (session.BlocksNetwork && !network.Lift(cause))
+            log("The firewall could not be put back — it is retried at the next start", cause);
 
         record.Clear();
         _session = null;
@@ -356,7 +383,8 @@ internal sealed class FocusSessionEngine(
         // still holding them.
         history?.Invoke(new FocusHistoryEntry(
             session.StartedAt, session.EndsAt, now(),
-            session.DimsScreen, session.CoversScreen, outcome, session.BlocksInput));
+            session.DimsScreen, session.CoversScreen, outcome, session.BlocksInput,
+            session.BlocksNetwork));
 
         log("Focus session ended", cause);
     }
@@ -365,14 +393,25 @@ internal sealed class FocusSessionEngine(
     /// and reports the block as not held. Called with the lock held.</summary>
     private void DropInput(string why, ActionCause cause)
     {
-        if (_session is not { BlocksInput: true } session) return;
+        if (_session is { BlocksInput: true } session)
+            Drop(session with { BlocksInput = false }, "the mouse and keyboard free", why, cause);
+    }
 
-        var without = session with { BlocksInput = false };
+    /// <summary>Carries on without the network block, as <see cref="DropInput"/> does. Called with
+    /// the lock held.</summary>
+    private void DropNetwork(string why, ActionCause cause)
+    {
+        if (_session is { BlocksNetwork: true } session)
+            Drop(session with { BlocksNetwork = false }, "the network open", why, cause);
+    }
+
+    private void Drop(FocusSessionRecord without, string freed, string why, ActionCause cause)
+    {
         _session = without;
         _leversMoved = true;
         if (!record.Save(without))
-            log("The session record could not be updated to say the mouse and keyboard are free", cause);
-        log($"Focus session continues with the mouse and keyboard free: {why}", cause);
+            log($"The session record could not be updated to say it runs with {freed}", cause);
+        log($"Focus session continues with {freed}: {why}", cause);
     }
 
     /// <summary>The session as it stands. Called with the lock held.</summary>
@@ -390,7 +429,8 @@ internal sealed class FocusSessionEngine(
         }
 
         return new FocusSnapshot(stage, session.StartedAt, session.EndsAt,
-                                 session.DimsScreen, session.CoversScreen, session.BlocksInput);
+                                 session.DimsScreen, session.CoversScreen, session.BlocksInput,
+                                 session.BlocksNetwork);
     }
 
     /// <summary>Brings the stage last reported into line with the stage now, and says whether it

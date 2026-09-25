@@ -30,7 +30,29 @@
         <!-- One switch per lever, settable here or from Home Assistant — both write through the same
              settings value, so the two stay one. Locked for the length of a session once it starts:
              a lever turned off part-way through would leave its record parked with nothing owning
-             it. -->
+             it. The network and input blocks fail safe: where one is refused the session runs on
+             without it, and while a session runs its switch shows what is actually held. -->
+        <controls:SettingsCard Header="Blocks the network"
+                               Description="Blocks every connection for the length of a session, except to the MQTT broker and the programs allowed below.">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <zz:InfoIcon Subject="the network block"
+                             Info="Needs administrator rights and a broker set on the MQTT page. Where refused, the session runs without it."/>
+                <ToggleSwitch x:Name="FocusBlocksNetworkToggle" OnContent="" OffContent=""
+                              MinWidth="0" Toggled="OnFocusBlocksNetworkToggled"/>
+            </StackPanel>
+        </controls:SettingsCard>
+
+        <!-- The allow-list on the network lever, one row per program beneath the button. Empty is the
+             whole of what an installation that has chosen no program carries. -->
+        <controls:SettingsCard Header="Programs that keep the network"
+                               Description="These reach the network while a session blocks it. Store apps cannot be listed.">
+            <Button x:Name="FocusAllowProgramButton" Content="Allow a program"
+                    Click="OnFocusAllowProgram"/>
+        </controls:SettingsCard>
+        <StackPanel x:Name="FocusAllowedProgramsPanel" Spacing="4"/>
+        <TextBlock x:Name="FocusAllowRefusalText" Visibility="Collapsed"
+                   TextWrapping="Wrap" FontSize="12" Margin="16,0,16,4"/>
+
         <controls:SettingsCard Header="Dims the screen"
                                Description="Lowers the built-in screen's brightness for the length of a session and puts it back afterwards.">
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
@@ -51,8 +73,6 @@
             </StackPanel>
         </controls:SettingsCard>
 
-        <!-- Fails safe: where Windows refuses the block the session runs on without it, and while a
-             session runs this switch shows what is actually held. -->
         <controls:SettingsCard Header="Blocks the mouse and keyboard"
                                Description="Turns the mouse and keyboard off for the length of a session. The computer answers nothing, this application included.">
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
@@ -72,19 +92,24 @@
         <zz:SettingsSectionHeader Heading="If you are stuck"/>
 
         <!-- The published way out, in the words of whoever is sitting at the machine. The firewall
-             lines belong to the network lever, which this build does not have. The group heading
-             above names this card, so the card carries none of its own. -->
+             names are quoted exactly and never translated: they are what a person searches the
+             firewall console for. The group heading above names this card, so the card carries
+             none of its own. -->
         <controls:SettingsCard ContentAlignment="Vertical"
                                HorizontalContentAlignment="Stretch">
             <StackPanel Spacing="6">
                 <TextBlock TextWrapping="Wrap" FontSize="12"
                            Text="End it early from Home Assistant: send the request, wait five minutes, send it again within ten seconds."/>
                 <TextBlock TextWrapping="Wrap" FontSize="12"
+                           Text="Lift the network block by hand: in Windows Defender Firewall with Advanced Security, set Outbound connections back to Allow on every profile."/>
+                <TextBlock TextWrapping="Wrap" FontSize="12"
+                           Text="Then delete the rules in the group &quot;FocusDesk focus session&quot;: &quot;FocusDesk focus session: broker&quot;, its name resolution rule and one per allowed program."/>
+                <TextBlock TextWrapping="Wrap" FontSize="12"
                            Text="The mouse and keyboard come back when the session ends. Ctrl+Alt+Delete still reaches Windows' own screen, to sign out or restart."/>
                 <TextBlock TextWrapping="Wrap" FontSize="12"
                            Text="Turn the screen brightness back up by hand."/>
                 <TextBlock TextWrapping="Wrap" FontSize="12"
-                           Text="Exit FocusDesk to take the black cover down. The session keeps running."/>
+                           Text="Exit FocusDesk to take the black cover down and lift the network block. The session keeps running, and both return at the next start."/>
             </StackPanel>
         </controls:SettingsCard>
     </StackPanel>

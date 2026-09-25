@@ -62,17 +62,22 @@ internal sealed class SettingsFile
         // defaults rather than zero minutes and two levers switched off — a session that could
         // never be armed.
         [JsonPropertyOrder(1)] public int?  FocusSessionMinutes     { get; set; }
-        [JsonPropertyOrder(2)] public bool? FocusDimsScreen         { get; set; }
-        [JsonPropertyOrder(3)] public bool? FocusCoversScreen       { get; set; }
-        [JsonPropertyOrder(4)] public bool? FocusBlocksInput        { get; set; }
-        [JsonPropertyOrder(5)] public bool? FocusStartFromDashboard { get; set; }
-        // The running session. State rather than settings: nothing on the page edits these, so they
-        // trail the visible rows.
-        [JsonPropertyOrder(6)]  public DateTimeOffset? FocusSessionStartedAt { get; set; }
-        [JsonPropertyOrder(7)]  public DateTimeOffset? FocusSessionEndsAt    { get; set; }
-        [JsonPropertyOrder(8)]  public bool FocusSessionDimmedScreen  { get; set; }
-        [JsonPropertyOrder(9)]  public bool FocusSessionCoveredScreen { get; set; }
-        [JsonPropertyOrder(10)] public bool FocusSessionBlockedInput  { get; set; }
+        [JsonPropertyOrder(2)] public bool? FocusBlocksNetwork      { get; set; }
+        // Null where no program has been chosen.
+        [JsonPropertyOrder(3)] public List<string>? FocusAllowedPrograms { get; set; }
+        [JsonPropertyOrder(4)] public bool? FocusDimsScreen         { get; set; }
+        [JsonPropertyOrder(5)] public bool? FocusCoversScreen       { get; set; }
+        [JsonPropertyOrder(6)] public bool? FocusBlocksInput        { get; set; }
+        [JsonPropertyOrder(7)] public bool? FocusStartFromDashboard { get; set; }
+        // The running session and the firewall state it displaced. State rather than settings:
+        // nothing on the page edits these, so they trail the visible rows.
+        [JsonPropertyOrder(8)]  public DateTimeOffset? FocusSessionStartedAt { get; set; }
+        [JsonPropertyOrder(9)]  public DateTimeOffset? FocusSessionEndsAt    { get; set; }
+        [JsonPropertyOrder(10)] public bool FocusSessionBlockedNetwork { get; set; }
+        [JsonPropertyOrder(11)] public bool FocusSessionDimmedScreen   { get; set; }
+        [JsonPropertyOrder(12)] public bool FocusSessionCoveredScreen  { get; set; }
+        [JsonPropertyOrder(13)] public bool FocusSessionBlockedInput   { get; set; }
+        [JsonPropertyOrder(14)] public List<FirewallProfileSetting>? FocusSavedFirewall { get; set; }
     }
 
     internal sealed class AppearanceGroup
@@ -116,6 +121,8 @@ internal sealed class SettingsFile
             Focus = new FocusGroup
             {
                 FocusSessionMinutes       = s.FocusSessionMinutes,
+                FocusBlocksNetwork        = s.FocusBlocksNetwork,
+                FocusAllowedPrograms      = s.FocusAllowedPrograms.Count > 0 ? s.FocusAllowedPrograms : null,
                 FocusDimsScreen           = s.FocusDimsScreen,
                 FocusCoversScreen         = s.FocusCoversScreen,
                 FocusBlocksInput          = s.FocusBlocksInput,
@@ -125,6 +132,8 @@ internal sealed class SettingsFile
                 FocusSessionDimmedScreen  = s.FocusSessionDimmedScreen,
                 FocusSessionCoveredScreen = s.FocusSessionCoveredScreen,
                 FocusSessionBlockedInput  = s.FocusSessionBlockedInput,
+                FocusSessionBlockedNetwork = s.FocusSessionBlockedNetwork,
+                FocusSavedFirewall        = s.FocusSavedFirewall,
             },
         };
     }
@@ -134,6 +143,8 @@ internal sealed class SettingsFile
         ScreenSavedBrightness = Screen.ScreenSavedBrightness,
 
         FocusSessionMinutes       = Focus.FocusSessionMinutes ?? FocusSessionEngine.DefaultMinutes,
+        FocusBlocksNetwork        = Focus.FocusBlocksNetwork ?? false,
+        FocusAllowedPrograms      = Focus.FocusAllowedPrograms ?? [],
         FocusDimsScreen           = Focus.FocusDimsScreen ?? true,
         FocusCoversScreen         = Focus.FocusCoversScreen ?? true,
         FocusBlocksInput          = Focus.FocusBlocksInput ?? false,
@@ -143,6 +154,8 @@ internal sealed class SettingsFile
         FocusSessionDimmedScreen  = Focus.FocusSessionDimmedScreen,
         FocusSessionCoveredScreen = Focus.FocusSessionCoveredScreen,
         FocusSessionBlockedInput  = Focus.FocusSessionBlockedInput,
+        FocusSessionBlockedNetwork = Focus.FocusSessionBlockedNetwork,
+        FocusSavedFirewall        = Focus.FocusSavedFirewall,
 
         PromoteTrayIcon               = Appearance.PromoteTrayIcon ?? false,
         TrayIconPromotionRestoreFor   = Appearance.TrayIconPromotionRestoreFor,

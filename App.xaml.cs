@@ -85,13 +85,14 @@ public partial class App : Application
             // Before the session engine, which can ask for a cover the moment it resumes one.
             ScreenCoverService.Start(DispatcherQueue.GetForCurrentThread(), () => FocusSessionService.Current);
 
-            FocusSessionService.Start();
-
-            // After the session engine and the screen services, whose current values its first
-            // announcement reads. Home Assistant is the only way a session is ended early, so this is
-            // what makes the application's own description true.
+            // Before the session engine, whose network block is written against the broker this
+            // connection is configured with. Its first announcement follows the engine's start
+            // through the engine's own change event. Home Assistant is the only way a session is
+            // ended early, so this is what makes the application's own description true.
             MqttService.Start();
             Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
+
+            FocusSessionService.Start();
 
             // Created but never activated: it is what the XAML runtime owns, not something to look
             // at. The icon is what a person sees.
@@ -119,7 +120,8 @@ public partial class App : Application
     /// <summary>
     /// Leaving, as chosen from the tray menu. The session itself is untouched — its record stays on
     /// disk and the next start resumes it — but everything holding a resource is let go in order:
-    /// the icon out of the shell, the session's own timer and cover, then the process.
+    /// the icon out of the shell, the session's own timer, cover, input block and firewall block,
+    /// then the process.
     /// </summary>
     private void Shutdown()
     {

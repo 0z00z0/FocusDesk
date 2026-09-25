@@ -188,7 +188,8 @@ internal static class ScreenCoverService
     /// machine looking broken to whoever is sitting at it.</summary>
     internal static string Levers(FocusSnapshot session)
     {
-        var levers = new List<string>(3);
+        var levers = new List<string>(4);
+        if (session.BlocksNetwork) levers.Add("the network is blocked");
         if (session.DimsScreen)   levers.Add("the screen is dimmed");
         if (session.CoversScreen) levers.Add("the screen is covered");
         if (session.BlocksInput)  levers.Add("the mouse and keyboard are blocked");
