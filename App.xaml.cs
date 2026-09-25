@@ -100,8 +100,14 @@ public partial class App : Application
             // Before the icon, which offers the check from its menu. The sweep of leftover downloads
             // runs here, while no install can be in flight.
             AppUpdates.Start(Shutdown);
+            AppUpdates.ReportLastUpdate();
 
             TrayIconHost.Start(Shutdown);
+
+            // After the icon is registered: the shell's entry for it is what gets written.
+            // A preference about where the icon sits is not worth a failed start.
+            try { AppearanceSettingsPanel.ReapplyAtStartup(new RegistryTrayPromotionStore()); }
+            catch (Exception ex) { AppLog.Error("OnLaunched.TrayIconPromotion", ex); }
         }
         catch (Exception ex)
         {
