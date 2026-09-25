@@ -2,6 +2,8 @@ using FocusDesk.Helpers;
 using FocusDesk.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Windows.Foundation;
 using ZeroZero.Brand.WinUI;
 using ZeroZero.Update.Win32;
 
@@ -51,13 +53,30 @@ public sealed partial class AboutSettingsPanel : UserControl
         About.CancelPendingFetch();
     }
 
-    /// <summary>Frames the control's coloured header block. The control offers no frame of its own
-    /// and names no part of itself: the block is the first child of its root panel. A later layout
-    /// without that shape is left unframed rather than failing.</summary>
+    /// <summary>Frames the control's coloured header block and paints it in FocusDesk's dark tone
+    /// rather than the studio navy. The control offers neither and names no part of itself: the block
+    /// is the first child of its root panel. A later layout without that shape is left as it comes
+    /// rather than failing.</summary>
+    /// <remarks>The navy is a local value in the control's markup, which a style setter cannot
+    /// override, so the gradient is assigned here.</remarks>
     private void FrameHeader()
     {
-        if (About.Content is Panel { Children.Count: > 0 } root && root.Children[0] is Border header)
-            header.Style = (Style)Resources["AboutHeaderFrameStyle"];
+        if (About.Content is not Panel { Children.Count: > 0 } root || root.Children[0] is not Border header)
+            return;
+
+        header.Style = (Style)Resources["AboutHeaderFrameStyle"];
+
+        var (top, bottom) = AppPalette.AboutHeader;
+        header.Background = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 1),
+            GradientStops =
+            {
+                new GradientStop { Color = AppColors.FromPacked(top), Offset = 0 },
+                new GradientStop { Color = AppColors.FromPacked(bottom), Offset = 1 },
+            },
+        };
     }
 
     private void OnClick()

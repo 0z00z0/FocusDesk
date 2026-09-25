@@ -67,6 +67,47 @@ public class AppPaletteTests
     public void SecondaryTextClearsTheBodyTextFloor(bool isDark, uint ground) =>
         Assert.True(Contrast(AppPalette.SecondaryTextTint(isDark), ground) >= 4.5);
 
+    /// <summary>The Settings window's ground is what every page's text sits on, and the caption strip
+    /// is painted the same. Primary and secondary text each hold 4.5:1 on the ground, and secondary
+    /// text on a hovered card over it (eight per cent white on dark, the light card fill on light).
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void TextOnTheSettingsGroundClearsTheBodyTextFloor(bool isDark)
+    {
+        uint ground = AppPalette.GroundTint(isDark);
+        uint primary = isDark ? 0xFFFFFFFFu : Over(0xE4000000u, ground);
+        uint card = isDark ? Over(0x14FFFFFFu, ground) : Over(0xB3FFFFFFu, ground);
+        uint secondary = AppPalette.SecondaryTextTint(isDark);
+
+        Assert.True(Contrast(primary, ground) >= 4.5);
+        Assert.True(Contrast(secondary, ground) >= 4.5);
+        Assert.True(Contrast(secondary, card) >= 4.5);
+    }
+
+    /// <summary>The shared About control writes its product name in white and its version in
+    /// half-transparent white over the header block; both hold 4.5:1 at each end of the gradient.</summary>
+    [Fact]
+    public void TheAboutHeaderTextClearsTheBodyTextFloor()
+    {
+        var (top, bottom) = AppPalette.AboutHeader;
+        foreach (uint stop in new[] { top, bottom })
+        {
+            Assert.True(Contrast(0xFFFFFFFFu, stop) >= 4.5);
+            Assert.True(Contrast(Over(0x80FFFFFFu, stop), stop) >= 4.5);
+        }
+    }
+
+    /// <summary>A translucent colour composited over an opaque ground, channel by channel.</summary>
+    private static uint Over(uint argb, uint ground)
+    {
+        double alpha = (argb >> 24) / 255.0;
+        uint Channel(int shift) => (uint)Math.Round(
+            ((argb >> shift) & 0xFF) * alpha + ((ground >> shift) & 0xFF) * (1 - alpha));
+        return 0xFF000000u | (Channel(16) << 16) | (Channel(8) << 8) | Channel(0);
+    }
+
     private static double Contrast(uint a, uint b)
     {
         double la = Luminance(a), lb = Luminance(b);

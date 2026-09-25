@@ -10,7 +10,8 @@ namespace FocusDesk.Helpers;
 /// <summary>
 /// The studio look over the stock WinUI keys: the amber accent, the brand face, a card outline and a
 /// muted purple tint for secondary text. An accent button, a selected pane entry and a focus ring all
-/// carry the product's colour rather than the operating system's.
+/// carry the product's colour rather than the operating system's. The dark purple-hued tones the
+/// Settings window's ground, its caption and the About header are painted in come from here too.
 /// </summary>
 /// <remarks>
 /// <para>Applied in code rather than declared in <c>App.xaml</c>: a brush declared in the
@@ -27,6 +28,17 @@ internal static class AppPalette
     // a card over Mica, light 7.0:1; AppPaletteTests holds both above 4.5:1 on the worst ground.
     private const double DarkTintLightness = 0.80, DarkTintChroma = 0.04;
     private const double LightTintLightness = 0.46, LightTintChroma = 0.06;
+
+    // The window ground, on purple's hue at the lightness of the platform's own caption on each
+    // theme, so the caption strip and the page meet without a seam. AppPaletteTests holds the text on
+    // both above 4.5:1.
+    private const double DarkGroundLightness = 0.235, LightGroundLightness = 0.96;
+    private const double DarkGroundChroma = 0.02, LightGroundChroma = 0.008;
+
+    // The shared About control's header block, dark on both themes: its text is fixed white. The
+    // same lightness as the studio navy it replaces, so the version line keeps its 4.5:1.
+    private const double HeaderTopLightness = 0.27, HeaderTopChroma = 0.035;
+    private const double HeaderBottomLightness = 0.16, HeaderBottomChroma = 0.02;
 
     // Kept for the life of the process: the theme-change event is lost with the object.
     private static UISettings? _systemColours;
@@ -86,15 +98,35 @@ internal static class AppPalette
 
     /// <summary>Packed 0xAARRGGBB for secondary text: a low-chroma tint on the studio purple's hue,
     /// light on the dark theme and dark on the light one.</summary>
-    internal static uint SecondaryTextTint(bool isDark)
+    internal static uint SecondaryTextTint(bool isDark) => isDark
+        ? PurpleTone(DarkTintLightness, DarkTintChroma)
+        : PurpleTone(LightTintLightness, LightTintChroma);
+
+    /// <summary>Packed 0xAARRGGBB for the window ground behind the Settings pages: a near-neutral on
+    /// the studio purple's hue, dark on the dark theme and light on the light one.</summary>
+    internal static uint GroundTint(bool isDark) => isDark
+        ? PurpleTone(DarkGroundLightness, DarkGroundChroma)
+        : PurpleTone(LightGroundLightness, LightGroundChroma);
+
+    /// <summary>The dark caption over <see cref="GroundTint"/>: the ground itself, and a step lighter
+    /// for a hovered and a pressed caption button, as the platform's own dark caption steps.</summary>
+    internal static (uint Ground, uint Hover, uint Pressed) DarkCaption => (
+        PurpleTone(DarkGroundLightness, DarkGroundChroma),
+        PurpleTone(DarkGroundLightness + 0.04, DarkGroundChroma),
+        PurpleTone(DarkGroundLightness + 0.025, DarkGroundChroma));
+
+    /// <summary>The About header block's gradient, top-left to bottom-right.</summary>
+    internal static (uint Top, uint Bottom) AboutHeader => (
+        PurpleTone(HeaderTopLightness, HeaderTopChroma),
+        PurpleTone(HeaderBottomLightness, HeaderBottomChroma));
+
+    /// <summary>An opaque Oklab tone of the given lightness and chroma on the studio purple's hue.</summary>
+    private static uint PurpleTone(double lightness, double chroma)
     {
         Color purple = AppColors.FromHex(Brand.ColorPurple);
         OklabColor hue = Oklab.FromArgb(((uint)purple.R << 16) | ((uint)purple.G << 8) | purple.B);
 
-        double chroma = isDark ? DarkTintChroma : LightTintChroma;
         double scale = chroma / Math.Sqrt(hue.A * hue.A + hue.B * hue.B);
-        double lightness = isDark ? DarkTintLightness : LightTintLightness;
-
         return Oklab.ToArgb(new OklabColor(lightness, hue.A * scale, hue.B * scale), 0xFF);
     }
 

@@ -48,6 +48,7 @@ internal sealed partial class ProgramPickerWindow : Window
         presenter.IsAlwaysOnTop = true;
         AppWindow.SetPresenter(presenter);
         AppTitleBar.Apply(this);
+        AppBackdrop.ApplyTo(this);
 
         Activated += OnActivated;
         Closed    += (_, _) => _closing = true;

@@ -3,7 +3,10 @@ using FocusDesk.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using ZeroZero.Brand.WinUI;
+using ZeroZero.Mqtt;
+using ZeroZero.Tray;
 using ZeroZero.Tray.WinUI;
+using ZeroZero.Win32;
 
 namespace FocusDesk.UI;
 
@@ -15,7 +18,8 @@ namespace FocusDesk.UI;
 /// <remarks>
 /// <para>The shared host owns the icon's lifecycle, the taskbar theme and display listeners, the
 /// shell-restart repair, the tooltip's length and the menu's rebuild. What is FocusDesk's is which
-/// file is shown, what the tooltip says, what the menu holds and what a click does.</para>
+/// file is shown, what the tooltip says, what the menu holds, the menu's light or dark theme and what
+/// a click does.</para>
 /// <para>Leaving from the menu is not a way out of a session: the levers a session holds are put
 /// back by the process ending, but the session's record stays on disk and the next start resumes
 /// it. That is the point — nothing on this machine ends a session.</para>
@@ -29,6 +33,7 @@ internal static class TrayIconHost
     private static TrayHost? _host;
     private static DispatcherQueue? _dispatcher;
     private static DispatcherTimer? _tooltipTimer;
+    private static MqttPublisher? _broker;
     private static Action? _exit;
 
     /// <summary>
@@ -60,9 +65,12 @@ internal static class TrayIconHost
         host.Start();
         _host = host;
 
-        // The session moves on its own clock and from Home Assistant. The menu is rebuilt by the
-        // host on every right click, so only the tooltip needs following.
+        // The session moves on its own clock and from Home Assistant, and the broker link comes and
+        // goes on its own. The menu is rebuilt by the host on every right click, so only the tooltip
+        // needs following.
         FocusSessionService.Changed += OnSessionChanged;
+        _broker = MqttService.Current;
+        if (_broker is not null) _broker.StateChanged += OnBrokerChanged;
 
         _tooltipTimer = new DispatcherTimer { Interval = TooltipInterval };
         _tooltipTimer.Tick += (_, _) => RefreshTooltip();
@@ -74,6 +82,8 @@ internal static class TrayIconHost
     public static void Stop()
     {
         FocusSessionService.Changed -= OnSessionChanged;
+        if (_broker is not null) _broker.StateChanged -= OnBrokerChanged;
+        _broker = null;
         _tooltipTimer?.Stop();
         _tooltipTimer = null;
         _host?.Dispose();
@@ -87,27 +97,23 @@ internal static class TrayIconHost
 
     private static void OnSessionChanged() => _dispatcher?.TryEnqueue(RefreshTooltip);
 
+    private static void OnBrokerChanged(MqttConnectionState _) => _dispatcher?.TryEnqueue(RefreshTooltip);
+
     private static void RefreshTooltip()
     {
         try { _host?.RefreshTooltip(); }
         catch (Exception ex) { AppLog.Error("TrayIconHost.RefreshTooltip", ex); }
     }
 
-    /// <summary>What a hover says: the product, and the session on a line of its own while one
-    /// runs.</summary>
-    private static IEnumerable<TrayTooltipLine> Tooltip()
-    {
-        yield return new TrayTooltipLine(AppInfo.Name);
-
-        var session = FocusSessionService.Current;
-        if (session.IsRunning)
-            yield return new TrayTooltipLine(FocusSessionStages.Describe(session, DateTimeOffset.Now));
-    }
+    private static IEnumerable<TrayTooltipLine> Tooltip() =>
+        TrayTooltipText.Lines(FocusSessionService.Current, _broker?.State, DateTimeOffset.Now);
 
     /// <summary>What the menu holds. Rebuilt by the host on the right click that opens it, so the
     /// session's line and the startup check mark are current without anything here keeping them so.</summary>
     private static IEnumerable<TrayMenuItem> Menu()
     {
+        FollowTaskbarTheme();
+
         var session = FocusSessionService.Current;
 
         // A line of text and never a control. A person at the keyboard cannot end a session, and
@@ -145,6 +151,14 @@ internal static class TrayIconHost
         yield return TrayMenuItem.Separator();
         yield return TrayMenuItem.Command("Exit", () => _exit?.Invoke());
     }
+
+    /// <summary>Puts the native menu in the system light or dark theme, the one the taskbar and the
+    /// icon follow. Run on every rebuild, which precedes every opening, so a theme switched while the
+    /// application runs reaches the next menu.</summary>
+    /// <remarks>The host's menu is a Win32 popup, light unless the process opts in. A forced mode rather
+    /// than the follow-the-apps mode: that one reads a policy uxtheme caches for the process's life.</remarks>
+    private static void FollowTaskbarTheme() => DarkChrome.Apply(
+        TaskbarThemes.Read() == TaskbarTheme.Dark ? DarkChromeMode.ForceDark : DarkChromeMode.ForceLight);
 
     /// <summary>Starts the shared check, or joins the one running, and lets it report in the update
     /// component's own window. Not awaited: the menu closes on the click and the window is the

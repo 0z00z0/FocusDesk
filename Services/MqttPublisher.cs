@@ -127,6 +127,13 @@ internal sealed class MqttPublisher : IDisposable
     /// own, so a cached answer is stale the moment the page stops looking.</summary>
     public MqttConnectionState State => _connection.State;
 
+    /// <summary>Raised on every connection state change, on whichever background thread made it.</summary>
+    public event Action<MqttConnectionState>? StateChanged
+    {
+        add    => _connection.StateChanged += value;
+        remove => _connection.StateChanged -= value;
+    }
+
     public bool IsConnected => _connection.IsConnected;
 
     /// <summary>The entity table in force, for the panel's entity-id-to-name lookup and for tests.</summary>

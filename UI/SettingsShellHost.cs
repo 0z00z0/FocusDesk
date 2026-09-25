@@ -121,6 +121,7 @@ internal static class SettingsShellHost
             PageMaxWidth   = 720,
         });
         AppTitleBar.Apply(window);
+        AppBackdrop.ApplyTo(window);
 
         _window = window;
         window.Closed += (_, _) =>
