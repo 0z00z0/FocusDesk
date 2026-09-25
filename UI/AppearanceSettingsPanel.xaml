@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="FocusDesk.UI.AppearanceSettingsPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:zz="using:ZeroZero.Controls.WinUI"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls">
+
+    <StackPanel Spacing="4">
+        <TextBlock Text="Appearance" Style="{StaticResource SectionHeaderStyle}"/>
+
+        <controls:SettingsCard Header="Show icon in main tray (experimental)"
+                               Description="Keeps the icon beside the clock instead of inside the overflow flyout.">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <zz:InfoIcon Subject="showing the icon in the main tray"
+                             Info="Windows offers no supported way to ask for this, so it is done by writing the shell's own setting. It has no effect on Windows 10, and a future Windows may stop honouring it. Switching it off puts back whatever was there before."/>
+                <ToggleSwitch x:Name="PromoteToggle" Toggled="OnPromoteToggled"/>
+            </StackPanel>
+        </controls:SettingsCard>
+    </StackPanel>
+</UserControl>

@@ -44,10 +44,11 @@ internal static class TrayIconHost
 
         var host = new TrayHost(new TrayHostOptions
         {
-            // The name is the icon's identity in the shell's own icon settings, so it stays exactly
-            // this across every version: a changed name is a new icon, and whether the user chose to
-            // show it is forgotten with the old one.
+            // The name is what the shell's own icon settings show. The identity beside it is what
+            // they are keyed on, stated rather than derived from the name, so renaming the product
+            // could never turn the icon into a new one and lose its position.
             Name = AppInfo.Name,
+            Id   = TrayIconIdentity.Value,
             Icon = request => TrayIconImage.FromFile(AppIcons.Tray(request.Theme)),
             Tooltip = Tooltip,
             Menu = Menu,

@@ -41,6 +41,21 @@ internal sealed class AppSettings
     /// <inheritdoc cref="FocusSessionDimmedScreen"/>
     public bool FocusSessionCoveredScreen { get; set; }
 
+    /// <summary>Whether the notification-area icon is asked to sit in the main tray rather than in
+    /// the overflow flyout. Windows offers no supported way to ask, so this is honoured by writing
+    /// the shell's own undocumented setting and can silently do nothing.</summary>
+    public bool PromoteTrayIcon { get; set; }
+
+    /// <summary>Which icon the restore record below belongs to, as a GUID, or null where no record
+    /// has been taken. A record made for a different icon is ignored rather than applied to this
+    /// one.</summary>
+    public string? TrayIconPromotionRestoreFor { get; set; }
+
+    /// <summary>What the shell's own setting held before it was first written: true, false, or null
+    /// where it held nothing at all. Null with a record present is what makes a restore delete the
+    /// value rather than write a zero over it.</summary>
+    public bool? TrayIconPromotionRestoreValue { get; set; }
+
     /// <summary>The Settings window's outer rectangle in physical pixels, as the window manager
     /// last reported it. All four are set together or none is: a partial rectangle is treated as
     /// nothing saved, and the window opens centred on the monitor under the cursor.</summary>
