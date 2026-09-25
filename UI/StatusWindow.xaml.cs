@@ -232,11 +232,15 @@ internal sealed partial class StatusWindow : Window
         if (session.DimsScreen)   held.Add("dimmed");
         if (session.CoversScreen) held.Add("covered");
 
-        LeverText.Text = held.Count > 0
-            ? $"The screen is {string.Join(" and ", held)} until the session ends."
+        var lines = new List<string>(2);
+        if (held.Count > 0) lines.Add($"The screen is {string.Join(" and ", held)} until the session ends.");
+        if (session.BlocksInput) lines.Add("The mouse and keyboard are blocked until the session ends.");
+
+        LeverText.Text = lines.Count > 0
+            ? string.Join("\n", lines)
             : "Nothing is held. The screen is as it was.";
 
-        if (held.Count > 0) LeverCard.Background = _activeTint;
+        if (lines.Count > 0) LeverCard.Background = _activeTint;
         else LeverCard.ClearValue(Border.BackgroundProperty);
     }
 
@@ -307,8 +311,8 @@ internal sealed partial class StatusWindow : Window
     private static string Refusal(FocusArmOutcome outcome) => outcome switch
     {
         FocusArmOutcome.AlreadyRunning => "A session is already running.",
-        FocusArmOutcome.NoLeverChosen  => "Nothing was chosen for a session to do. Turn on dimming or the screen cover on the Focus settings page first.",
-        FocusArmOutcome.LeverRefused   => "The screen would not take it: this display accepts no brightness change, or there is nothing attached to cover.",
+        FocusArmOutcome.NoLeverChosen  => "Nothing was chosen for a session to do. Turn on a lever on the Focus settings page first.",
+        FocusArmOutcome.LeverRefused   => "A chosen lever would not take it: no brightness change, nothing attached to cover, or no rights to block input.",
         _                              => "Something the session needed failed to engage. Whatever did engage has been lifted again.",
     };
 

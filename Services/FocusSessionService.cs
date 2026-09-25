@@ -1,3 +1,5 @@
+using FocusDesk.Helpers;
+
 namespace FocusDesk.Services;
 
 /// <summary>
@@ -12,6 +14,9 @@ internal static class FocusSessionService
     /// cheap enough to leave running: each tick is a comparison against the clock.</summary>
     private static readonly TimeSpan TickInterval = TimeSpan.FromSeconds(1);
 
+    private static readonly InputBlock _inputBlock =
+        new(NativeMethods.SetInputBlocked, what => AppLog.Info(what));
+
     private static readonly FocusSessionEngine _engine = new(
         new FocusScreenLever(() => ScreenBrightnessService.IsSupported,
                              ScreenBrightnessService.Set,
@@ -19,6 +24,7 @@ internal static class FocusSessionService
         new FocusCoverLever(() => ScreenCoverService.HasDisplay,
                             ScreenCoverService.Show,
                             ScreenCoverService.Hide),
+        new FocusInputLever(_inputBlock, FocusInputLever.ElevationRefusal),
         new SettingsFocusSessionRecord(),
         () => DateTimeOffset.Now,
         (what, cause) => AppLog.Info($"{what}{cause.Clause}"),
@@ -62,9 +68,9 @@ internal static class FocusSessionService
     /// sets the duration through its own number instead.</param>
     public static FocusArmOutcome Arm(ActionCause cause, int? minutes = null)
     {
-        var (stored, screen, cover) = SettingsService.Read(
-            s => (s.FocusSessionMinutes, s.FocusDimsScreen, s.FocusCoversScreen));
-        return _engine.Arm(FocusStartRequest.Minutes(minutes, stored), screen, cover, cause);
+        var (stored, screen, cover, input) = SettingsService.Read(
+            s => (s.FocusSessionMinutes, s.FocusDimsScreen, s.FocusCoversScreen, s.FocusBlocksInput));
+        return _engine.Arm(FocusStartRequest.Minutes(minutes, stored), screen, cover, input, cause);
     }
 
     public static void RequestCancel(ActionCause cause) => _engine.RequestCancel(cause);
@@ -82,6 +88,10 @@ internal static class FocusSessionService
         // shutdown ordered rather than relying on that. The session itself is untouched — its record
         // stays on disk and the next start resumes or ends it.
         ScreenCoverService.Hide(ActionCause.ApplicationClosing());
+
+        // Released here rather than left to the process ending, so a machine that answers does not
+        // wait on what a kill does to a block nobody can measure from inside it.
+        _inputBlock.Release(ActionCause.ApplicationClosing());
     }
 
     private static void Tick()
@@ -102,14 +112,14 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
 {
     public FocusSessionRecord? Read()
     {
-        var (startedAt, endsAt, screen, cover) = SettingsService.Read(
+        var (startedAt, endsAt, screen, cover, input) = SettingsService.Read(
             s => (s.FocusSessionStartedAt, s.FocusSessionEndsAt, s.FocusSessionDimmedScreen,
-                  s.FocusSessionCoveredScreen));
+                  s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput));
         // A document written before the start time was recorded falls back to the end time, which
         // reads as a session with no length. Only the cover's ring uses it, and such a document
         // carries no cover lever, so nothing draws from the fallback.
         return endsAt is { } ends
-            ? new FocusSessionRecord(startedAt ?? ends, ends, screen, cover)
+            ? new FocusSessionRecord(startedAt ?? ends, ends, screen, cover, input)
             : null;
     }
 
@@ -119,6 +129,7 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
         s.FocusSessionEndsAt = session.EndsAt;
         s.FocusSessionDimmedScreen = session.DimsScreen;
         s.FocusSessionCoveredScreen = session.CoversScreen;
+        s.FocusSessionBlockedInput = session.BlocksInput;
     });
 
     public void Clear() => SettingsService.Update(s =>
@@ -127,5 +138,6 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
         s.FocusSessionEndsAt = null;
         s.FocusSessionDimmedScreen = false;
         s.FocusSessionCoveredScreen = false;
+        s.FocusSessionBlockedInput = false;
     });
 }

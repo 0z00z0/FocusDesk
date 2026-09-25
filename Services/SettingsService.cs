@@ -21,6 +21,11 @@ internal sealed class AppSettings
     /// the panel's floor still leaves enough glow to read by, which is what this lever answers.</summary>
     public bool FocusCoversScreen { get; set; } = true;
 
+    /// <summary>Whether the next focus session blocks the mouse and keyboard. Off by default: while it
+    /// holds, nothing on the machine answers. Where Windows refuses the block the session runs on
+    /// without it.</summary>
+    public bool FocusBlocksInput { get; set; }
+
     /// <summary>Whether the status window offers a control that starts a session. It never offers one
     /// that ends a session, whatever this holds: nothing on the machine ends one.</summary>
     public bool FocusStartFromDashboard { get; set; } = true;
@@ -40,6 +45,9 @@ internal sealed class AppSettings
 
     /// <inheritdoc cref="FocusSessionDimmedScreen"/>
     public bool FocusSessionCoveredScreen { get; set; }
+
+    /// <inheritdoc cref="FocusSessionDimmedScreen"/>
+    public bool FocusSessionBlockedInput { get; set; }
 
     /// <summary>Whether the notification-area icon is asked to sit in the main tray rather than in
     /// the overflow flyout. Windows offers no supported way to ask, so this is honoured by writing

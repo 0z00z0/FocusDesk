@@ -54,9 +54,10 @@ internal static class FocusSessionStages
         if (!session.IsRunning) return "not running";
 
         int minutes = session.MinutesLeft(now) ?? 0;
-        var levers = new List<string>(2);
+        var levers = new List<string>(3);
         if (session.DimsScreen)   levers.Add("screen dimmed");
         if (session.CoversScreen) levers.Add("screen covered");
+        if (session.BlocksInput)  levers.Add("mouse and keyboard blocked");
 
         string stage = session.Stage switch
         {
@@ -75,9 +76,11 @@ internal static class FocusSessionStages
 /// reference a full countdown ring is drawn against, and nothing else.</param>
 /// <param name="EndsAt">Null when no session is running. The instant the session ends, never a
 /// countdown: the system clock keeps time whether or not the machine is awake to watch it.</param>
+/// <param name="BlocksInput">Whether the mouse and keyboard are held. False for a session that
+/// asked for the block and was refused it, or lost it: the lever fails safe.</param>
 internal readonly record struct FocusSnapshot(
     FocusSessionStage Stage, DateTimeOffset? StartedAt, DateTimeOffset? EndsAt,
-    bool DimsScreen, bool CoversScreen)
+    bool DimsScreen, bool CoversScreen, bool BlocksInput = false)
 {
     public static readonly FocusSnapshot None =
         new(FocusSessionStage.Off, null, null, false, false);
@@ -103,8 +106,9 @@ internal enum FocusArmOutcome
     /// indistinguishable from a broken one, so nothing is armed.</summary>
     NoLeverChosen,
 
-    /// <summary>A chosen lever refused — the display accepts no brightness, or nothing is attached
-    /// for a cover to go over. Nothing is armed, and nothing is half-engaged.</summary>
+    /// <summary>A chosen lever refused — the display accepts no brightness, nothing is attached for a
+    /// cover to go over, or the mouse and keyboard block was the only lever and was refused. Nothing
+    /// is armed, and nothing is half-engaged.</summary>
     LeverRefused,
 
     /// <summary>Every lever agreed and one then failed to engage. Whatever did engage is lifted

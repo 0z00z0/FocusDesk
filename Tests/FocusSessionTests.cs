@@ -18,6 +18,12 @@ internal sealed class FakeFocusLever : IFocusLever
 
     public int Resumptions { get; private set; }
 
+    public bool ResumeSucceeds { get; set; } = true;
+
+    public bool HoldSucceeds { get; set; } = true;
+
+    public int Holds { get; private set; }
+
     public string? Refusal() => RefusalText;
 
     public bool Engage(ActionCause cause)
@@ -26,7 +32,17 @@ internal sealed class FakeFocusLever : IFocusLever
         return EngageSucceeds;
     }
 
-    public void Resume(ActionCause cause) => Resumptions++;
+    public bool Resume(ActionCause cause)
+    {
+        Resumptions++;
+        return ResumeSucceeds;
+    }
+
+    public bool Hold(DateTimeOffset until, ActionCause cause)
+    {
+        Holds++;
+        return HoldSucceeds;
+    }
 
     public bool Lift(ActionCause cause)
     {
@@ -69,13 +85,14 @@ public class FocusSessionTests
         public DateTimeOffset Now = Noon;
         public FakeFocusLever Screen { get; } = new();
         public FakeFocusLever Cover { get; } = new();
+        public FakeFocusLever Input { get; } = new();
         public FakeFocusSessionRecord Record { get; } = new();
         public List<string> Log { get; } = [];
         public List<FocusHistoryEntry> History { get; } = [];
         public FocusSessionEngine Engine { get; }
 
         public Bed() => Engine = new FocusSessionEngine(
-            Screen, Cover, Record, () => Now,
+            Screen, Cover, Input, Record, () => Now,
             (what, cause) => Log.Add($"{what} ({cause})"),
             History.Add);
 
@@ -168,7 +185,7 @@ public class FocusSessionTests
     {
         var bed = new Bed();
 
-        var outcome = bed.Engine.Arm(60, dimsScreen: false, coversScreen: false, "a test");
+        var outcome = bed.Engine.Arm(60, dimsScreen: false, coversScreen: false, blocksInput: false, "a test");
 
         Assert.Equal(FocusArmOutcome.NoLeverChosen, outcome);
         Assert.Null(bed.Record.Held);
@@ -183,7 +200,7 @@ public class FocusSessionTests
         var bed = new Bed();
         bed.Screen.RefusalText = "no display on this machine accepts a brightness from Windows";
 
-        var outcome = bed.Engine.Arm(60, dimsScreen: true, coversScreen: true, "a test");
+        var outcome = bed.Engine.Arm(60, dimsScreen: true, coversScreen: true, blocksInput: false, "a test");
 
         Assert.Equal(FocusArmOutcome.LeverRefused, outcome);
         Assert.Null(bed.Record.Held);
@@ -196,7 +213,7 @@ public class FocusSessionTests
         var bed = new Bed();
         bed.Cover.EngageSucceeds = false;
 
-        var outcome = bed.Engine.Arm(60, dimsScreen: true, coversScreen: true, "a test");
+        var outcome = bed.Engine.Arm(60, dimsScreen: true, coversScreen: true, blocksInput: false, "a test");
 
         Assert.Equal(FocusArmOutcome.LeverFailed, outcome);
         Assert.Null(bed.Record.Held);
@@ -212,7 +229,7 @@ public class FocusSessionTests
         var bed = new Bed();
         bed.Record.SaveSucceeds = false;
 
-        var outcome = bed.Engine.Arm(60, dimsScreen: true, coversScreen: true, "a test");
+        var outcome = bed.Engine.Arm(60, dimsScreen: true, coversScreen: true, blocksInput: false, "a test");
 
         Assert.Equal(FocusArmOutcome.LeverFailed, outcome);
         Assert.Equal(0, bed.Screen.Engagements);
@@ -223,10 +240,10 @@ public class FocusSessionTests
     public void ASecondArmWhileOneRuns_ChangesNothing()
     {
         var bed = new Bed();
-        bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, "a test");
+        bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, blocksInput: false, "a test");
 
         Assert.Equal(FocusArmOutcome.AlreadyRunning,
-                     bed.Engine.Arm(30, dimsScreen: true, coversScreen: true, "a test"));
+                     bed.Engine.Arm(30, dimsScreen: true, coversScreen: true, blocksInput: false, "a test"));
         Assert.Equal(Noon.AddMinutes(60), bed.Engine.Snapshot().EndsAt);
         Assert.Equal(1, bed.Screen.Engagements);
     }
@@ -237,7 +254,7 @@ public class FocusSessionTests
         var bed = new Bed();
 
         Assert.Equal(FocusArmOutcome.Armed,
-                     bed.Engine.Arm(45, dimsScreen: true, coversScreen: true, "a test"));
+                     bed.Engine.Arm(45, dimsScreen: true, coversScreen: true, blocksInput: false, "a test"));
 
         Assert.Equal(Noon.AddMinutes(45), bed.Record.Held!.Value.EndsAt);
         Assert.Equal(1, bed.Screen.Engagements);
@@ -248,7 +265,7 @@ public class FocusSessionTests
     public void ASessionEndsItself_WhenItsOwnTimeRunsOutWhileTheApplicationIsRunning()
     {
         var bed = new Bed();
-        bed.Engine.Arm(10, dimsScreen: true, coversScreen: false, "a test");
+        bed.Engine.Arm(10, dimsScreen: true, coversScreen: false, blocksInput: false, "a test");
 
         bed.Advance(TimeSpan.FromMinutes(10));
         bed.Engine.Tick();
@@ -267,7 +284,7 @@ public class FocusSessionTests
         // A cover left up is a black screen with nothing on the machine able to clear it, so this is
         // the one thing about the cover that must never fail.
         var bed = new Bed();
-        bed.Engine.Arm(30, dimsScreen: false, coversScreen: true, "a test");
+        bed.Engine.Arm(30, dimsScreen: false, coversScreen: true, blocksInput: false, "a test");
         Assert.Equal(1, bed.Cover.Engagements);
 
         bed.Advance(TimeSpan.FromMinutes(30));
@@ -285,7 +302,7 @@ public class FocusSessionTests
         var bed = new Bed();
 
         Assert.Equal(FocusArmOutcome.Armed,
-                     bed.Engine.Arm(30, dimsScreen: false, coversScreen: true, "a test"));
+                     bed.Engine.Arm(30, dimsScreen: false, coversScreen: true, blocksInput: false, "a test"));
         Assert.Equal(0, bed.Screen.Engagements);
     }
 
@@ -309,6 +326,119 @@ public class FocusSessionTests
         // no cover at all is indistinguishable from a broken one.
         Assert.NotNull(new FocusCoverLever(() => false, _ => true, _ => true).Refusal());
         Assert.Null(new FocusCoverLever(() => true, _ => true, _ => true).Refusal());
+    }
+
+    // ── The input block fails safe ──────────────────────────────────────────────────────────────
+    // A block that cannot be taken must never cost the session, and a block the session no longer
+    // holds must never be reported as held.
+
+    [Fact]
+    public void ARefusedInputBlock_LeavesTheSessionRunningWithTheMouseAndKeyboardFree()
+    {
+        var bed = new Bed();
+        bed.Input.RefusalText = "no administrator rights";
+
+        var outcome = bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, blocksInput: true,
+                                     "a test");
+
+        Assert.Equal(FocusArmOutcome.Armed, outcome);
+        Assert.Equal(0, bed.Input.Engagements);
+        Assert.False(bed.Engine.Snapshot().BlocksInput);
+        Assert.False(bed.Record.Held!.Value.BlocksInput);
+    }
+
+    [Fact]
+    public void AnInputBlockWindowsWillNotTake_LeavesTheSessionRunningAndReportsItNotHeld()
+    {
+        var bed = new Bed();
+        bed.Input.EngageSucceeds = false;
+
+        var outcome = bed.Engine.Arm(60, dimsScreen: false, coversScreen: true, blocksInput: true,
+                                     "a test");
+
+        Assert.Equal(FocusArmOutcome.Armed, outcome);
+        Assert.Equal(0, bed.Cover.Lifts);
+        Assert.False(bed.Engine.Snapshot().BlocksInput);
+        Assert.False(bed.Record.Held!.Value.BlocksInput);
+    }
+
+    [Fact]
+    public void AnInputBlockThatIsTheOnlyLever_ArmsNothingWhenItCannotEngage()
+    {
+        // Alone, a refused block would leave a session that only counts down.
+        var refused = new Bed();
+        refused.Input.RefusalText = "no administrator rights";
+        Assert.Equal(FocusArmOutcome.LeverRefused,
+                     refused.Engine.Arm(60, dimsScreen: false, coversScreen: false, blocksInput: true,
+                                        "a test"));
+
+        var failed = new Bed();
+        failed.Input.EngageSucceeds = false;
+        Assert.Equal(FocusArmOutcome.LeverFailed,
+                     failed.Engine.Arm(60, dimsScreen: false, coversScreen: false, blocksInput: true,
+                                       "a test"));
+        Assert.Null(failed.Record.Held);
+        Assert.Equal(FocusSessionStage.Off, failed.Engine.Snapshot().Stage);
+    }
+
+    [Fact]
+    public void TheInputBlockIsRenewedEveryTickAndReleasedWhenTheSessionEnds()
+    {
+        var bed = new Bed();
+        bed.Engine.Arm(10, dimsScreen: false, coversScreen: true, blocksInput: true, "a test");
+
+        bed.Advance(TimeSpan.FromSeconds(1));
+        bed.Engine.Tick();
+        bed.Advance(TimeSpan.FromSeconds(1));
+        bed.Engine.Tick();
+        Assert.Equal(2, bed.Input.Holds);
+        Assert.True(bed.Engine.Snapshot().BlocksInput);
+
+        bed.Advance(TimeSpan.FromMinutes(10));
+        bed.Engine.Tick();
+
+        Assert.Equal(1, bed.Input.Lifts);
+        Assert.True(Assert.Single(bed.History).BlockedInput);
+    }
+
+    [Fact]
+    public void AnInputBlockLostMidSession_IsReportedNotHeldAndTheSessionRunsOn()
+    {
+        var bed = new Bed();
+        bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, blocksInput: true, "a test");
+        int changes = 0;
+        bed.Engine.Changed += () => changes++;
+
+        bed.Input.HoldSucceeds = false;
+        bed.Advance(TimeSpan.FromSeconds(1));
+        bed.Engine.Tick();
+
+        var session = bed.Engine.Snapshot();
+        Assert.Equal(FocusSessionStage.Active, session.Stage);
+        Assert.False(session.BlocksInput);
+        Assert.False(bed.Record.Held!.Value.BlocksInput);
+        Assert.Equal(1, changes);
+
+        // Not asked again: the session no longer owns the block.
+        bed.Engine.Tick();
+        Assert.Equal(1, bed.Input.Holds);
+    }
+
+    [Fact]
+    public void AResumedSessionWhoseInputBlockIsRefused_RunsOnWithoutIt()
+    {
+        var bed = new Bed();
+        bed.Input.ResumeSucceeds = false;
+        bed.Record.Held = new FocusSessionRecord(Noon, Noon.AddMinutes(30),
+                                                 DimsScreen: true, CoversScreen: false,
+                                                 BlocksInput: true);
+
+        bed.Engine.Start();
+
+        Assert.Equal(1, bed.Input.Resumptions);
+        Assert.Equal(FocusSessionStage.Active, bed.Engine.Snapshot().Stage);
+        Assert.False(bed.Engine.Snapshot().BlocksInput);
+        Assert.False(bed.Record.Held!.Value.BlocksInput);
     }
 
     // ── The length a start request runs for ─────────────────────────────────────────────────────
@@ -374,7 +504,7 @@ public class FocusSessionTests
     {
         var bed = new Bed();
         Assert.Equal(FocusArmOutcome.Armed,
-                     bed.Engine.Arm(120, dimsScreen: true, coversScreen: true, "a test"));
+                     bed.Engine.Arm(120, dimsScreen: true, coversScreen: true, blocksInput: false, "a test"));
         return bed;
     }
 

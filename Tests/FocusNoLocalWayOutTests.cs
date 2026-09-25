@@ -90,14 +90,23 @@ public class FocusNoLocalWayOutTests
         var screen = new FakeFocusLever();
         var cover = new FakeFocusLever();
         var engine = new FocusSessionEngine(
-            screen, cover, new FakeFocusSessionRecord(), () => now, (_, _) => { });
+            screen, cover, new FakeFocusLever(), new FakeFocusSessionRecord(), () => now, (_, _) => { });
 
-        engine.Arm(120, dimsScreen: true, coversScreen: false, "a test");
+        engine.Arm(120, dimsScreen: true, coversScreen: false, blocksInput: false, "a test");
         for (int i = 0; i < 20; i++) engine.RequestCancel("a test");
 
         Assert.Equal(FocusSessionStage.Ending, engine.Snapshot().Stage);
         Assert.Equal(0, screen.Lifts);
     }
+
+    // ── The input block ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void TheInputBlockIsReleasedWhenTheApplicationCloses() =>
+        // Leaving from the menu must hand back a machine that answers. The thread's exit would also
+        // release it, but nothing inside the process can measure what a kill does to the block.
+        Assert.Matches(new Regex(@"void Stop\(\)[\s\S]*?_inputBlock\.Release\(ActionCause\.ApplicationClosing\(\)\)"),
+                       RepoFiles.Read(Path.Combine("Services", "FocusSessionService.cs")));
 
     // ── The cover ───────────────────────────────────────────────────────────────────────────────
     // Source text rather than behaviour: the cover is WinUI code-behind that cannot be driven

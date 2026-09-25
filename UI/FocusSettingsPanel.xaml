@@ -51,6 +51,18 @@
             </StackPanel>
         </controls:SettingsCard>
 
+        <!-- Fails safe: where Windows refuses the block the session runs on without it, and while a
+             session runs this switch shows what is actually held. -->
+        <controls:SettingsCard Header="Blocks the mouse and keyboard"
+                               Description="Turns the mouse and keyboard off for the length of a session. The computer answers nothing, this application included.">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <zz:InfoIcon Subject="the mouse and keyboard block"
+                             Info="Needs administrator rights. Where Windows refuses it, the session runs without it and this switch reads off."/>
+                <ToggleSwitch x:Name="FocusBlocksInputToggle" OnContent="" OffContent=""
+                              MinWidth="0" Toggled="OnFocusBlocksInputToggled"/>
+            </StackPanel>
+        </controls:SettingsCard>
+
         <controls:SettingsCard Header="Start a session from the status window"
                                Description="Adds a Start button to the status window. It starts a session; ending one still needs Home Assistant.">
             <ToggleSwitch x:Name="FocusStartFromStatusToggle" OnContent="" OffContent=""
@@ -67,6 +79,8 @@
             <StackPanel Spacing="6">
                 <TextBlock TextWrapping="Wrap" FontSize="12"
                            Text="End it early from Home Assistant: send the request, wait five minutes, send it again within ten seconds."/>
+                <TextBlock TextWrapping="Wrap" FontSize="12"
+                           Text="The mouse and keyboard come back when the session ends. Ctrl+Alt+Delete still reaches Windows' own screen, to sign out or restart."/>
                 <TextBlock TextWrapping="Wrap" FontSize="12"
                            Text="Turn the screen brightness back up by hand."/>
                 <TextBlock TextWrapping="Wrap" FontSize="12"

@@ -21,7 +21,7 @@ internal sealed record MqttEntitySources
 }
 
 /// <summary>
-/// FocusDesk's published surface: eight entities, their groups, their capability gates and the domain
+/// FocusDesk's published surface: nine entities, their groups, their capability gates and the domain
 /// seam each inbound command lands on. Pure — nothing here touches a broker or a settings singleton,
 /// so the same table composes in a test.
 /// </summary>
@@ -44,6 +44,7 @@ internal static class MqttEntityCatalog
     public const string FocusSessionMinutes      = "focus_session_minutes";
     public const string FocusSessionDimsScreen   = "focus_session_dims_screen";
     public const string FocusSessionCoversScreen = "focus_session_covers_screen";
+    public const string FocusSessionBlocksInput  = "focus_session_blocks_input";
     public const string FocusSessionState        = "focus_session_state";
     public const string FocusSessionRemaining    = "focus_session_remaining";
 
@@ -125,6 +126,18 @@ internal static class MqttEntityCatalog
                 Debounce = MqttConnection.ReflectDebounce,
                 Read = () => surface()?.FocusCoversScreen,
                 Apply = on => MqttCommandVerdict.Accept(() => set.SetFocusCoversScreen(on)),
+            },
+            new MqttSwitch
+            {
+                // Not gated on anything: a machine always has a mouse and keyboard to block, and
+                // whether Windows accepts the block is decided at arming time. A refused block leaves
+                // the session running, and this reads off while it runs.
+                EntityId = FocusSessionBlocksInput, Name = "Focus session blocks input",
+                Group = MqttPublishGroups.Focus,
+                Category = MqttEntityCategory.Config, Icon = "mdi:keyboard-off",
+                Debounce = MqttConnection.ReflectDebounce,
+                Read = () => surface()?.FocusBlocksInput,
+                Apply = on => MqttCommandVerdict.Accept(() => set.SetFocusBlocksInput(on)),
             },
             MqttEnumSensor.Of(
                 FocusSessionState, "Focus session state", MqttPublishGroups.Focus,

@@ -64,13 +64,15 @@ internal sealed class SettingsFile
         [JsonPropertyOrder(1)] public int?  FocusSessionMinutes     { get; set; }
         [JsonPropertyOrder(2)] public bool? FocusDimsScreen         { get; set; }
         [JsonPropertyOrder(3)] public bool? FocusCoversScreen       { get; set; }
-        [JsonPropertyOrder(4)] public bool? FocusStartFromDashboard { get; set; }
+        [JsonPropertyOrder(4)] public bool? FocusBlocksInput        { get; set; }
+        [JsonPropertyOrder(5)] public bool? FocusStartFromDashboard { get; set; }
         // The running session. State rather than settings: nothing on the page edits these, so they
         // trail the visible rows.
-        [JsonPropertyOrder(5)] public DateTimeOffset? FocusSessionStartedAt { get; set; }
-        [JsonPropertyOrder(6)] public DateTimeOffset? FocusSessionEndsAt    { get; set; }
-        [JsonPropertyOrder(7)] public bool FocusSessionDimmedScreen  { get; set; }
-        [JsonPropertyOrder(8)] public bool FocusSessionCoveredScreen { get; set; }
+        [JsonPropertyOrder(6)]  public DateTimeOffset? FocusSessionStartedAt { get; set; }
+        [JsonPropertyOrder(7)]  public DateTimeOffset? FocusSessionEndsAt    { get; set; }
+        [JsonPropertyOrder(8)]  public bool FocusSessionDimmedScreen  { get; set; }
+        [JsonPropertyOrder(9)]  public bool FocusSessionCoveredScreen { get; set; }
+        [JsonPropertyOrder(10)] public bool FocusSessionBlockedInput  { get; set; }
     }
 
     internal sealed class AppearanceGroup
@@ -116,11 +118,13 @@ internal sealed class SettingsFile
                 FocusSessionMinutes       = s.FocusSessionMinutes,
                 FocusDimsScreen           = s.FocusDimsScreen,
                 FocusCoversScreen         = s.FocusCoversScreen,
+                FocusBlocksInput          = s.FocusBlocksInput,
                 FocusStartFromDashboard   = s.FocusStartFromDashboard,
                 FocusSessionStartedAt     = s.FocusSessionStartedAt,
                 FocusSessionEndsAt        = s.FocusSessionEndsAt,
                 FocusSessionDimmedScreen  = s.FocusSessionDimmedScreen,
                 FocusSessionCoveredScreen = s.FocusSessionCoveredScreen,
+                FocusSessionBlockedInput  = s.FocusSessionBlockedInput,
             },
         };
     }
@@ -132,11 +136,13 @@ internal sealed class SettingsFile
         FocusSessionMinutes       = Focus.FocusSessionMinutes ?? FocusSessionEngine.DefaultMinutes,
         FocusDimsScreen           = Focus.FocusDimsScreen ?? true,
         FocusCoversScreen         = Focus.FocusCoversScreen ?? true,
+        FocusBlocksInput          = Focus.FocusBlocksInput ?? false,
         FocusStartFromDashboard   = Focus.FocusStartFromDashboard ?? true,
         FocusSessionStartedAt     = Focus.FocusSessionStartedAt,
         FocusSessionEndsAt        = Focus.FocusSessionEndsAt,
         FocusSessionDimmedScreen  = Focus.FocusSessionDimmedScreen,
         FocusSessionCoveredScreen = Focus.FocusSessionCoveredScreen,
+        FocusSessionBlockedInput  = Focus.FocusSessionBlockedInput,
 
         PromoteTrayIcon               = Appearance.PromoteTrayIcon ?? false,
         TrayIconPromotionRestoreFor   = Appearance.TrayIconPromotionRestoreFor,

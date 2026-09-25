@@ -41,11 +41,13 @@ public class SettingsFileShapeTests : IDisposable
         "Focus.FocusSessionMinutes",
         "Focus.FocusDimsScreen",
         "Focus.FocusCoversScreen",
+        "Focus.FocusBlocksInput",
         "Focus.FocusStartFromDashboard",
         "Focus.FocusSessionStartedAt",
         "Focus.FocusSessionEndsAt",
         "Focus.FocusSessionDimmedScreen",
         "Focus.FocusSessionCoveredScreen",
+        "Focus.FocusSessionBlockedInput",
         "Screen",
         "Screen.ScreenSavedBrightness",
         "Appearance",
@@ -116,14 +118,12 @@ public class SettingsFileShapeTests : IDisposable
                              .Replace("not in any group: []  in a group but not persisted: []", "", StringComparison.Ordinal));
     }
 
-    /// <summary>The two excluded levers have no key at all. They are absent rather than stored off:
-    /// a key written now would be read by the build that reintroduces them as a deliberate
+    /// <summary>The excluded network lever has no key at all. It is absent rather than stored off:
+    /// a key written now would be read by the build that reintroduces it as a deliberate
     /// choice.</summary>
     [Theory]
     [InlineData("FocusBlocksNetwork")]
-    [InlineData("FocusBlocksInput")]
     [InlineData("FocusSessionBlockedNetwork")]
-    [InlineData("FocusSessionBlockedInput")]
     [InlineData("FocusSavedFirewall")]
     [InlineData("FocusAllowedPrograms")]
     public void TheDocumentCarriesNoKeyForALeverThisBuildDoesNotHave(string key)
@@ -145,8 +145,10 @@ public class SettingsFileShapeTests : IDisposable
             ScreenSavedBrightness     = 42,
             FocusSessionMinutes       = 90,
             FocusDimsScreen           = false,
+            FocusBlocksInput          = true,
             FocusSessionEndsAt        = new DateTimeOffset(2026, 9, 20, 13, 0, 0, TimeSpan.Zero),
             FocusSessionCoveredScreen = true,
+            FocusSessionBlockedInput  = true,
         };
         Assert.True(SettingsService.WriteTo(before, File_));
 
@@ -158,8 +160,8 @@ public class SettingsFileShapeTests : IDisposable
 
     private static string Describe(AppSettings s) => string.Join('|',
         s.ScreenSavedBrightness, s.FocusSessionMinutes, s.FocusDimsScreen, s.FocusCoversScreen,
-        s.FocusStartFromDashboard, s.FocusSessionStartedAt, s.FocusSessionEndsAt,
-        s.FocusSessionDimmedScreen, s.FocusSessionCoveredScreen);
+        s.FocusBlocksInput, s.FocusStartFromDashboard, s.FocusSessionStartedAt, s.FocusSessionEndsAt,
+        s.FocusSessionDimmedScreen, s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput);
 
     /// <summary>An empty document reads as this application's defaults, not the section types'. The
     /// two differ: a section type declares no session length and no lever, so binding an empty

@@ -32,14 +32,15 @@ public class FocusHistoryTests
     {
         var entry = new FocusHistoryEntry(
             Noon, Noon.AddMinutes(60), Noon.AddMinutes(60),
-            DimmedScreen: false, CoveredScreen: true, FocusSessionOutcome.RanToTime);
+            DimmedScreen: false, CoveredScreen: true, FocusSessionOutcome.RanToTime,
+            BlockedInput: true);
 
         Assert.True(FocusHistoryService.TryParse(FocusHistoryService.Format(entry), out var back));
 
         Assert.Equal(entry.StartedAt, back.StartedAt);
         Assert.Equal(entry.DueAt, back.DueAt);
         Assert.Equal(entry.EndedAt, back.EndedAt);
-        Assert.Equal((false, true), (back.DimmedScreen, back.CoveredScreen));
+        Assert.Equal((false, true, true), (back.DimmedScreen, back.CoveredScreen, back.BlockedInput));
         Assert.Equal(FocusSessionOutcome.RanToTime, back.Outcome);
     }
 
@@ -47,9 +48,9 @@ public class FocusHistoryTests
     [Fact]
     public void TheLeversNeverCarryTheColumnSeparator()
     {
-        Assert.Equal("screen+cover", FocusHistoryService.Levers(true, true));
-        Assert.Equal("none", FocusHistoryService.Levers(false, false));
-        Assert.DoesNotContain(',', FocusHistoryService.Levers(true, true));
+        Assert.Equal("screen+cover+input", FocusHistoryService.Levers(true, true, true));
+        Assert.Equal("none", FocusHistoryService.Levers(false, false, false));
+        Assert.DoesNotContain(',', FocusHistoryService.Levers(true, true, true));
     }
 
     [Fact]
@@ -83,19 +84,20 @@ public class FocusHistoryTests
         public DateTimeOffset Now = Noon;
         public FakeFocusLever Screen { get; } = new();
         public FakeFocusLever Cover { get; } = new();
+        public FakeFocusLever Input { get; } = new();
         public FakeFocusSessionRecord Record { get; } = new();
         public List<FocusHistoryEntry> Written { get; } = [];
         public FocusSessionEngine Engine { get; }
 
         public Bed() => Engine = new FocusSessionEngine(
-            Screen, Cover, Record, () => Now, (_, _) => { }, Written.Add);
+            Screen, Cover, Input, Record, () => Now, (_, _) => { }, Written.Add);
     }
 
     [Fact]
     public void ASessionThatRanItsLength_IsWrittenDownAsHavingRunToTime()
     {
         var bed = new Bed();
-        bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, "a test");
+        bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, blocksInput: false, "a test");
 
         bed.Now = Noon.AddMinutes(60);
         bed.Engine.Tick();
@@ -112,7 +114,7 @@ public class FocusHistoryTests
     public void ASessionEndedFromHomeAssistant_KeepsTheEndTimeItNeverReached()
     {
         var bed = new Bed();
-        bed.Engine.Arm(120, dimsScreen: true, coversScreen: false, "a test");
+        bed.Engine.Arm(120, dimsScreen: true, coversScreen: false, blocksInput: false, "a test");
 
         bed.Engine.RequestCancel("a test");
         bed.Now = Noon + FocusSessionStages.CancelWait;
@@ -146,7 +148,7 @@ public class FocusHistoryTests
         var bed = new Bed();
         bed.Screen.EngageSucceeds = false;
 
-        bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, "a test");
+        bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, blocksInput: false, "a test");
 
         Assert.Empty(bed.Written);
     }

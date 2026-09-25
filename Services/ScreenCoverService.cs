@@ -188,9 +188,10 @@ internal static class ScreenCoverService
     /// machine looking broken to whoever is sitting at it.</summary>
     internal static string Levers(FocusSnapshot session)
     {
-        var levers = new List<string>(2);
+        var levers = new List<string>(3);
         if (session.DimsScreen)   levers.Add("the screen is dimmed");
         if (session.CoversScreen) levers.Add("the screen is covered");
+        if (session.BlocksInput)  levers.Add("the mouse and keyboard are blocked");
         return levers.Count == 0 ? "" : $"While it runs, {string.Join(", ", levers)}.";
     }
 }
@@ -210,7 +211,7 @@ internal sealed class FocusCoverLever(
 
     /// <summary>Puts the cover back up. A window does not survive a restart, so resuming means
     /// showing it again rather than finding it still there.</summary>
-    public void Resume(ActionCause cause) => show(cause);
+    public bool Resume(ActionCause cause) => show(cause);
 
     public bool Lift(ActionCause cause) => hide(cause);
 }
