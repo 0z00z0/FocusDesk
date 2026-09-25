@@ -4,9 +4,9 @@ using Windows.Graphics;
 
 namespace FocusDesk.Helpers;
 
-/// <summary>Thin wrappers around the Win32 calls the screen cover needs: every attached display, the
-/// window styles a cover over one carries, a close it refuses, and how long since anybody touched
-/// the machine.</summary>
+/// <summary>Thin wrappers around the Win32 calls the screen cover and the pop-out need: every
+/// attached display, the window styles a cover over one carries, a close it refuses, the frame the
+/// pop-out sheds, and how long since anybody touched the machine.</summary>
 internal static class NativeMethods
 {
     // ── How long since somebody was at the machine ───────────────────────────────────────────────
@@ -135,6 +135,30 @@ internal static class NativeMethods
     {
         try { SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE); }
         catch (Exception ex) { AppLog.Error("NativeMethods.RaiseToTopmost", ex); }
+    }
+
+    // ── A frameless pop-out ──────────────────────────────────────────────────────────────────────
+
+    private const int GWL_STYLE = -16;
+    private const long WS_CAPTION    = 0x00C00000;
+    private const long WS_THICKFRAME = 0x00040000;
+
+    private const uint SWP_NOZORDER     = 0x0004;
+    private const uint SWP_FRAMECHANGED = 0x0020;
+
+    /// <summary>Strips the caption and sizing frame from <paramref name="window"/>, leaving its
+    /// client area as the whole window. The frame is recalculated at once, so the next size read
+    /// already reflects it.</summary>
+    internal static void RemoveFrame(IntPtr window)
+    {
+        try
+        {
+            long style = GetWindowLongPtr(window, GWL_STYLE).ToInt64();
+            SetWindowLongPtr(window, GWL_STYLE, new IntPtr(style & ~(WS_CAPTION | WS_THICKFRAME)));
+            SetWindowPos(window, IntPtr.Zero, 0, 0, 0, 0,
+                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+        }
+        catch (Exception ex) { AppLog.Error("NativeMethods.RemoveFrame", ex); }
     }
 
     [DllImport("user32.dll")]

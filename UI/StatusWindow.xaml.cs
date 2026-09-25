@@ -1,6 +1,7 @@
 using System.Globalization;
 using FocusDesk.Helpers;
 using FocusDesk.Services;
+using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -27,13 +28,10 @@ namespace FocusDesk.UI;
 /// </remarks>
 internal sealed partial class StatusWindow : Window
 {
-    /// <summary>How many finished sessions the list shows. Enough to see a day's work behind one and
-    /// short enough that the window still opens at its content's height.</summary>
-    private const int HistoryRowCount = 6;
-
-    /// <summary>The scroller's padding above and below, added to the content's own measured height
-    /// before the window is sized.</summary>
-    private const int VerticalPaddingInUnits = 26;
+    /// <summary>How many finished sessions the list shows. Five rows of up to two lines each keep the
+    /// whole pop-out under <see cref="PopOutPlacement.MaxHeightInUnits"/>, so it fits a laptop's
+    /// work area without scrolling.</summary>
+    private const int HistoryRowCount = 5;
 
     /// <summary>The ring's geometry inside its 84-unit square.</summary>
     private const double RingCentre = 42;
@@ -91,6 +89,10 @@ internal sealed partial class StatusWindow : Window
         _tick.Tick += (_, _) => ShowSession();
         _idleClose.Tick += (_, _) => CloseIfIdle();
 
+        // A line that appears while the window is open — the way out once a session starts, a
+        // refusal — changes the content's height, and the window follows it rather than clipping.
+        ContentPanel.SizeChanged += (_, _) => { if (AppWindow.IsVisible) Place(); };
+
         Activated += OnActivated;
 
         Closed += (_, _) =>
@@ -112,6 +114,9 @@ internal sealed partial class StatusWindow : Window
         presenter.SetBorderAndTitleBar(false, false);
         presenter.IsAlwaysOnTop  = true;
         AppWindow.SetPresenter(presenter);
+
+        // The presenter keeps a dialog frame with the border turned off: three pixels on every side.
+        NativeMethods.RemoveFrame(Win32Interop.GetWindowFromWindowId(AppWindow.Id));
 
         // Off the taskbar and out of Alt-Tab: a pop-out is not a window to switch to.
         AppWindow.IsShownInSwitchers = false;
@@ -218,8 +223,8 @@ internal sealed partial class StatusWindow : Window
         if (offered) FocusLengthChoices.Fill(MinutesCombo, minutes);
     }
 
-    /// <summary>What the session holds. Tinted while a lever is in force and hairline-bordered while
-    /// none is, so the card carries the state without a word for it.</summary>
+    /// <summary>What the session holds. Tinted while a lever is in force and in the plain card fill
+    /// while none is, so the card carries the state without a word for it.</summary>
     private void ShowLevers()
     {
         var session = FocusSessionService.Current;
@@ -231,7 +236,8 @@ internal sealed partial class StatusWindow : Window
             ? $"The screen is {string.Join(" and ", held)} until the session ends."
             : "Nothing is held. The screen is as it was.";
 
-        LeverCard.Background = held.Count > 0 ? _activeTint : null;
+        if (held.Count > 0) LeverCard.Background = _activeTint;
+        else LeverCard.ClearValue(Border.BackgroundProperty);
     }
 
     /// <summary>The tint an active card carries: the studio accent at a low alpha.</summary>
@@ -262,12 +268,15 @@ internal sealed partial class StatusWindow : Window
 
     /// <summary>One line of the list. The opacity rather than a theme brush: a brush looked up from
     /// the application's own dictionary does not follow a light or dark switch, and these lines are
-    /// built in code rather than in markup where the theme reference would.</summary>
+    /// built in code rather than in markup where the theme reference would. Two lines at most, so the
+    /// row cap bounds the window's height.</summary>
     private static TextBlock Line(string text, bool secondary) => new()
     {
         Text = text,
         FontSize = 12,
         TextWrapping = TextWrapping.Wrap,
+        MaxLines = 2,
+        TextTrimming = TextTrimming.CharacterEllipsis,
         Opacity = secondary ? 0.65 : 1,
     };
 
@@ -322,11 +331,16 @@ internal sealed partial class StatusWindow : Window
     /// of the monitor the pointer is on, which is the monitor whose notification area was clicked.</summary>
     private void Place()
     {
-        ContentPanel.Measure(new Size(PopOutPlacement.WidthInUnits, double.PositiveInfinity));
+        RootGrid.Measure(new Size(PopOutPlacement.WidthInUnits, double.PositiveInfinity));
+
+        // Any frame the window still carries is added on top, so the content keeps the width it was
+        // measured at and all of its height.
+        var frame = new SizeInt32(
+            AppWindow.Size.Width  - AppWindow.ClientSize.Width,
+            AppWindow.Size.Height - AppWindow.ClientSize.Height);
 
         var (work, scale) = MonitorMetrics.ForCursor();
-        var rect = PopOutPlacement.BottomRight(
-            work, scale, ContentPanel.DesiredSize.Height + VerticalPaddingInUnits);
+        var rect = PopOutPlacement.BottomRight(work, scale, RootGrid.DesiredSize.Height, frame);
 
         AppWindow.Resize(new SizeInt32(rect.Width, rect.Height));
         AppWindow.Move(new PointInt32(rect.X, rect.Y));
