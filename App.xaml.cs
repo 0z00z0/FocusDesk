@@ -95,7 +95,9 @@ public partial class App : Application
             ScreenBrightnessService.Start();
 
             // Before the session engine, which can ask for a cover the moment it resumes one.
-            ScreenCoverService.Start(DispatcherQueue.GetForCurrentThread(), () => FocusSessionService.Current);
+            ScreenCoverService.Start(DispatcherQueue.GetForCurrentThread(),
+                                     () => FocusSessionService.Current,
+                                     () => SettingsService.Read(s => s.FocusCoverVisual));
 
             // Before the session engine, whose network block is written against the broker this
             // connection is configured with. Its first announcement follows the engine's start

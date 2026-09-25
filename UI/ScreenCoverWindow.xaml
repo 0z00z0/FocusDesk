@@ -8,6 +8,10 @@
          is a literal rather than anything that could resolve to a translucent or lighter value. -->
     <Grid Background="#FF000000">
 
+        <!-- Empty in the ring visual. The focus-point visual puts its browser here, built only when
+             that visual is chosen so no browser process starts for a cover that draws its own ring. -->
+        <Grid x:Name="FocusPointHost" />
+
         <!-- The panel is sized in device-independent units and scaled as one, so it is the same
              physical size at 100 % and at 200 %. DownOnly: it shrinks to fit a short or narrow
              display and never grows to fill a wide one, which keeps it centred and proportional on
@@ -22,30 +26,71 @@
                  Visibility="Collapsed">
             <StackPanel Width="460" Spacing="28" HorizontalAlignment="Center">
 
-                <!-- Stroke widths are declared in the same units as the canvas, so they scale with
-                     the panel instead of staying fixed pixels. -->
+                <!-- The dial. Stroke widths and lengths are declared in the same units as the canvas,
+                     so they scale with the panel instead of staying fixed pixels.
+
+                     Four layers, outermost first: the radar sweep travelling round on its own clock;
+                     sixty marks, spent and remaining drawn as two paths so each carries its own
+                     colour; a hairline arc inside them reading the exact remainder; and the leading
+                     mark, a dot that breathes on the same ten-second rhythm as the focus-point
+                     visual's own dot, so the two visuals read as one family. -->
                 <Grid Width="220" Height="220" HorizontalAlignment="Center">
                     <Canvas Width="220" Height="220">
-                        <Path x:Name="RingTrack"
-                              Stroke="#28FFFFFF"
-                              StrokeThickness="14"
+
+                        <Path x:Name="SweepArc"
+                              StrokeThickness="11"
                               StrokeStartLineCap="Round"
                               StrokeEndLineCap="Round"
+                              Canvas.Left="0" Canvas.Top="0">
+                            <Path.Stroke>
+                                <LinearGradientBrush StartPoint="0,1" EndPoint="1,0">
+                                    <GradientStop Color="#00FFFFFF" Offset="0.0"/>
+                                    <GradientStop Color="#12FFFFFF" Offset="0.6"/>
+                                    <GradientStop Color="#54FFFFFF" Offset="1.0"/>
+                                </LinearGradientBrush>
+                            </Path.Stroke>
+                            <Path.RenderTransform>
+                                <RotateTransform x:Name="SweepRotate" CenterX="110" CenterY="110"/>
+                            </Path.RenderTransform>
+                        </Path>
+
+                        <Path x:Name="TickSpent"
+                              Stroke="#22FFFFFF"
+                              StrokeThickness="3"
                               Canvas.Left="0" Canvas.Top="0"/>
+
+                        <Path x:Name="TickLit"
+                              StrokeThickness="3"
+                              Canvas.Left="0" Canvas.Top="0"/>
+
                         <Path x:Name="RingFill"
-                              StrokeThickness="14"
+                              StrokeThickness="2.5"
                               StrokeStartLineCap="Round"
                               StrokeEndLineCap="Round"
+                              Opacity="0.5"
                               Canvas.Left="0" Canvas.Top="0"/>
+
+                        <Ellipse x:Name="LeadDot"
+                                 Width="11" Height="11"
+                                 RenderTransformOrigin="0.5,0.5"
+                                 Canvas.Left="0" Canvas.Top="0">
+                            <Ellipse.RenderTransform>
+                                <ScaleTransform x:Name="LeadScale" ScaleX="1" ScaleY="1"/>
+                            </Ellipse.RenderTransform>
+                        </Ellipse>
                     </Canvas>
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="-6">
-                        <TextBlock x:Name="MinutesText"
+
+                    <StackPanel x:Name="Readout"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="-6">
+                        <TextBlock x:Name="AmountText"
                                    Text="--"
                                    FontSize="62"
                                    FontWeight="Bold"
                                    HorizontalAlignment="Center"
                                    Foreground="#FFFFFFFF"/>
-                        <TextBlock Text="MIN LEFT"
+                        <!-- Text set from code: the unit changes from minutes to seconds in the last
+                             minute, and both come from the resource file. -->
+                        <TextBlock x:Name="UnitText"
                                    FontSize="15"
                                    CharacterSpacing="120"
                                    HorizontalAlignment="Center"

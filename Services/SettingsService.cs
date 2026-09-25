@@ -35,6 +35,11 @@ internal sealed class AppSettings
     /// the panel's floor still leaves enough glow to read by, which is what this lever answers.</summary>
     public bool FocusCoversScreen { get; set; } = true;
 
+    /// <summary>Which visual the screen cover draws: the countdown dial, or the breathing focus
+    /// point. A default the session starts from, read when the cover goes up. No control edits it
+    /// yet: it is set in the settings document.</summary>
+    public CoverVisual FocusCoverVisual { get; set; } = CoverVisual.Ring;
+
     /// <summary>Whether the next focus session blocks the mouse and keyboard. Off by default: while it
     /// holds, nothing on the machine answers. Where Windows refuses the block the session runs on
     /// without it.</summary>

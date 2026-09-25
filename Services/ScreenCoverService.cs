@@ -30,7 +30,13 @@ internal static class ScreenCoverService
 
     private static DispatcherQueue? _ui;
     private static Func<FocusSnapshot> _session = () => FocusSnapshot.None;
+    private static Func<CoverVisual> _chosenVisual = () => CoverVisual.Ring;
     private static DispatcherQueueTimer? _tick;
+
+    /// <summary>The visual the covers now up were built for. Read when they go up rather than on the
+    /// tick: swapping a visual under a running session would mean tearing every cover down and
+    /// building it again, and the choice belongs to the session that was armed.</summary>
+    private static CoverVisual _visual = CoverVisual.Ring;
 
     private static readonly List<ScreenCoverWindow> _windows = [];
     private static IReadOnlyList<RectInt32> _covering = [];
@@ -43,13 +49,17 @@ internal static class ScreenCoverService
     /// lever that changes nothing, which is refused rather than armed.</summary>
     internal static bool HasDisplay => NativeMethods.AllDisplayBounds().Count > 0;
 
-    /// <summary>Hands the service the thread its windows live on and the session they follow.
-    /// Called before the session engine starts, which can ask for a cover at once when it resumes a
-    /// session the machine was switched off during.</summary>
-    internal static void Start(DispatcherQueue ui, Func<FocusSnapshot> session)
+    /// <summary>Hands the service the thread its windows live on, the session they follow and which
+    /// visual to draw. Called before the session engine starts, which can ask for a cover at once when
+    /// it resumes a session the machine was switched off during.</summary>
+    /// <param name="chosenVisual">Asked once per raise. Passed in rather than read here, so the cover
+    /// keeps knowing nothing about where the choice is stored.</param>
+    internal static void Start(DispatcherQueue ui, Func<FocusSnapshot> session,
+                               Func<CoverVisual>? chosenVisual = null)
     {
-        _ui      = ui;
-        _session = session;
+        _ui           = ui;
+        _session      = session;
+        _chosenVisual = chosenVisual ?? (() => CoverVisual.Ring);
     }
 
     /// <summary>Raises the cover. False only when the UI thread could not be reached, which is a
@@ -60,7 +70,8 @@ internal static class ScreenCoverService
         if (IsShowing) return true;
 
         IsShowing = true;
-        AppLog.Info($"Focus: the screen cover goes up{cause.Clause}.");
+        _visual   = Chosen();
+        AppLog.Info($"Focus: the screen cover goes up as the {CoverAppearance.NameOf(_visual)} visual{cause.Clause}.");
         return ui.TryEnqueue(Raise);
     }
 
@@ -128,10 +139,14 @@ internal static class ScreenCoverService
             string levers = Levers(session);
             bool revealed = NativeMethods.SinceLastInput() is { } since && since < RevealFor;
 
+            // The cover holds itself back where the session is not also dimming the display, so it
+            // never becomes the brightest thing on a screen nobody asked to have changed.
+            var appearance = CoverAppearance.For(_visual, session.DimsScreen);
+
             foreach (var window in _windows)
             {
                 window.KeepOnTop();
-                window.Apply(reading, levers, revealed);
+                window.Apply(reading, levers, revealed, appearance);
             }
         }
         catch (Exception ex) { AppLog.Error("ScreenCoverService.OnTick", ex); }
@@ -155,7 +170,7 @@ internal static class ScreenCoverService
         {
             try
             {
-                var window = new ScreenCoverWindow();
+                var window = new ScreenCoverWindow(_visual);
                 window.Cover(bounds);
                 _windows.Add(window);
             }
@@ -164,6 +179,14 @@ internal static class ScreenCoverService
 
         _covering = displays;
         AppLog.Info($"Focus: the screen cover is over {_windows.Count} display(s).");
+    }
+
+    /// <summary>The visual asked for, or the dial where asking failed. A cover that draws nothing is
+    /// a black screen nobody can explain, so nothing about the choice may stop one going up.</summary>
+    private static CoverVisual Chosen()
+    {
+        try { return _chosenVisual(); }
+        catch (Exception ex) { AppLog.Error("ScreenCoverService.Chosen", ex); return CoverVisual.Ring; }
     }
 
     /// <summary>Whether any cover has been taken down under the service. A cover with no window

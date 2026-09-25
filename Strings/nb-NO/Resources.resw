@@ -154,6 +154,22 @@
     <value>bare de valgte programmene kan brukes</value>
     <comment>One clause in the cover's list of what the session holds, lower case, no full stop.</comment>
   </data>
+  <data name="CoverMinutesLeft" xml:space="preserve">
+    <value>MIN IGJEN</value>
+    <comment>Unit under the cover's countdown figure while whole minutes are counted, capitals, plural.</comment>
+  </data>
+  <data name="CoverSecondsLeft" xml:space="preserve">
+    <value>SEK IGJEN</value>
+    <comment>Unit under the cover's countdown figure in the last minute, seconds, capitals, plural.</comment>
+  </data>
+  <data name="CoverFocusPointHint" xml:space="preserve">
+    <value>Hold blikket på punktet · blunking er greit</value>
+    <comment>Quiet line under the breathing point on the focus-point cover, no full stop.</comment>
+  </data>
+  <data name="CoverFocusPointDone" xml:space="preserve">
+    <value>Ferdig — start arbeidet</value>
+    <comment>Line on the focus-point cover when the countdown reaches its end, no full stop.</comment>
+  </data>
   <data name="TrayHeldPrograms" xml:space="preserve">
     <value>programmer</value>
     <comment>One item in the tray hover's list of levers held, noun, lower case.</comment>
