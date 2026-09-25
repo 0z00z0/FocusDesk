@@ -21,9 +21,7 @@ internal static class WatchdogTask
 
     internal static bool HoldMarkerExists => File.Exists(HoldMarkerPath);
 
-    /// <summary>Written on a deliberate exit so watchdog probes leave it alone. Nothing calls this
-    /// yet — FocusDesk has no tray Exit action until PLAN.md step 8 builds the tray menu — but the
-    /// mechanism is ready for it.</summary>
+    /// <summary>Written on tray-menu Exit so watchdog probes leave a deliberate exit alone.</summary>
     internal static void WriteHoldMarker()
     {
         try
@@ -34,7 +32,8 @@ internal static class WatchdogTask
         catch (Exception ex) { AppLog.Error("WatchdogTask.WriteHoldMarker", ex); }
     }
 
-    /// <summary>Cleared on every start, so resurrection is re-armed.</summary>
+    /// <summary>Cleared on every deliberate start, so resurrection is re-armed. A watchdog probe
+    /// never clears it.</summary>
     internal static void TryClearHoldMarker()
     {
         try { File.Delete(HoldMarkerPath); }

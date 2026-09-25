@@ -25,8 +25,17 @@ public partial class App : Application
     // Held for the life of the process: the arms stay registered until it ends.
     private readonly CrashHandlers _crashHandlers;
 
+    // Started by the watchdog task rather than by a person or the installer.
+    private readonly bool _watchdogProbe;
+
     public App()
     {
+        // A deliberate Exit outranks the watchdog. Checked ahead of the guard: the hold marker is the
+        // one input that keeps a probe down even when FocusDesk really is gone.
+        _watchdogProbe = Environment.GetCommandLineArgs().Contains(TaskDefinitions.WatchdogArg);
+        if (_watchdogProbe && WatchdogTask.HoldMarkerExists)
+            Environment.Exit(0);
+
         // Before anything else touches the session state or the tray icon: a second instance —
         // most often the watchdog task's own probe firing while FocusDesk is already running —
         // must not get this far.
@@ -74,7 +83,10 @@ public partial class App : Application
             // General crash-resilience infrastructure, independent of any focus-session lever: a
             // deliberate start re-arms resurrection, and the watchdog task itself is (re)registered
             // unconditionally on every start, whether or not a session is running.
-            WatchdogTask.TryClearHoldMarker();
+            if (_watchdogProbe)
+                AppLog.Info("Watchdog relaunch: no live instance found — restoring the tray app.");
+            else
+                WatchdogTask.TryClearHoldMarker();
             WatchdogTask.TryEnsureTask();
 
             // First of the session services: Windows keeps a brightness across a restart, so a
@@ -125,6 +137,9 @@ public partial class App : Application
     /// </summary>
     private void Shutdown()
     {
+        // Before any teardown, so the watchdog task stays down whatever fails below. The update
+        // flow ends through here too; the installer's relaunch is a deliberate start and clears it.
+        WatchdogTask.WriteHoldMarker();
         AppLog.Info("Exit was chosen from the notification-area menu.");
 
         try { TrayIconHost.Stop(); }
