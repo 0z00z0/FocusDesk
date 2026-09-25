@@ -12,8 +12,8 @@ LicenseUrl: https://github.com/0z00z0/FocusDesk/blob/main/LICENSE
 ShortDescription: Holds the machine in a chosen state for a stretch of time, from the system tray.
 Description: >-
   FocusDesk runs a focus session from the system tray: choose a duration, then block
-  every network connection but a named allow-list, dim the screen, cover every display,
-  and block the mouse and keyboard. A session ends on its own clock or from Home
+  every network connection but the MQTT broker and a named list of programs,
+  dim the screen, cover every display, and block the mouse and keyboard. A session ends on its own clock or from Home
   Assistant, never from the machine. The app requires administrator rights at runtime.
 Moniker: focusdesk
 Tags:

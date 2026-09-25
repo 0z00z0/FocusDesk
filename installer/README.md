@@ -55,13 +55,16 @@ itself and patches the manifests with it.
 the only way a release is created; a hand-made release carries neither the patched manifests nor
 the assertion that the manifests describe the build.
 
-Two repository secrets hold the certificate: `CODE_SIGN_PFX`, the base64-encoded PFX, and
-`CODE_SIGN_PASSWORD`, the password it was exported with. With `CODE_SIGN_PFX` absent the signing
-step is skipped, and a tag push then fails outright rather than publishing an unsigned installer; a
+The repository secret `CODE_SIGN_PFX` holds the certificate: the base64-encoded studio PFX,
+subject `CN=ZeroZero Software`, which is the signer the update check accepts. The studio
+certificate has an empty password, and GitHub refuses an empty secret, so `CODE_SIGN_PASSWORD` is
+intentionally absent; the signing step passes a password only where that secret holds one. With
+`CODE_SIGN_PFX` absent the signing step is skipped, and a tag push then fails outright rather than publishing an unsigned installer; a
 manual dispatch only warns, so a dry run stays useful.
 
 To cut a release: bump `<Version>` in `FocusDesk.csproj`, which is the single source and what the
-tag must match, then push a `v*.*.*` tag. The workflow publishes the application, compiles the
+tag must match, add a section headed with that version alone to `RELEASE-NOTES.md`, then push a
+`v*.*.*` tag. A section the file does not hold leaves the release body to the commit subjects. The workflow publishes the application, compiles the
 installer, signs both executables, computes the SHA256, patches the winget manifests in its own
 working copy, creates the release with the installer and the three manifests attached, and runs
 `winget validate` against them.
