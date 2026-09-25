@@ -63,22 +63,34 @@ internal sealed class SettingsFile
         // never be armed.
         [JsonPropertyOrder(1)] public int?  FocusSessionMinutes     { get; set; }
         [JsonPropertyOrder(2)] public bool? FocusBlocksNetwork      { get; set; }
-        // Null where no program has been chosen.
-        [JsonPropertyOrder(3)] public List<string>? FocusAllowedPrograms { get; set; }
-        [JsonPropertyOrder(4)] public bool? FocusDimsScreen         { get; set; }
-        [JsonPropertyOrder(5)] public bool? FocusCoversScreen       { get; set; }
-        [JsonPropertyOrder(6)] public bool? FocusBlocksInput        { get; set; }
-        [JsonPropertyOrder(7)] public bool? FocusStartFromDashboard { get; set; }
+        // Null only in a document written before the list existed, which is what lets its path list
+        // migrate. Written as an empty list rather than null, because the store never deletes a key:
+        // the earlier list stays in the file and must never migrate a second time.
+        [JsonPropertyOrder(3)] public List<FocusProgramEntry>? FocusPrograms { get; set; }
+        [JsonPropertyOrder(4)] public FocusProgramAction? FocusProgramsDefaultAction { get; set; }
+        [JsonPropertyOrder(5)] public bool? FocusDimsScreen         { get; set; }
+        [JsonPropertyOrder(6)] public bool? FocusCoversScreen       { get; set; }
+        [JsonPropertyOrder(7)] public bool? FocusBlocksInput        { get; set; }
+        [JsonPropertyOrder(8)] public bool? FocusStartFromDashboard { get; set; }
         // The running session and the firewall state it displaced. State rather than settings:
         // nothing on the page edits these, so they trail the visible rows.
-        [JsonPropertyOrder(8)]  public DateTimeOffset? FocusSessionStartedAt { get; set; }
-        [JsonPropertyOrder(9)]  public DateTimeOffset? FocusSessionEndsAt    { get; set; }
-        [JsonPropertyOrder(10)] public bool FocusSessionBlockedNetwork { get; set; }
-        [JsonPropertyOrder(11)] public bool FocusSessionDimmedScreen   { get; set; }
-        [JsonPropertyOrder(12)] public bool FocusSessionCoveredScreen  { get; set; }
-        [JsonPropertyOrder(13)] public bool FocusSessionBlockedInput   { get; set; }
-        [JsonPropertyOrder(14)] public List<FirewallProfileSetting>? FocusSavedFirewall { get; set; }
+        [JsonPropertyOrder(9)]  public DateTimeOffset? FocusSessionStartedAt { get; set; }
+        [JsonPropertyOrder(10)] public DateTimeOffset? FocusSessionEndsAt    { get; set; }
+        [JsonPropertyOrder(11)] public bool FocusSessionBlockedNetwork { get; set; }
+        [JsonPropertyOrder(12)] public bool FocusSessionDimmedScreen   { get; set; }
+        [JsonPropertyOrder(13)] public bool FocusSessionCoveredScreen  { get; set; }
+        [JsonPropertyOrder(14)] public bool FocusSessionBlockedInput   { get; set; }
+        [JsonPropertyOrder(15)] public List<FirewallProfileSetting>? FocusSavedFirewall { get; set; }
+
+        // An earlier document's path list, read to migrate and never written: null on every write,
+        // and a null key is left out. The store keeps the earlier bytes where they stand.
+        [JsonPropertyOrder(16), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? FocusAllowedPrograms { get; set; }
     }
+
+    /// <summary>Keys read from an earlier document and never written. They sit in a group so the
+    /// store binds them, and no setting carries them.</summary>
+    public static readonly string[] ReadOnlyKeys = [nameof(FocusGroup.FocusAllowedPrograms)];
 
     internal sealed class AppearanceGroup
     {
@@ -122,7 +134,8 @@ internal sealed class SettingsFile
             {
                 FocusSessionMinutes       = s.FocusSessionMinutes,
                 FocusBlocksNetwork        = s.FocusBlocksNetwork,
-                FocusAllowedPrograms      = s.FocusAllowedPrograms.Count > 0 ? s.FocusAllowedPrograms : null,
+                FocusPrograms             = s.FocusPrograms,
+                FocusProgramsDefaultAction = s.FocusProgramsDefaultAction,
                 FocusDimsScreen           = s.FocusDimsScreen,
                 FocusCoversScreen         = s.FocusCoversScreen,
                 FocusBlocksInput          = s.FocusBlocksInput,
@@ -144,7 +157,10 @@ internal sealed class SettingsFile
 
         FocusSessionMinutes       = Focus.FocusSessionMinutes ?? FocusSessionEngine.DefaultMinutes,
         FocusBlocksNetwork        = Focus.FocusBlocksNetwork ?? false,
-        FocusAllowedPrograms      = Focus.FocusAllowedPrograms ?? [],
+        // A document with no program list but an earlier path list migrates; one with neither reads
+        // as an empty list.
+        FocusPrograms             = Focus.FocusPrograms ?? FocusAllowedPrograms.Migrate(Focus.FocusAllowedPrograms),
+        FocusProgramsDefaultAction = Focus.FocusProgramsDefaultAction ?? FocusProgramAction.Minimise,
         FocusDimsScreen           = Focus.FocusDimsScreen ?? true,
         FocusCoversScreen         = Focus.FocusCoversScreen ?? true,
         FocusBlocksInput          = Focus.FocusBlocksInput ?? false,

@@ -18,9 +18,14 @@ internal sealed class AppSettings
     /// refuses the block the session runs on without it.</summary>
     public bool FocusBlocksNetwork { get; set; }
 
-    /// <summary>The programs that keep the network while a session blocks everything else, each by
-    /// its executable's full path. Empty blocks everything but the broker.</summary>
-    public List<string> FocusAllowedPrograms { get; set; } = [];
+    /// <summary>The one program list: each program by its stable identifier, with "can run", "can use
+    /// the network" and what happens to it while it may not run. With no program-file row ticked for
+    /// the network, a network block leaves nothing open but the broker.</summary>
+    public List<FocusProgramEntry> FocusPrograms { get; set; } = [];
+
+    /// <summary>What happens to a program with no row while a session limits programs. Read as
+    /// Minimise in this version, whatever it holds.</summary>
+    public FocusProgramAction FocusProgramsDefaultAction { get; set; } = FocusProgramAction.Minimise;
 
     /// <summary>Whether the next focus session dims the screen. A default the session starts from,
     /// not a standing state: the choice is made per session from Home Assistant.</summary>

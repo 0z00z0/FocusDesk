@@ -40,7 +40,8 @@ public class SettingsFileShapeTests : IDisposable
         "Focus",
         "Focus.FocusSessionMinutes",
         "Focus.FocusBlocksNetwork",
-        "Focus.FocusAllowedPrograms",
+        "Focus.FocusPrograms",
+        "Focus.FocusProgramsDefaultAction",
         "Focus.FocusDimsScreen",
         "Focus.FocusCoversScreen",
         "Focus.FocusBlocksInput",
@@ -111,6 +112,8 @@ public class SettingsFileShapeTests : IDisposable
             .Where(g => g.PropertyType.IsNested)          // skips the version key, which groups nothing
             .SelectMany(g => g.PropertyType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             .Select(p => p.Name)
+            // Read from an earlier document to migrate and never written, so no setting carries it.
+            .Where(n => !SettingsFile.ReadOnlyKeys.Contains(n, StringComparer.Ordinal))
             .ToList();
 
         Assert.Empty(grouped.GroupBy(n => n, StringComparer.Ordinal).Where(g => g.Count() > 1).Select(g => g.Key));
@@ -151,7 +154,18 @@ public class SettingsFileShapeTests : IDisposable
             ScreenSavedBrightness     = 42,
             FocusSessionMinutes       = 90,
             FocusBlocksNetwork        = true,
-            FocusAllowedPrograms      = [@"C:\Program Files\Example\editor.exe"],
+            FocusPrograms             =
+            [
+                new() { Kind = FocusProgramKind.ProgramFile, Id = @"C:\Program Files\Example\editor.exe",
+                        StartEntry = @"C:\ProgramData\Example\Editor.lnk", CanRun = true, CanUseNetwork = true },
+                new() { Kind = FocusProgramKind.StorePackage, Id = "Example.Notes_8wekyb3d8bbwe",
+                        StartEntry = "Example.Notes_8wekyb3d8bbwe!App", CanRun = true,
+                        WhenNotAllowed = FocusProgramAction.AskToClose },
+                new() { Kind = FocusProgramKind.WebApp, Id = "Brave._crx_abcdefghijklmnopqrstuvwxyz",
+                        BrowserPath = @"C:\Program Files\Example\browser.exe",
+                        WhenNotAllowed = FocusProgramAction.ForceClose },
+            ],
+            FocusProgramsDefaultAction = FocusProgramAction.AskToClose,
             FocusDimsScreen           = false,
             FocusBlocksInput          = true,
             FocusSessionEndsAt        = new DateTimeOffset(2026, 9, 20, 13, 0, 0, TimeSpan.Zero),
@@ -167,9 +181,40 @@ public class SettingsFileShapeTests : IDisposable
         Assert.Equal(Describe(before), Describe(after!));
     }
 
+    /// <summary>A document from before the one program list carries a bare path list. Each path was
+    /// chosen to keep the network, so it keeps it; whether it may run is a choice nobody made, so it
+    /// may not. The store never deletes a key, so the earlier list stays in the file; it must never
+    /// migrate a second time, or a program taken off the list comes back at the next start.</summary>
+    [Fact]
+    public void AnEarlierPathListMigratesOnce_ToNetworkOnRunOffAndMinimise()
+    {
+        Directory.CreateDirectory(_dir);
+        System.IO.File.WriteAllText(File_,
+            "{ \"ConfigVersion\": 1, \"Focus\": { \"FocusAllowedPrograms\": "
+          + "[ \"C:\\\\Program Files\\\\Example\\\\editor.exe\" ] } }");
+
+        var loaded = SettingsService.ReadFrom(File_);
+
+        Assert.NotNull(loaded);
+        var only = Assert.Single(loaded!.FocusPrograms);
+        Assert.Equal(new FocusProgramEntry
+        {
+            Kind = FocusProgramKind.ProgramFile, Id = @"C:\Program Files\Example\editor.exe",
+            CanRun = false, CanUseNetwork = true, WhenNotAllowed = FocusProgramAction.Minimise,
+        }, only);
+
+        Assert.True(SettingsService.WriteTo(loaded, File_));
+        Assert.Contains("\"ProgramFile\"", System.IO.File.ReadAllText(File_), StringComparison.Ordinal);
+        Assert.Single(SettingsService.ReadFrom(File_)!.FocusPrograms);
+
+        loaded.FocusPrograms.Clear();
+        Assert.True(SettingsService.WriteTo(loaded, File_));
+        Assert.Empty(SettingsService.ReadFrom(File_)!.FocusPrograms);
+    }
+
     private static string Describe(AppSettings s) => string.Join('|',
         s.ScreenSavedBrightness, s.FocusSessionMinutes, s.FocusBlocksNetwork,
-        string.Join(';', s.FocusAllowedPrograms), s.FocusSessionBlockedNetwork,
+        string.Join(';', s.FocusPrograms), s.FocusProgramsDefaultAction, s.FocusSessionBlockedNetwork,
         s.FocusDimsScreen, s.FocusCoversScreen,
         s.FocusBlocksInput, s.FocusStartFromDashboard, s.FocusSessionStartedAt, s.FocusSessionEndsAt,
         s.FocusSessionDimmedScreen, s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput);

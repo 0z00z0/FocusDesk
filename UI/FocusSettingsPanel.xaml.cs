@@ -87,21 +87,31 @@ public sealed partial class FocusSettingsPanel : UserControl
     {
         FocusAllowedProgramsPanel.Children.Clear();
 
-        foreach (string path in SettingsService.Read(s => s.FocusAllowedPrograms.ToList()))
+        foreach (var entry in SettingsService.Read(s => s.FocusPrograms.ToList()))
         {
             var remove = new Button { Content = "Remove", IsEnabled = !locked };
-            string program = path;
+            var program = entry;
             remove.Click += (_, _) => ChangeAllowedPrograms(
-                list => FocusAllowedPrograms.Remove(list, program, FocusSessionService.LeversAreLocked));
+                list => FocusAllowedPrograms.Remove(list, program.Kind, program.Id,
+                                                    FocusSessionService.LeversAreLocked));
 
             FocusAllowedProgramsPanel.Children.Add(new SettingsCard
             {
-                Header      = FocusAllowedPrograms.DisplayName(path),
-                Description = path,
+                Header      = FocusAllowedPrograms.DisplayName(entry),
+                Description = FocusAllowedPrograms.Describe(entry),
                 Content     = remove,
             });
         }
     }
+
+    /// <summary>A program chosen in the picker, as a row starts: both checkboxes ticked.</summary>
+    private static FocusProgramEntry Chosen(string path) => new()
+    {
+        Kind          = FocusProgramKind.ProgramFile,
+        Id            = path,
+        CanRun        = true,
+        CanUseNetwork = true,
+    };
 
     /// <summary>Opens the picker and puts what comes back on the list. The picker offers what is open
     /// now and what the Start menu holds, and keeps a file dialog for a program in neither.</summary>
@@ -110,7 +120,7 @@ public sealed partial class FocusSettingsPanel : UserControl
         try
         {
             new ProgramPickerWindow(chosen => DispatcherQueue.TryEnqueue(() => ChangeAllowedPrograms(
-                list => FocusAllowedPrograms.Add(list, chosen, FocusSessionService.LeversAreLocked))))
+                list => FocusAllowedPrograms.Add(list, Chosen(chosen), FocusSessionService.LeversAreLocked))))
                 .Activate();
         }
         catch (Exception ex) { AppLog.Error("FocusSettingsPanel.OnFocusAllowProgram", ex); }
@@ -118,13 +128,13 @@ public sealed partial class FocusSettingsPanel : UserControl
 
     /// <summary>Runs one change against a copy and writes the list back only where it moved, so a
     /// refusal leaves the document untouched and says why.</summary>
-    private void ChangeAllowedPrograms(Func<IList<string>, FocusAllowVerdict> change)
+    private void ChangeAllowedPrograms(Func<IList<FocusProgramEntry>, FocusAllowVerdict> change)
     {
-        var list = SettingsService.Read(s => s.FocusAllowedPrograms.ToList());
+        var list = SettingsService.Read(s => s.FocusPrograms.ToList());
         var verdict = change(list);
 
-        if (verdict is FocusAllowVerdict.Added or FocusAllowVerdict.Removed)
-            SettingsService.Update(s => s.FocusAllowedPrograms = list);
+        if (verdict is FocusAllowVerdict.Added or FocusAllowVerdict.Removed or FocusAllowVerdict.Changed)
+            SettingsService.Update(s => s.FocusPrograms = list);
 
         FocusAllowRefusalText.Text = Refusal(verdict);
         FocusAllowRefusalText.Visibility = FocusAllowRefusalText.Text.Length > 0
