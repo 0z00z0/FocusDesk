@@ -3,12 +3,13 @@
     x:Class="FocusDesk.UI.ProgramPickerWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:services="using:FocusDesk.Services">
+    xmlns:ui="using:FocusDesk.UI">
 
     <Window.SystemBackdrop>
         <MicaBackdrop Kind="BaseAlt" />
     </Window.SystemBackdrop>
 
+    <!-- Every text on this window is set from the resource files in the constructor. -->
     <Grid KeyboardAcceleratorPlacementMode="Hidden" Padding="20" RowSpacing="12">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="Escape" Invoked="OnEscapeInvoked"/>
@@ -22,53 +23,54 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Allow a program"
+        <TextBlock Grid.Row="0" x:Name="HeadingText"
                    FontSize="15" FontWeight="SemiBold"
                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
 
         <TextBox Grid.Row="1" x:Name="QueryBox"
-                 PlaceholderText="Type to narrow the list"
-                 AutomationProperties.Name="Search programs"
                  TextChanged="OnQueryChanged"
                  KeyDown="OnQueryKeyDown"/>
 
-        <!-- The list is built afresh every time this window opens, so a program started since the
+        <!-- The list is built afresh every time this window opens, so a program installed since the
              last open is on it. -->
         <Grid Grid.Row="2">
             <StackPanel x:Name="LoadingPanel" Orientation="Horizontal" Spacing="10"
                         HorizontalAlignment="Center" VerticalAlignment="Center">
                 <ProgressRing IsActive="True" Width="18" Height="18"/>
-                <TextBlock Text="Reading the list of programs…" FontSize="12"
+                <TextBlock x:Name="LoadingText" FontSize="12"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
             </StackPanel>
 
             <TextBlock x:Name="EmptyText" Visibility="Collapsed"
-                       Text="Nothing matches. Choose a file instead."
                        FontSize="12" TextWrapping="Wrap"
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 
+            <!-- Icons load on a background thread as each row comes into view. -->
             <ListView x:Name="ProgramList" Visibility="Collapsed"
                       SelectionMode="Single"
-                      AutomationProperties.Name="Programs"
                       DoubleTapped="OnListDoubleTapped"
-                      SelectionChanged="OnListSelectionChanged">
+                      SelectionChanged="OnListSelectionChanged"
+                      ContainerContentChanging="OnRowComingIntoView">
                 <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="services:ProgramChoice">
-                        <Grid Margin="0,2" ColumnSpacing="8">
+                    <DataTemplate x:DataType="ui:ProgramPickerRow">
+                        <Grid Margin="0,2" ColumnSpacing="10">
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="{x:Bind Name}" FontSize="13"
+                            <Image Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center"
+                                   Source="{x:Bind Icon, Mode=OneWay}"/>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="{x:Bind Choice.Name}" FontSize="13"
                                            TextTrimming="CharacterEllipsis"
                                            Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
-                                <TextBlock Text="{x:Bind Path}" FontSize="11"
+                                <TextBlock Text="{x:Bind Choice.Detail}" FontSize="11"
                                            TextTrimming="CharacterEllipsis"
                                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
                             </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{x:Bind OpenMark}" FontSize="11"
+                            <TextBlock Grid.Column="2" Text="{x:Bind Choice.OpenMark}" FontSize="11"
                                        VerticalAlignment="Center"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                         </Grid>
@@ -79,25 +81,17 @@
 
         <TextBlock Grid.Row="3" x:Name="NoteText"
                    FontSize="11" TextWrapping="Wrap"
-                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                   Text="Store apps are left out: a firewall rule cannot name one by its file."/>
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 
         <Grid Grid.Row="4" ColumnSpacing="8">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" x:Name="BrowseButton"
-                    Content="Choose a file…"
-                    ToolTipService.ToolTip="For a program the list does not hold"
-                    Click="OnBrowseButton"/>
-            <Button Grid.Column="2" x:Name="CancelButton"
-                    Content="Cancel"
+            <Button Grid.Column="1" x:Name="CancelButton"
                     Click="OnCancelButton"/>
-            <Button Grid.Column="3" x:Name="AddButton"
-                    Content="Allow"
+            <Button Grid.Column="2" x:Name="AddButton"
                     IsEnabled="False"
                     Style="{StaticResource AccentButtonStyle}"
                     Click="OnAddButton"/>

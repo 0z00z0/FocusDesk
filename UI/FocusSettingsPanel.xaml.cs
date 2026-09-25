@@ -1,4 +1,5 @@
 using CommunityToolkit.WinUI.Controls;
+using FocusDesk.Helpers;
 using FocusDesk.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -21,6 +22,9 @@ public sealed partial class FocusSettingsPanel : UserControl
     public FocusSettingsPanel()
     {
         InitializeComponent();
+        FocusProgramsCard.Header      = AppText.Get("FocusProgramsHeader");
+        FocusProgramsCard.Description = AppText.Get("FocusProgramsDescription");
+        FocusAllowProgramButton.Content = AppText.Get("FocusProgramsAddButton");
         Loaded += (_, _) => Reload();
     }
 
@@ -81,46 +85,88 @@ public sealed partial class FocusSettingsPanel : UserControl
         finally { _updating = false; }
     }
 
-    /// <summary>One row per allowed program: its own name, its path beneath, and a way to take it
-    /// off. Locked for the length of a session, like the lever switches.</summary>
+    /// <summary>One row per program: its icon and name, what it is beneath, "can run", "can use the
+    /// network" and a way to take it off. A checkbox that does nothing for that kind of program is
+    /// shown disabled, with the reason on hover. Locked for the length of a session, like the lever
+    /// switches.</summary>
     private void ShowAllowedPrograms(bool locked)
     {
         FocusAllowedProgramsPanel.Children.Clear();
+        string windows = WindowsPrograms.Folder;
 
         foreach (var entry in SettingsService.Read(s => s.FocusPrograms.ToList()))
         {
-            var remove = new Button { Content = "Remove", IsEnabled = !locked };
             var program = entry;
+            var offer = ProgramCatalogue.OfferFor(entry, windows);
+
+            var canRun = new CheckBox
+            {
+                Content   = AppText.Get("FocusProgramCanRun"),
+                IsChecked = offer == ProgramOffer.NetworkOnly || entry.CanRun,
+                IsEnabled = !locked && offer != ProgramOffer.NetworkOnly,
+            };
+            var canUseNetwork = new CheckBox
+            {
+                Content   = AppText.Get("FocusProgramCanUseNetwork"),
+                IsChecked = offer != ProgramOffer.RunOnly && entry.CanUseNetwork,
+                IsEnabled = !locked && offer != ProgramOffer.RunOnly,
+            };
+            // Wired after the initial state is set, so drawing the row changes nothing.
+            canRun.Click += (_, _) => ChangeAllowedPrograms(list => FocusAllowedPrograms.SetCanRun(
+                list, program.Kind, program.Id, canRun.IsChecked == true, FocusSessionService.LeversAreLocked));
+            canUseNetwork.Click += (_, _) => ChangeAllowedPrograms(list => FocusAllowedPrograms.SetCanUseNetwork(
+                list, program.Kind, program.Id, canUseNetwork.IsChecked == true, FocusSessionService.LeversAreLocked));
+
+            var remove = new Button { Content = AppText.Get("FocusProgramRemove"), IsEnabled = !locked };
             remove.Click += (_, _) => ChangeAllowedPrograms(
                 list => FocusAllowedPrograms.Remove(list, program.Kind, program.Id,
                                                     FocusSessionService.LeversAreLocked));
 
+            string? runWhy = offer == ProgramOffer.NetworkOnly ? AppText.Get("FocusProgramWindowsRunInfo") : null;
+            string? networkWhy = offer != ProgramOffer.RunOnly ? null
+                : AppText.Get(entry.Kind == FocusProgramKind.WebApp
+                                  ? "FocusProgramWebAppNetworkInfo"
+                                  : "FocusProgramStoreNetworkInfo");
+
+            var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+            controls.Children.Add(WithReason(canRun, runWhy));
+            controls.Children.Add(WithReason(canUseNetwork, networkWhy));
+            controls.Children.Add(remove);
+
+            var icon = new ImageIcon { Width = 24, Height = 24 };
+            ProgramIconLoader.Request(entry.StartEntry ?? entry.Id, image => icon.Source = image);
+
             FocusAllowedProgramsPanel.Children.Add(new SettingsCard
             {
-                Header      = FocusAllowedPrograms.DisplayName(entry),
-                Description = FocusAllowedPrograms.Describe(entry),
-                Content     = remove,
+                HeaderIcon  = icon,
+                Header      = ProgramNames.For(entry),
+                Description = ProgramCatalogue.IsPresent(entry)
+                    ? FocusAllowedPrograms.Describe(entry)
+                    : AppText.Get("FocusProgramNotFound"),
+                Content     = controls,
             });
         }
     }
 
-    /// <summary>A program chosen in the picker, as a row starts: both checkboxes ticked.</summary>
-    private static FocusProgramEntry Chosen(string path) => new()
+    /// <summary>A disabled control shows no hover text of its own, so the reason sits on a
+    /// transparent frame around it.</summary>
+    private static FrameworkElement WithReason(Control control, string? reason)
     {
-        Kind          = FocusProgramKind.ProgramFile,
-        Id            = path,
-        CanRun        = true,
-        CanUseNetwork = true,
-    };
+        if (reason is null) return control;
+        var frame = new Grid { Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent) };
+        frame.Children.Add(control);
+        ToolTipService.SetToolTip(frame, reason);
+        return frame;
+    }
 
-    /// <summary>Opens the picker and puts what comes back on the list. The picker offers what is open
-    /// now and what the Start menu holds, and keeps a file dialog for a program in neither.</summary>
+    /// <summary>Opens the picker and puts what comes back on the list, both checkboxes ticked. The
+    /// picker offers the Start menu's own programs, Store apps and web apps included.</summary>
     private void OnFocusAllowProgram(object sender, RoutedEventArgs e)
     {
         try
         {
             new ProgramPickerWindow(chosen => DispatcherQueue.TryEnqueue(() => ChangeAllowedPrograms(
-                list => FocusAllowedPrograms.Add(list, Chosen(chosen), FocusSessionService.LeversAreLocked))))
+                list => FocusAllowedPrograms.Add(list, chosen.ToEntry(), FocusSessionService.LeversAreLocked))))
                 .Activate();
         }
         catch (Exception ex) { AppLog.Error("FocusSettingsPanel.OnFocusAllowProgram", ex); }
@@ -147,11 +193,12 @@ public sealed partial class FocusSettingsPanel : UserControl
     /// change that landed.</summary>
     private static string Refusal(FocusAllowVerdict verdict) => verdict switch
     {
-        FocusAllowVerdict.SessionRunning => "The list cannot change while a session is running.",
-        FocusAllowVerdict.NotAProgram    => "That file is not a program a firewall rule can name.",
-        FocusAllowVerdict.ListFull       => $"The list already holds {FocusAllowedPrograms.Maximum} programs, which is as many as it takes.",
-        FocusAllowVerdict.AlreadyAllowed => "That program is already on the list.",
-        FocusAllowVerdict.NotAllowed     => "That program was not on the list.",
+        FocusAllowVerdict.SessionRunning => AppText.Get("FocusProgramsRefusalSessionRunning"),
+        FocusAllowVerdict.NotAProgram    => AppText.Get("FocusProgramsRefusalNotAProgram"),
+        FocusAllowVerdict.ListFull       => AppText.Format("FocusProgramsRefusalListFull", FocusAllowedPrograms.Maximum),
+        FocusAllowVerdict.AlreadyAllowed => AppText.Get("FocusProgramsRefusalAlreadyAllowed"),
+        FocusAllowVerdict.NotAllowed     => AppText.Get("FocusProgramsRefusalNotAllowed"),
+        FocusAllowVerdict.NotOffered     => AppText.Get("FocusProgramsRefusalNotOffered"),
         _                                => "",
     };
 
