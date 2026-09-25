@@ -75,7 +75,7 @@ internal sealed class FocusScreenLever(
 
     /// <summary>Dims again. Brightness is volatile, and the startup restore has just put back the
     /// level a previous run displaced — which is the level this session is owed to put back.</summary>
-    public void Resume(ActionCause cause) => set(ScreenBrightnessPark.Minimum, cause);
+    public bool Resume(ActionCause cause) => set(ScreenBrightnessPark.Minimum, cause);
 
     public bool Lift(ActionCause cause) => restore(cause);
 }

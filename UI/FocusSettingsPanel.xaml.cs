@@ -54,18 +54,20 @@ public sealed partial class FocusSettingsPanel : UserControl
         {
             FocusStatusValue.Text = FocusSessionStages.Detail(session, DateTimeOffset.Now);
 
-            var (minutes, dims, covers, startFromStatus) = SettingsService.Read(
+            var (minutes, dims, covers, input, startFromStatus) = SettingsService.Read(
                 s => (s.FocusSessionMinutes, s.FocusDimsScreen, s.FocusCoversScreen,
-                      s.FocusStartFromDashboard));
+                      s.FocusBlocksInput, s.FocusStartFromDashboard));
 
             FocusLengthChoices.Fill(FocusMinutesCombo, minutes);
 
-            // A running session reports the levers it actually owns; with none running the two show
-            // the defaults the next session would start from.
+            // A running session reports the levers it actually holds — a refused input block reads
+            // off — and with none running these show the defaults the next session starts from.
             FocusDimsScreenToggle.IsOn   = session.IsRunning ? session.DimsScreen   : dims;
             FocusCoversScreenToggle.IsOn = session.IsRunning ? session.CoversScreen : covers;
+            FocusBlocksInputToggle.IsOn  = session.IsRunning ? session.BlocksInput  : input;
             FocusDimsScreenToggle.IsEnabled   = !locked;
             FocusCoversScreenToggle.IsEnabled = !locked;
+            FocusBlocksInputToggle.IsEnabled  = !locked;
 
             FocusStartFromStatusToggle.IsOn = startFromStatus;
         }
@@ -90,6 +92,12 @@ public sealed partial class FocusSettingsPanel : UserControl
     {
         if (_updating) return;
         SettingsService.Update(s => s.FocusCoversScreen = FocusCoversScreenToggle.IsOn);
+    }
+
+    private void OnFocusBlocksInputToggled(object sender, RoutedEventArgs e)
+    {
+        if (_updating) return;
+        SettingsService.Update(s => s.FocusBlocksInput = FocusBlocksInputToggle.IsOn);
     }
 
     private void OnFocusStartFromStatusToggled(object sender, RoutedEventArgs e)

@@ -57,6 +57,8 @@ internal sealed class FakeSettingsActions : ISettingsActions
     public void SetFocusDimsScreen(bool on) => Calls.Add($"FocusDimsScreen={on}");
 
     public void SetFocusCoversScreen(bool on) => Calls.Add($"FocusCoversScreen={on}");
+
+    public void SetFocusBlocksInput(bool on) => Calls.Add($"FocusBlocksInput={on}");
 }
 
 /// <summary>Composes the entity table over fakes, and the snapshot it reads. Every default is a
@@ -66,9 +68,10 @@ internal static class MqttTestBed
     public static SurfaceState Surface(
         int? screenBrightness = 70,
         FocusSessionStage focusStage = FocusSessionStage.Off, int? focusRemaining = null,
-        int focusSessionMinutes = 60, bool focusDimsScreen = true, bool focusCoversScreen = true) =>
+        int focusSessionMinutes = 60, bool focusDimsScreen = true, bool focusCoversScreen = true,
+        bool focusBlocksInput = false) =>
         new(screenBrightness, focusStage, focusRemaining, focusSessionMinutes,
-            focusDimsScreen, focusCoversScreen);
+            focusDimsScreen, focusCoversScreen, focusBlocksInput);
 
     /// <summary>The sources, with every reader answering the same snapshot every time.</summary>
     public static MqttEntitySources Sources(

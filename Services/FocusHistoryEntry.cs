@@ -21,6 +21,7 @@ internal enum FocusSessionOutcome
 /// <param name="DueAt">The end time the session was armed for, which a session ended early never
 /// reached.</param>
 /// <param name="EndedAt">When the session actually left the engine.</param>
+/// <param name="BlockedInput">Whether the session still held the mouse and keyboard when it ended.</param>
 internal readonly record struct FocusHistoryEntry(
     DateTimeOffset StartedAt, DateTimeOffset DueAt, DateTimeOffset EndedAt,
-    bool DimmedScreen, bool CoveredScreen, FocusSessionOutcome Outcome);
+    bool DimmedScreen, bool CoveredScreen, FocusSessionOutcome Outcome, bool BlockedInput = false);

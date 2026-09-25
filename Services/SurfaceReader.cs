@@ -13,7 +13,8 @@ internal readonly record struct SurfaceState(
     int? FocusRemainingMinutes,
     int FocusSessionMinutes,
     bool FocusDimsScreen,
-    bool FocusCoversScreen);
+    bool FocusCoversScreen,
+    bool FocusBlocksInput);
 
 /// <summary>What this machine can actually do. Announcing a control the machine cannot honour would
 /// leave the receiver with an entity that silently does nothing.</summary>
@@ -57,9 +58,10 @@ internal static class SurfaceReader
             FocusStage:            focus.Stage,
             FocusRemainingMinutes: focus.MinutesLeft(now),
             FocusSessionMinutes:   s.FocusSessionMinutes,
-            // A running session reports the levers it actually owns; with none running the two read
-            // the defaults the next session would start from.
+            // A running session reports the levers it actually holds — a refused input block reads
+            // off — and with none running these read the defaults the next session starts from.
             FocusDimsScreen:       focus.IsRunning ? focus.DimsScreen : s.FocusDimsScreen,
-            FocusCoversScreen:     focus.IsRunning ? focus.CoversScreen : s.FocusCoversScreen);
+            FocusCoversScreen:     focus.IsRunning ? focus.CoversScreen : s.FocusCoversScreen,
+            FocusBlocksInput:      focus.IsRunning ? focus.BlocksInput : s.FocusBlocksInput);
     }
 }

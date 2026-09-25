@@ -223,4 +223,20 @@ internal static class NativeMethods
         try { return new ClosingRefusal(window); }
         catch (Exception ex) { AppLog.Error("NativeMethods.RefuseClose", ex); return null; }
     }
+
+    // ── Blocking mouse and keyboard ──────────────────────────────────────────────────────────────
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool BlockInput([MarshalAs(UnmanagedType.Bool)] bool block);
+
+    /// <summary>Turns physical mouse and keyboard input off or back on for the whole machine.
+    /// Refused without administrator rights — measured as access denied on every call, with nothing
+    /// left held. Only the thread that blocked input can release it, so both calls belong on one
+    /// thread.</summary>
+    internal static bool SetInputBlocked(bool blocked)
+    {
+        try { return BlockInput(blocked); }
+        catch (Exception ex) { AppLog.Error("NativeMethods.SetInputBlocked", ex); return false; }
+    }
 }

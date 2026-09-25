@@ -27,6 +27,9 @@ internal interface ISettingsActions
 
     /// <summary>Whether the next session covers every display. Refused while one runs.</summary>
     void SetFocusCoversScreen(bool on);
+
+    /// <summary>Whether the next session blocks the mouse and keyboard. Refused while one runs.</summary>
+    void SetFocusBlocksInput(bool on);
 }
 
 /// <summary>The live settings writes behind every inbound command.</summary>
@@ -66,6 +69,9 @@ internal sealed class MqttCommandActions : ISettingsActions
 
     public void SetFocusCoversScreen(bool on) => WriteUnlessSessionRunning(
         s => s.FocusCoversScreen = on, "which lever covers the screen");
+
+    public void SetFocusBlocksInput(bool on) => WriteUnlessSessionRunning(
+        s => s.FocusBlocksInput = on, "which lever blocks the mouse and keyboard");
 
     /// <summary>A lever choice, refused while a session runs. Turning one off part-way through would
     /// either restore the screen while the session still claims to be running, or leave that lever's

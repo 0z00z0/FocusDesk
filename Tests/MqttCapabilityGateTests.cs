@@ -20,7 +20,7 @@ public class MqttCapabilityGateTests
 
     [Fact]
     public void OnAMachineWithASettableDisplay_EveryEntityIsAnnounced() =>
-        Assert.Equal(8, WithCapabilities(PublishCapabilities.Full).Published(null).Count);
+        Assert.Equal(9, WithCapabilities(PublishCapabilities.Full).Published(null).Count);
 
     [Fact]
     public void WithNoDisplayThatAcceptsABrightness_BothScreenEntitiesAndTheFocusScreenLeverGo()
