@@ -147,7 +147,9 @@ internal static class AppUpdates
 
     /// <summary>The component's wording for an outcome that is not an available release. Each one is
     /// named: a result added later must not inherit a sibling's wording.</summary>
-    private static async Task SayAsync(UpdateFlowRun run)
+    /// <remarks>On the thread that owns the windows: the component draws one and has no
+    /// fallback.</remarks>
+    public static async Task SayAsync(UpdateFlowRun run)
     {
         var prompts = Prompts();
         switch (run.Result)
