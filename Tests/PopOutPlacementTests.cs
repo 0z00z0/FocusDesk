@@ -1,4 +1,5 @@
 using FocusDesk.Helpers;
+using Windows.Graphics;
 using Xunit;
 using ZeroZero.Win32;
 
@@ -44,6 +45,19 @@ public class PopOutPlacementTests
         Assert.Equal(540, rect.Width);
         Assert.Equal(600, rect.Height);
         Assert.Equal(Work.Right - 540 - 18, rect.X);
+    }
+
+    /// <summary>A frame left on the window takes its pixels out of the client area. Unless the window
+    /// grows by it, the content is laid out narrower than it was measured, wraps onto more lines, and
+    /// loses its last row off the bottom.</summary>
+    [Fact]
+    public void AFrameLeftOnTheWindowIsAddedSoTheContentKeepsItsSize()
+    {
+        var rect = PopOutPlacement.BottomRight(Work, 1.0, 400, new SizeInt32(6, 6));
+
+        Assert.Equal(366, rect.Width);
+        Assert.Equal(406, rect.Height);
+        Assert.Equal(Work.Bottom - 406 - PopOutPlacement.EdgeMarginInUnits, rect.Y);
     }
 
     [Theory]

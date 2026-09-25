@@ -8,24 +8,40 @@
         <MicaBackdrop Kind="BaseAlt" />
     </Window.SystemBackdrop>
 
-    <Grid x:Name="RootGrid" KeyboardAcceleratorPlacementMode="Hidden">
+    <!-- No scroller and no fixed height: the window is measured from this grid, so every line shows
+         and a row that appears or disappears resizes the window rather than scrolling it. -->
+    <Grid x:Name="RootGrid" Padding="16,12,16,16" KeyboardAcceleratorPlacementMode="Hidden">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="Escape" Invoked="OnEscapeInvoked"/>
         </Grid.KeyboardAccelerators>
 
-        <!-- A scroller beneath the content, so a work area too short for the whole pop-out still
-             shows all of it. The window is sized to its content, so this is the floor rather than
-             the plan. -->
-        <ScrollViewer Padding="14,12,14,14" VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
+        <Grid.Resources>
+            <!-- A section of the pop-out: a rounded card a shade lighter than the backdrop. -->
+            <Style x:Key="CardStyle" TargetType="Border">
+                <Setter Property="CornerRadius" Value="6"/>
+                <Setter Property="Padding" Value="10,6"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
+            </Style>
 
-        <!-- MaxWidth pins the wrapping paragraphs to a stable width. Without it they wrap against
-             the transient viewport during the layout pass the sizing reads, which reports a height
-             of dozens of near-empty lines. -->
-        <StackPanel x:Name="ContentPanel" Spacing="12" MaxWidth="332">
+            <!-- A card's name, at the top-left of the card. -->
+            <Style x:Key="CardHeadingStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource BrandFontFamily}"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="CharacterSpacing" Value="40"/>
+                <Setter Property="Foreground" Value="{ThemeResource BrandAmberBrush}"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            </Style>
+        </Grid.Resources>
+
+        <!-- Top-aligned, so its height is the content's own and a change in it raises SizeChanged. -->
+        <StackPanel x:Name="ContentPanel" Spacing="8" VerticalAlignment="Top">
 
             <!-- The header: the mark, the product, and the way to the Settings window. -->
-            <Grid ColumnSpacing="8">
+            <Grid ColumnSpacing="8" Margin="0,0,0,4">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
@@ -47,64 +63,59 @@
                 </Button>
             </Grid>
 
-            <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
-
-            <!-- The hero: the ring on the left, the session's own lines beside it. No control here
-                 ends a session — that is the feature's central property, not an omission. -->
-            <Grid ColumnSpacing="12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <Grid Grid.Column="0" Width="84" Height="84">
-                    <Path x:Name="RingTrack" StrokeThickness="7" StrokeStartLineCap="Round"
-                          StrokeEndLineCap="Round" Opacity="0.22"
-                          Stroke="{ThemeResource TextFillColorSecondaryBrush}"/>
-                    <Path x:Name="RingFill" StrokeThickness="7" StrokeStartLineCap="Round"
-                          StrokeEndLineCap="Round"/>
-                    <TextBlock x:Name="MinutesText" HorizontalAlignment="Center"
-                               VerticalAlignment="Center" FontSize="24"
-                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
-                </Grid>
-
-                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                    <TextBlock Text="FOCUS SESSION"
-                               FontSize="10" FontWeight="SemiBold" CharacterSpacing="100"
-                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
-                    <TextBlock x:Name="StatusText"
-                               FontSize="13" TextWrapping="Wrap"
-                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
-                    <TextBlock x:Name="WayOutText"
-                               Text="Nothing on this computer ends a session. Home Assistant ends one early, after a five-minute wait and a second request."
-                               FontSize="11" TextWrapping="Wrap"
-                               Visibility="Collapsed"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                </StackPanel>
-            </Grid>
-
-            <!-- The session card: a Start control and nothing that stops one. Shown only where the
-                 Focus settings page has turned the start box on. -->
-            <Border x:Name="StartBox" CornerRadius="6" Padding="10,5"
-                    BorderThickness="1"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-                <StackPanel Spacing="8">
-                    <TextBlock Text="START A SESSION"
-                               FontSize="10" FontWeight="SemiBold" CharacterSpacing="100"
-                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+            <!-- The session: the ring and the session's own lines, with the start controls on the
+                 heading row. No control here ends a session — that is the feature's central
+                 property, not an omission. -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="6">
                     <Grid ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <ComboBox Grid.Column="0" x:Name="MinutesCombo"
-                                  HorizontalAlignment="Stretch"
-                                  AutomationProperties.Name="Session length"/>
-                        <Button Grid.Column="1" x:Name="StartButton"
-                                Content="Start" MinWidth="80"
-                                Style="{StaticResource AccentButtonStyle}"
-                                Click="OnStart"/>
+                        <TextBlock Grid.Column="0" Text="Focus session"
+                                   Style="{StaticResource CardHeadingStyle}"/>
+                        <!-- Shown only where the Focus settings page has turned the start box on. -->
+                        <StackPanel Grid.Column="1" x:Name="StartBox"
+                                    Orientation="Horizontal" Spacing="8">
+                            <ComboBox x:Name="MinutesCombo" VerticalAlignment="Center"
+                                      AutomationProperties.Name="Session length"/>
+                            <Button x:Name="StartButton" VerticalAlignment="Center"
+                                    Content="Start" MinWidth="64"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Click="OnStart"/>
+                        </StackPanel>
                     </Grid>
+
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Grid Grid.Column="0" Width="84" Height="84">
+                            <Path x:Name="RingTrack" StrokeThickness="7" StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round" Opacity="0.22"
+                                  Stroke="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <Path x:Name="RingFill" StrokeThickness="7" StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"/>
+                            <TextBlock x:Name="MinutesText" HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" FontSize="24"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                        </Grid>
+
+                        <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                            <TextBlock x:Name="StatusText"
+                                       FontSize="13" TextWrapping="Wrap"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock x:Name="WayOutText"
+                                       Text="Nothing on this computer ends a session. Home Assistant ends one early, after a five-minute wait and a second request."
+                                       FontSize="11" TextWrapping="Wrap"
+                                       Visibility="Collapsed"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                    </Grid>
+
                     <TextBlock x:Name="RefusalText"
                                FontSize="11" TextWrapping="Wrap"
                                Visibility="Collapsed"
@@ -112,15 +123,10 @@
                 </StackPanel>
             </Border>
 
-            <!-- The screen card: what a session holds, as a reading. Tinted while a lever is in
-                 force, hairline-bordered while it is not. -->
-            <Border x:Name="LeverCard" CornerRadius="6" Padding="10,5"
-                    BorderThickness="1"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-                <StackPanel Spacing="2">
-                    <TextBlock Text="SCREEN"
-                               FontSize="10" FontWeight="SemiBold" CharacterSpacing="100"
-                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+            <!-- What a session holds, as a reading. Tinted while a lever is in force. -->
+            <Border x:Name="LeverCard" Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Screen" Style="{StaticResource CardHeadingStyle}"/>
                     <TextBlock x:Name="LeverText" FontSize="12" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                 </StackPanel>
@@ -128,13 +134,12 @@
 
             <!-- The finished sessions, newest first. A reading, not a setting, which is why it lives
                  here rather than on the Focus settings page. -->
-            <StackPanel Spacing="6">
-                <TextBlock Text="RECENT SESSIONS"
-                           FontSize="10" FontWeight="SemiBold" CharacterSpacing="100"
-                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
-                <StackPanel x:Name="HistoryRows" Spacing="3"/>
-            </StackPanel>
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Recent sessions" Style="{StaticResource CardHeadingStyle}"/>
+                    <StackPanel x:Name="HistoryRows" Spacing="3"/>
+                </StackPanel>
+            </Border>
         </StackPanel>
-        </ScrollViewer>
     </Grid>
 </Window>
