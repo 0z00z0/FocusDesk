@@ -17,6 +17,7 @@ internal static class SettingsShellHost
 {
     public const string FocusTag  = "focus";
     public const string ScreenTag = "screen";
+    public const string MqttTag   = "mqtt";
 
     private static SettingsWindow? _window;
 
@@ -32,6 +33,7 @@ internal static class SettingsShellHost
 
         FocusSettingsPanel? focus = null;
         ScreenSettingsPanel? screen = null;
+        MqttSettingsPage? mqtt = null;
 
         var rectStore = new SettingsWindowRectStore();
         // Only a first open is sized to its content: fitting a remembered rectangle would grow the
@@ -63,6 +65,18 @@ internal static class SettingsShellHost
                     // A slider position the debounce is still holding would otherwise be lost.
                     Leave = () => screen?.Flush(),
                 },
+                new SettingsSection
+                {
+                    Tag = MqttTag, Label = "MQTT",
+                    Icon = NavIcon("mqtt"),
+                    // Built once, as the shared panel requires: it is initialised in the page's
+                    // constructor and never again.
+                    Build = () => mqtt = new MqttSettingsPage(),
+                    // The link comes and goes on its own. Refresh rather than Reload: nothing outside
+                    // the panel writes its settings file.
+                    Enter = () => mqtt?.Refresh(),
+                    // No Leave hook. Cancel is final and belongs to the window closing, below.
+                },
             ],
             InitialTag     = tag,
             // FocusDesk follows the system light/dark setting rather than pinning one. The shell
@@ -77,7 +91,13 @@ internal static class SettingsShellHost
         });
 
         _window = window;
-        window.Closed += (_, _) => _window = null;
+        window.Closed += (_, _) =>
+        {
+            _window = null;
+            // A probe started from the MQTT page outlives the window, and the panel must not be
+            // touched again once this has run.
+            mqtt?.Cancel();
+        };
         // Straight after the constructor, as the shell requires: it waits for load if it must.
         if (fitToContent) window.FitToPages();
         window.Activate();

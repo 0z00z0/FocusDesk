@@ -42,5 +42,11 @@ internal static class AppPalette
         var onAccent = new SolidColorBrush(AppColors.FromPacked(0xFF000000));
         resources["TextOnAccentFillColorPrimaryBrush"] = onAccent;
         resources["TextOnAccentFillColorSecondaryBrush"] = onAccent;
+
+        // The shared MQTT panel's accent, which falls back to SystemAccentColorLight2 rather than to
+        // any key above, so without this one line that page alone carries the operating system's
+        // colour. Its other five keys are left alone: they follow the stock light and dark theme, and
+        // FocusDesk follows the system setting rather than pinning one.
+        resources["MqttPanelAccentBrush"] = new SolidColorBrush(amber);
     }
 }
