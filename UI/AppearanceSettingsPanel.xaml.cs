@@ -50,6 +50,23 @@ public sealed partial class AppearanceSettingsPanel : UserControl
         });
     }
 
+    /// <summary>Puts the promotion back where the row is on and the shell's value has gone. At
+    /// startup, after the icon is registered: the shell's entry for it exists only once it has been
+    /// seen.</summary>
+    internal static void ReapplyAtStartup(ITrayPromotionStore store)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+
+        var settings = SettingsService.Current;
+        if (!settings.PromoteTrayIcon) return;
+
+        var held = RecordIn(settings);
+        var record = TrayIconPromotion.Reapply(store, TrayIconIdentity.Value, wanted: true, held,
+                                               out bool applied);
+        if (applied) AppLog.Info("TrayIconPromotion: the shell's value had gone; promotion re-applied.");
+        if (record != held) SettingsService.Update(s => Store(s, record));
+    }
+
     /// <summary>The restore record one settings object carries, or null where it carries none. Both
     /// halves are needed: a record naming no icon describes nothing to put back.</summary>
     internal static TrayPromotionRecord? RecordIn(AppSettings s)

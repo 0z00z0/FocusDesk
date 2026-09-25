@@ -25,6 +25,26 @@ public class UnattendedUpdateTests
         Assert.Contains($"{{param:{parameter}", Installer, StringComparison.Ordinal);
     }
 
+    /// <summary>Setup writes the refusal and the next start reads it. A different name on either side
+    /// leaves a refused update reported without its reason.</summary>
+    [Fact]
+    public void TheInstallerWritesTheRefusalFileTheApplicationReads()
+    {
+        Assert.Contains($@"\{UnattendedUpdate.RefusalFileName}'", Installer, StringComparison.Ordinal);
+    }
+
+    /// <summary>The direction is the whole report, and only a real failed update exercises it:
+    /// inverted, every update that landed would announce a failure and every failure would pass
+    /// unmentioned.</summary>
+    [Fact]
+    public void AnOlderRunningVersionReportsAnUpdateThatDidNotComplete()
+    {
+        Assert.Equal(UpdateVerdict.DidNotComplete,    UnattendedUpdate.VerdictFor("1.43.0", "1.42.1"));
+        Assert.Equal(UpdateVerdict.Installed,         UnattendedUpdate.VerdictFor("1.43.0", "1.43.0"));
+        Assert.Equal(UpdateVerdict.Installed,         UnattendedUpdate.VerdictFor("1.43.0", "1.44.0"));
+        Assert.Equal(UpdateVerdict.NothingHandedOver, UnattendedUpdate.VerdictFor(null, "1.42.1"));
+    }
+
     /// <summary>The asset match is exact and case-sensitive, and the first executable in a release is
     /// never taken instead.</summary>
     [Fact]

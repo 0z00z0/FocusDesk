@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml;
 using ZeroZero.Update;
 using ZeroZero.Update.Win32;
 using ZeroZero.Update.WinUI;
+using ZeroZero.Win32;
 
 namespace FocusDesk.Services;
 
@@ -44,6 +45,10 @@ internal static class AppUpdates
     private static UpdateService? _service;
     private static Action? _shutdown;
 
+    // Told the release before each install, so Setup's start leaves the record the next version reads.
+    private static readonly UpdateHandoverLauncher _launcher =
+        new(new ShellInstallerLauncher(), UnattendedUpdate.Record);
+
     /// <summary>The one check every surface joins. Null before <see cref="Start"/>.</summary>
     public static UpdateCheckCoordinator? Checks { get; private set; }
 
@@ -67,12 +72,63 @@ internal static class AppUpdates
         {
             _shutdown = shutdown;
             _service  = new UpdateService(Options(), source: null,
-                                          launcher: new ShellInstallerLauncher());
+                                          launcher: _launcher);
             Checks    = new UpdateCheckCoordinator(CheckAsync);
 
             _service.SweepStaleDownloads(StaleDownloadAge);
         }
         catch (Exception ex) { AppLog.Error("AppUpdates.Start", ex); }
+    }
+
+    /// <summary>
+    /// States the outcome of an update the previous version started for itself. That version could
+    /// not: Setup installs unattended over the files it held, so it was gone before an outcome
+    /// existed. The running version against the one the update was for is the evidence.
+    /// </summary>
+    /// <remarks>A landed update is logged; a failed one is also put on screen, because the
+    /// installer's own message is suppressed in an unattended run and nothing else states it.</remarks>
+    public static void ReportLastUpdate()
+    {
+        try
+        {
+            var handover = UnattendedUpdate.Read();
+            if (handover is null) return;
+
+            string running = AppInfo.Version;
+            switch (UnattendedUpdate.VerdictFor(handover.TargetVersion, running))
+            {
+                case UpdateVerdict.DidNotComplete:
+                    string? refusal = UnattendedUpdate.ReadRefusal();
+                    AppLog.Info($"Update: v{handover.TargetVersion} did not install; still v{running}."
+                              + (refusal is { Length: > 0 } ? $" Setup: {refusal}" : ""));
+                    string text = UnattendedUpdate.DidNotCompleteMessage(
+                        handover.TargetVersion, running, refusal, UnattendedUpdate.InstallerLogPath);
+                    // Off the start-up path: the box blocks its own thread until it is dismissed.
+                    _ = Task.Run(() =>
+                    {
+                        try { NativeMessageBox.Warning(IntPtr.Zero, AppInfo.Name, text); }
+                        catch (Exception ex) { AppLog.Error("AppUpdates.ReportLastUpdate.Show", ex); }
+                    });
+                    break;
+
+                case UpdateVerdict.Installed:
+                    AppLog.Info($"Update: v{handover.TargetVersion} installed and started.");
+                    break;
+
+                default:
+                    AppLog.Info($"Update: a handover naming '{handover.TargetVersion}' says nothing "
+                              + "about this version; discarded.");
+                    break;
+            }
+
+            // Once reported, never again: the record is one attempt, not a standing state.
+            UnattendedUpdate.Clear();
+        }
+        catch (Exception ex)
+        {
+            // A report is not worth a failed start-up.
+            AppLog.Error("AppUpdates.ReportLastUpdate", ex);
+        }
     }
 
     /// <summary>The component's own window and wording for every outcome a caller chooses to report.
@@ -125,6 +181,7 @@ internal static class AppUpdates
         ArgumentNullException.ThrowIfNull(release);
         if (_service is not { } service || _shutdown is not { } shutdown) return;
 
+        _launcher.TargetVersion = release.VersionText;
         try { await new UpdateFlow(service, Prompts(), FlowOptions(shutdown)).InstallAsync(release); }
         catch (Exception ex) { AppLog.Error("AppUpdates.InstallAsync", ex); }
     }
