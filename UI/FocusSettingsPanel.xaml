@@ -42,12 +42,11 @@
             </StackPanel>
         </controls:SettingsCard>
 
-        <!-- The allow-list on the network lever, one row per program beneath the button. Empty is the
-             whole of what an installation that has chosen no program carries. -->
-        <controls:SettingsCard Header="Programs that keep the network"
-                               Description="These reach the network while a session blocks it. Store apps cannot be listed.">
-            <Button x:Name="FocusAllowProgramButton" Content="Allow a program"
-                    Click="OnFocusAllowProgram"/>
+        <!-- The one program list, one row per program beneath the button, each with "can run" and
+             "can use the network". Empty is the whole of what an installation that has chosen no
+             program carries. The texts come from the resource files. -->
+        <controls:SettingsCard x:Name="FocusProgramsCard">
+            <Button x:Name="FocusAllowProgramButton" Click="OnFocusAllowProgram"/>
         </controls:SettingsCard>
         <StackPanel x:Name="FocusAllowedProgramsPanel" Spacing="4"/>
         <TextBlock x:Name="FocusAllowRefusalText" Visibility="Collapsed"

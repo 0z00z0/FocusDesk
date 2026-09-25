@@ -16,14 +16,14 @@ namespace FocusDesk.Helpers;
 /// </remarks>
 internal static class ShellLink
 {
-    private const int MaxTarget = 1024;
+    internal const int MaxTarget = 1024;
 
     [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
-    private sealed class ShellLinkObject { }
+    internal sealed class ShellLinkObject { }
 
     [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown),
      Guid("000214F9-0000-0000-C000-000000000046")]
-    private interface IShellLinkW
+    internal interface IShellLinkW
     {
         void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder file, int maxPath,
                      IntPtr findData, uint flags);
@@ -49,7 +49,7 @@ internal static class ShellLink
 
     [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown),
      Guid("0000010B-0000-0000-C000-000000000046")]
-    private interface IPersistFile
+    internal interface IPersistFile
     {
         void GetClassID(out Guid classId);
         [PreserveSig] int IsDirty();

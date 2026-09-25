@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Focus page: the Programs section. -->
+  <data name="FocusProgramsHeader" xml:space="preserve">
+    <value>Programs</value>
+    <comment>Heading of the card above the program list, noun.</comment>
+  </data>
+  <data name="FocusProgramsDescription" xml:space="preserve">
+    <value>What a session lets run, and what keeps the network while a session blocks it.</value>
+    <comment>Description under the Programs heading, whole sentence.</comment>
+  </data>
+  <data name="FocusProgramsAddButton" xml:space="preserve">
+    <value>Add a program</value>
+    <comment>Button that opens the program picker, imperative.</comment>
+  </data>
+  <data name="FocusProgramCanRun" xml:space="preserve">
+    <value>Can run</value>
+    <comment>Checkbox on a program row: the program may be used during a session.</comment>
+  </data>
+  <data name="FocusProgramCanUseNetwork" xml:space="preserve">
+    <value>Can use the network</value>
+    <comment>Checkbox on a program row: the program keeps the network during a network block.</comment>
+  </data>
+  <data name="FocusProgramRemove" xml:space="preserve">
+    <value>Remove</value>
+    <comment>Button on a program row that takes it off the list, imperative.</comment>
+  </data>
+  <data name="FocusProgramNotFound" xml:space="preserve">
+    <value>Not found on this machine</value>
+    <comment>Status shown under a row whose program is not installed here; the list roams between machines.</comment>
+  </data>
+  <data name="FocusProgramStoreNetworkInfo" xml:space="preserve">
+    <value>A firewall rule cannot name a Store app yet.</value>
+    <comment>Hover text on the disabled network checkbox of a Store app row, whole sentence.</comment>
+  </data>
+  <data name="FocusProgramWebAppNetworkInfo" xml:space="preserve">
+    <value>Set by the browser's own row.</value>
+    <comment>Hover text on the disabled network checkbox of a web app row, whole sentence.</comment>
+  </data>
+  <data name="FocusProgramWindowsRunInfo" xml:space="preserve">
+    <value>Part of Windows — always usable.</value>
+    <comment>Hover text on the ticked, disabled run checkbox of a Windows program row, whole sentence.</comment>
+  </data>
+  <data name="FocusProgramsRefusalSessionRunning" xml:space="preserve">
+    <value>The list cannot change while a session is running.</value>
+    <comment>Why a change to the program list was refused, whole sentence.</comment>
+  </data>
+  <data name="FocusProgramsRefusalNotAProgram" xml:space="preserve">
+    <value>That is not a program the list can name.</value>
+    <comment>Why a change to the program list was refused, whole sentence.</comment>
+  </data>
+  <data name="FocusProgramsRefusalListFull" xml:space="preserve">
+    <value>The list already holds {0} programs, which is as many as it takes.</value>
+    <comment>Why a program was not added; {0} is the maximum number of programs, always plural.</comment>
+  </data>
+  <data name="FocusProgramsRefusalAlreadyAllowed" xml:space="preserve">
+    <value>That program is already on the list.</value>
+    <comment>Why a program was not added, whole sentence.</comment>
+  </data>
+  <data name="FocusProgramsRefusalNotAllowed" xml:space="preserve">
+    <value>That program was not on the list.</value>
+    <comment>Why a change to a row was refused, whole sentence.</comment>
+  </data>
+  <data name="FocusProgramsRefusalNotOffered" xml:space="preserve">
+    <value>That choice does nothing for this kind of program.</value>
+    <comment>Why a checkbox change was refused, whole sentence.</comment>
+  </data>
+
+  <!-- The program picker window. -->
+  <data name="PickerTitle" xml:space="preserve">
+    <value>Add a program</value>
+    <comment>Title of the program picker window and its heading, imperative.</comment>
+  </data>
+  <data name="PickerSearchPlaceholder" xml:space="preserve">
+    <value>Type to narrow the list</value>
+    <comment>Placeholder in the picker's search box, imperative.</comment>
+  </data>
+  <data name="PickerSearchName" xml:space="preserve">
+    <value>Search programs</value>
+    <comment>Screen-reader name of the picker's search box.</comment>
+  </data>
+  <data name="PickerListName" xml:space="preserve">
+    <value>Programs</value>
+    <comment>Screen-reader name of the picker's list, noun.</comment>
+  </data>
+  <data name="PickerLoading" xml:space="preserve">
+    <value>Reading the Start menu…</value>
+    <comment>Shown while the picker reads the Start menu, status phrase.</comment>
+  </data>
+  <data name="PickerNothingFound" xml:space="preserve">
+    <value>Nothing was found in the Start menu.</value>
+    <comment>Shown when the Start menu yields no program at all, whole sentence.</comment>
+  </data>
+  <data name="PickerNothingMatches" xml:space="preserve">
+    <value>Nothing matches.</value>
+    <comment>Shown when the typed words match no program, whole sentence.</comment>
+  </data>
+  <data name="PickerNote" xml:space="preserve">
+    <value>Add every program the session needs — a password manager, a remote-desktop client, an accessibility tool.</value>
+    <comment>Advice line at the foot of the picker, whole sentence.</comment>
+  </data>
+  <data name="PickerOpenMark" xml:space="preserve">
+    <value>open</value>
+    <comment>Marks a row whose program is running now, adjective, lower case.</comment>
+  </data>
+  <data name="PickerCancel" xml:space="preserve">
+    <value>Cancel</value>
+    <comment>Button that closes the picker without adding, imperative.</comment>
+  </data>
+  <data name="PickerAdd" xml:space="preserve">
+    <value>Add</value>
+    <comment>Button that adds the selected program, imperative.</comment>
+  </data>
+</root>

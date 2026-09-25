@@ -103,6 +103,14 @@
     <PackageReference Include="System.Management" />
   </ItemGroup>
 
+  <!-- The interface text, en-GB as written and Norwegian Bokmål translated from it, indexed into the
+       application's own resource index and read through AppText. ResourceFileTests keeps the two
+       files in step. -->
+  <ItemGroup>
+    <PRIResource Include="Strings\en-GB\Resources.resw" />
+    <PRIResource Include="Strings\nb-NO\Resources.resw" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- NLog auto-discovers nlog.config BESIDE THE EXE at runtime, so it must reach both the build
          output and the publish output (installer\build-installer.ps1 publishes into <repo>\publish,
