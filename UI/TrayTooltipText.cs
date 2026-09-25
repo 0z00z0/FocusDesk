@@ -48,6 +48,7 @@ internal static class TrayTooltipText
         if (session.CoversScreen)  held.Add("cover");
         if (session.BlocksInput)   held.Add("mouse and keyboard");
         if (session.BlocksNetwork) held.Add("network");
+        if (session.LimitsPrograms) held.Add(AppText.Get("TrayHeldPrograms"));
         return held.Count > 0 ? $"Held: {string.Join(", ", held)}" : "Held: nothing";
     }
 

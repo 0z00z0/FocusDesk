@@ -61,6 +61,8 @@ internal sealed class FakeSettingsActions : ISettingsActions
     public void SetFocusCoversScreen(bool on) => Calls.Add($"FocusCoversScreen={on}");
 
     public void SetFocusBlocksInput(bool on) => Calls.Add($"FocusBlocksInput={on}");
+
+    public void SetFocusLimitsPrograms(bool on) => Calls.Add($"FocusLimitsPrograms={on}");
 }
 
 /// <summary>Composes the entity table over fakes, and the snapshot it reads. Every default is a

@@ -40,6 +40,11 @@ internal sealed class AppSettings
     /// without it.</summary>
     public bool FocusBlocksInput { get; set; }
 
+    /// <summary>Whether the next focus session limits the machine to the programs ticked "can run".
+    /// Off by default: every other program window is minimised while it holds. Where it is refused
+    /// the session runs on without it.</summary>
+    public bool FocusLimitsPrograms { get; set; }
+
     /// <summary>Whether the status window offers a control that starts a session. It never offers one
     /// that ends a session, whatever this holds: nothing on the machine ends one.</summary>
     public bool FocusStartFromDashboard { get; set; } = true;
@@ -65,6 +70,9 @@ internal sealed class AppSettings
 
     /// <inheritdoc cref="FocusSessionDimmedScreen"/>
     public bool FocusSessionBlockedNetwork { get; set; }
+
+    /// <inheritdoc cref="FocusSessionDimmedScreen"/>
+    public bool FocusSessionLimitedPrograms { get; set; }
 
     /// <summary>The firewall profile settings displaced by a network block, saved before anything
     /// changes so a crash cannot lose them. Null means nothing is displaced.</summary>

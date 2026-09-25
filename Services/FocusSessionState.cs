@@ -59,6 +59,7 @@ internal static class FocusSessionStages
         if (session.DimsScreen)   levers.Add("screen dimmed");
         if (session.CoversScreen) levers.Add("screen covered");
         if (session.BlocksInput)  levers.Add("mouse and keyboard blocked");
+        if (session.LimitsPrograms) levers.Add(AppText.Get("FocusDetailProgramsLimited"));
 
         string stage = session.Stage switch
         {
@@ -80,9 +81,11 @@ internal static class FocusSessionStages
 /// <param name="BlocksInput">Whether the mouse and keyboard are held. False for a session that
 /// asked for the block and was refused it, or lost it: the lever fails safe.</param>
 /// <param name="BlocksNetwork">Whether the network block is held, on the same terms.</param>
+/// <param name="LimitsPrograms">Whether only the chosen programs can be used, on the same terms.</param>
 internal readonly record struct FocusSnapshot(
     FocusSessionStage Stage, DateTimeOffset? StartedAt, DateTimeOffset? EndsAt,
-    bool DimsScreen, bool CoversScreen, bool BlocksInput = false, bool BlocksNetwork = false)
+    bool DimsScreen, bool CoversScreen, bool BlocksInput = false, bool BlocksNetwork = false,
+    bool LimitsPrograms = false)
 {
     public static readonly FocusSnapshot None =
         new(FocusSessionStage.Off, null, null, false, false);

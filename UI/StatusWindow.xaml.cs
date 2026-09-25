@@ -236,6 +236,7 @@ internal sealed partial class StatusWindow : Window
         if (session.BlocksNetwork) lines.Add("The network is blocked until the session ends, except for the broker and the allowed programs.");
         if (held.Count > 0) lines.Add($"The screen is {string.Join(" and ", held)} until the session ends.");
         if (session.BlocksInput) lines.Add("The mouse and keyboard are blocked until the session ends.");
+        if (session.LimitsPrograms) lines.Add(AppText.Get("PopOutProgramsLimited"));
 
         LeverText.Text = lines.Count > 0
             ? string.Join("\n", lines)

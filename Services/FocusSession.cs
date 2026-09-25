@@ -12,12 +12,14 @@ namespace FocusDesk.Services;
 /// session runs if the block is lost and cannot be taken again, so it says what is held.</param>
 /// <param name="BlocksNetwork">Whether the session holds the network block. Cleared where the block
 /// could not be written or put back, for the same reason.</param>
+/// <param name="LimitsPrograms">Whether the session limits which programs can be used. Cleared where
+/// the window watch could not be started or started again, for the same reason.</param>
 internal readonly record struct FocusSessionRecord(
     DateTimeOffset StartedAt, DateTimeOffset EndsAt, bool DimsScreen, bool CoversScreen,
-    bool BlocksInput = false, bool BlocksNetwork = false)
+    bool BlocksInput = false, bool BlocksNetwork = false, bool LimitsPrograms = false)
 {
     /// <summary>Whether the session holds any lever at all.</summary>
-    public bool HoldsAnything => DimsScreen || CoversScreen || BlocksInput || BlocksNetwork;
+    public bool HoldsAnything => DimsScreen || CoversScreen || BlocksInput || BlocksNetwork || LimitsPrograms;
 }
 
 /// <summary>Where a running session is kept so nothing but the clock can end it.</summary>
@@ -67,18 +69,31 @@ internal interface IFocusLever
 /// while the application does: the running timer ends a session that expires while the application
 /// is up, and <see cref="Start"/> is what ends one that expired while it was not.</para>
 /// <para>Two kinds of lever. The screen and the cover refuse the whole session when they cannot
-/// engage, and a failure rolls back whatever did. The network block and the input block fail safe
-/// instead: where one is refused, fails or is lost, the session runs on without it and reports it
-/// as not held. Only a session left holding nothing at all is refused.</para>
+/// engage, and a failure rolls back whatever did. The network block, the input block and the program
+/// limit fail safe instead: where one is refused, fails or is lost, the session runs on without it and
+/// reports it as not held. Only a session left holding nothing at all is refused.</para>
 /// </remarks>
 /// <param name="history">Where a finished session is written down. Behind a seam, so the three
 /// endings are exercised without a file.</param>
+/// <param name="programs">The focus-app lever, which limits the session to the chosen programs. Null
+/// is a lever that is never chosen.</param>
 internal sealed class FocusSessionEngine(
     IFocusLever screen, IFocusLever cover, IFocusLever input, IFocusLever network,
     IFocusSessionRecord record,
     Func<DateTimeOffset> now, Action<string, ActionCause> log,
-    Action<FocusHistoryEntry>? history = null)
+    Action<FocusHistoryEntry>? history = null, IFocusLever? programs = null)
 {
+    private readonly IFocusLever _programs = programs ?? new AbsentLever();
+
+    /// <summary>A lever that is never there to engage and has nothing to lift.</summary>
+    private sealed class AbsentLever : IFocusLever
+    {
+        public string? Refusal() => "this build has no program limit";
+        public bool Engage(ActionCause cause) => false;
+        public bool Resume(ActionCause cause) => false;
+        public bool Lift(ActionCause cause) => true;
+    }
+
     public const int MinMinutes = 1;
 
     /// <summary>Long enough that a failure elsewhere costs an afternoon rather than a weekend.</summary>
@@ -138,6 +153,7 @@ internal sealed class FocusSessionEngine(
                 cover.Lift(leftBehind);
                 input.Lift(leftBehind);
                 network.Lift(leftBehind);
+                _programs.Lift(leftBehind);
             }
 
             changed = Sync();
@@ -148,14 +164,15 @@ internal sealed class FocusSessionEngine(
     /// <summary>Starts a session for <paramref name="minutes"/> using whichever levers are chosen.
     /// Nothing is armed unless every chosen lever can be.</summary>
     public FocusArmOutcome Arm(int minutes, bool dimsScreen, bool coversScreen, bool blocksInput,
-                               bool blocksNetwork, ActionCause cause)
+                               bool blocksNetwork, ActionCause cause, bool limitsPrograms = false)
     {
         FocusArmOutcome outcome;
         bool changed;
 
         lock (_gate)
         {
-            outcome = ArmLocked(minutes, dimsScreen, coversScreen, blocksInput, blocksNetwork, cause);
+            outcome = ArmLocked(minutes, dimsScreen, coversScreen, blocksInput, blocksNetwork,
+                                limitsPrograms, cause);
             changed = Sync();
         }
 
@@ -225,6 +242,8 @@ internal sealed class FocusSessionEngine(
                                   clock);
                     if (session.BlocksNetwork && !network.Hold(session.EndsAt, clock))
                         DropNetwork("the network block was lost and could not be put back", clock);
+                    if (session.LimitsPrograms && !_programs.Hold(session.EndsAt, clock))
+                        DropPrograms("the window watch stopped and could not be started again", clock);
                 }
             }
 
@@ -246,12 +265,13 @@ internal sealed class FocusSessionEngine(
     }
 
     private FocusArmOutcome ArmLocked(int minutes, bool dimsScreen, bool coversScreen,
-                                      bool blocksInput, bool blocksNetwork, ActionCause cause)
+                                      bool blocksInput, bool blocksNetwork, bool limitsPrograms,
+                                      ActionCause cause)
     {
         if (_session is not null) return FocusArmOutcome.AlreadyRunning;
 
         // A switch that turns on and does nothing but count down looks identical to a broken one.
-        if (!dimsScreen && !coversScreen && !blocksInput && !blocksNetwork)
+        if (!dimsScreen && !coversScreen && !blocksInput && !blocksNetwork && !limitsPrograms)
         {
             log("Focus session refused: no lever at all was chosen, so the session would do nothing "
               + "but count down", cause);
@@ -284,10 +304,16 @@ internal sealed class FocusSessionEngine(
             blocksInput = false;
         }
 
+        if (limitsPrograms && _programs.Refusal() is { } programsRefusal)
+        {
+            log($"Focus session leaves every program usable: {programsRefusal}", cause);
+            limitsPrograms = false;
+        }
+
         var started = now();
         var session = new FocusSessionRecord(
             started, started.AddMinutes(Math.Clamp(minutes, MinMinutes, MaxMinutes)),
-            dimsScreen, coversScreen, blocksInput, blocksNetwork);
+            dimsScreen, coversScreen, blocksInput, blocksNetwork, limitsPrograms);
 
         // Every chosen lever refused: the session would only count down.
         if (!session.HoldsAnything)
@@ -315,6 +341,9 @@ internal sealed class FocusSessionEngine(
         if (blocksNetwork && !network.Engage(cause))
             DropNetwork("the firewall would not take the block", cause);
 
+        if (limitsPrograms && !_programs.Engage(cause))
+            DropPrograms("the window watch could not be started", cause);
+
         // Last, so nothing above can fail while the machine already answers nothing.
         if (blocksInput && !input.Engage(cause))
             DropInput("Windows refused to block the mouse and keyboard", cause);
@@ -333,6 +362,7 @@ internal sealed class FocusSessionEngine(
         if (session.CoversScreen) cover.Lift(cause);
         if (session.BlocksInput) input.Lift(cause);
         if (session.BlocksNetwork) network.Lift(cause);
+        if (session.LimitsPrograms) _programs.Lift(cause);
         record.Clear();
         _session = null;
         _cancelRequestedAt = null;
@@ -353,6 +383,8 @@ internal sealed class FocusSessionEngine(
             DropNetwork("the network block could not be put back", cause);
         if (session.BlocksInput && !input.Resume(cause))
             DropInput("the mouse and keyboard block could not be taken again", cause);
+        if (session.LimitsPrograms && !_programs.Resume(cause))
+            DropPrograms("the window watch could not be started again", cause);
         log($"Focus session resumed, running until "
           + $"{session.EndsAt.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)}",
             ActionCause.Startup());
@@ -374,6 +406,8 @@ internal sealed class FocusSessionEngine(
               + "seconds", cause);
         if (session.BlocksNetwork && !network.Lift(cause))
             log("The firewall could not be put back — it is retried at the next start", cause);
+        // Nothing to put back: minimised programs stay minimised until somebody restores them.
+        if (session.LimitsPrograms) _programs.Lift(cause);
 
         record.Clear();
         _session = null;
@@ -384,7 +418,7 @@ internal sealed class FocusSessionEngine(
         history?.Invoke(new FocusHistoryEntry(
             session.StartedAt, session.EndsAt, now(),
             session.DimsScreen, session.CoversScreen, outcome, session.BlocksInput,
-            session.BlocksNetwork));
+            session.BlocksNetwork, session.LimitsPrograms));
 
         log("Focus session ended", cause);
     }
@@ -403,6 +437,17 @@ internal sealed class FocusSessionEngine(
     {
         if (_session is { BlocksNetwork: true } session)
             Drop(session with { BlocksNetwork = false }, "the network open", why, cause);
+    }
+
+    /// <summary>Carries on without the program limit, as <see cref="DropInput"/> does. Called with the
+    /// lock held.</summary>
+    private void DropPrograms(string why, ActionCause cause)
+    {
+        if (_session is { LimitsPrograms: true } session)
+        {
+            _programs.Lift(cause);
+            Drop(session with { LimitsPrograms = false }, "every program usable", why, cause);
+        }
     }
 
     private void Drop(FocusSessionRecord without, string freed, string why, ActionCause cause)
@@ -430,7 +475,7 @@ internal sealed class FocusSessionEngine(
 
         return new FocusSnapshot(stage, session.StartedAt, session.EndsAt,
                                  session.DimsScreen, session.CoversScreen, session.BlocksInput,
-                                 session.BlocksNetwork);
+                                 session.BlocksNetwork, session.LimitsPrograms);
     }
 
     /// <summary>Brings the stage last reported into line with the stage now, and says whether it

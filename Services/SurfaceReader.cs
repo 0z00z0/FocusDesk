@@ -15,7 +15,8 @@ internal readonly record struct SurfaceState(
     bool FocusBlocksNetwork,
     bool FocusDimsScreen,
     bool FocusCoversScreen,
-    bool FocusBlocksInput);
+    bool FocusBlocksInput,
+    bool FocusLimitsPrograms = false);
 
 /// <summary>What this machine can actually do. Announcing a control the machine cannot honour would
 /// leave the receiver with an entity that silently does nothing.</summary>
@@ -64,6 +65,7 @@ internal static class SurfaceReader
             FocusBlocksNetwork:    focus.IsRunning ? focus.BlocksNetwork : s.FocusBlocksNetwork,
             FocusDimsScreen:       focus.IsRunning ? focus.DimsScreen : s.FocusDimsScreen,
             FocusCoversScreen:     focus.IsRunning ? focus.CoversScreen : s.FocusCoversScreen,
-            FocusBlocksInput:      focus.IsRunning ? focus.BlocksInput : s.FocusBlocksInput);
+            FocusBlocksInput:      focus.IsRunning ? focus.BlocksInput : s.FocusBlocksInput,
+            FocusLimitsPrograms:   focus.IsRunning ? focus.LimitsPrograms : s.FocusLimitsPrograms);
     }
 }

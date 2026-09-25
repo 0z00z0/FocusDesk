@@ -124,4 +124,38 @@
     <value>Legg til</value>
     <comment>Button that adds the selected program, imperative.</comment>
   </data>
+
+  <!-- The focus-app lever: its switch on the Focus page and what each surface says while it holds. -->
+  <data name="FocusLimitsProgramsHeader" xml:space="preserve">
+    <value>Begrens økten til valgte programmer</value>
+    <comment>Header of the lever switch on the Focus page, imperative phrase.</comment>
+  </data>
+  <data name="FocusLimitsProgramsDescription" xml:space="preserve">
+    <value>Minimerer alle programvinduer unntatt dem merket Kan kjøre, så lenge økten varer. Ingenting lukkes.</value>
+    <comment>Description under the lever switch, whole sentences; Can run names the checkbox.</comment>
+  </data>
+  <data name="FocusLimitsProgramsSubject" xml:space="preserve">
+    <value>programbegrensningen</value>
+    <comment>Screen-reader subject of the info bubble beside the switch, noun phrase, lower case.</comment>
+  </data>
+  <data name="FocusLimitsProgramsInfo" xml:space="preserve">
+    <value>Windows, Filutforsker og FocusDesk kan alltid brukes. Blir den nektet, kjører økten uten.</value>
+    <comment>Hover text of the info bubble beside the switch, whole sentences.</comment>
+  </data>
+  <data name="FocusDetailProgramsLimited" xml:space="preserve">
+    <value>programmer begrenset</value>
+    <comment>One item in the comma-joined list of what a running session holds, lower case, no full stop.</comment>
+  </data>
+  <data name="PopOutProgramsLimited" xml:space="preserve">
+    <value>Bare de valgte programmene kan brukes til økten er slutt.</value>
+    <comment>Line on the tray pop-out while the lever holds, whole sentence.</comment>
+  </data>
+  <data name="CoverProgramsLimited" xml:space="preserve">
+    <value>bare de valgte programmene kan brukes</value>
+    <comment>One clause in the cover's list of what the session holds, lower case, no full stop.</comment>
+  </data>
+  <data name="TrayHeldPrograms" xml:space="preserve">
+    <value>programmer</value>
+    <comment>One item in the tray hover's list of levers held, noun, lower case.</comment>
+  </data>
 </root>

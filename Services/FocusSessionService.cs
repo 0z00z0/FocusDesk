@@ -22,6 +22,10 @@ internal static class FocusSessionService
         new(new WindowsFirewallPolicy(), new SettingsFirewallBlockRecord(),
             (what, cause) => AppLog.Info($"{what}{cause.Clause}"));
 
+    private static readonly ProgramGate _programGate =
+        new(new WindowInspector(), new WindowEvents((where, ex) => AppLog.Error(where, ex)), new WindowActions(),
+            () => DateTimeOffset.Now, what => AppLog.Info(what));
+
     private static readonly FocusSessionEngine _engine = new(
         new FocusScreenLever(() => ScreenBrightnessService.IsSupported,
                              ScreenBrightnessService.Set,
@@ -37,7 +41,8 @@ internal static class FocusSessionService
         new SettingsFocusSessionRecord(),
         () => DateTimeOffset.Now,
         (what, cause) => AppLog.Info($"{what}{cause.Clause}"),
-        FocusHistoryService.Record);
+        FocusHistoryService.Record,
+        new FocusProgramLever(_programGate, ProgramGateContext));
 
     private static Timer? _timer;
 
@@ -78,11 +83,36 @@ internal static class FocusSessionService
     /// sets the duration through its own number instead.</param>
     public static FocusArmOutcome Arm(ActionCause cause, int? minutes = null)
     {
-        var (stored, screen, cover, input, network) = SettingsService.Read(
+        var (stored, screen, cover, input, network, programs) = SettingsService.Read(
             s => (s.FocusSessionMinutes, s.FocusDimsScreen, s.FocusCoversScreen, s.FocusBlocksInput,
-                  s.FocusBlocksNetwork));
+                  s.FocusBlocksNetwork, s.FocusLimitsPrograms));
         return _engine.Arm(FocusStartRequest.Minutes(minutes, stored), screen, cover, input, network,
-                           cause);
+                           cause, programs);
+    }
+
+    /// <summary>What the focus-app lever decides against, read when a session arms or resumes: the
+    /// list, the lever-wide action, and the exemptions on this machine. Null where the list cannot be
+    /// read, which refuses the lever.</summary>
+    private static GateContext? ProgramGateContext()
+    {
+        try
+        {
+            var (entries, defaultAction) = SettingsService.Read(
+                s => (s.FocusPrograms.ToList(), s.FocusProgramsDefaultAction));
+            string windows = WindowsPrograms.Folder;
+            var skip = GateContext.MachineSkipFolders();
+            var signed = new System.Collections.Concurrent.ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+
+            return new GateContext(
+                entries, defaultAction, windows, Environment.ProcessPath ?? "",
+                SecurityProducts.Folders([.. skip, windows]), skip,
+                family => signed.GetOrAdd(family, StartMenuApps.IsFamilySignedByWindows));
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("FocusSessionService.ProgramGateContext", ex);
+            return null;
+        }
     }
 
     public static void RequestCancel(ActionCause cause) => _engine.RequestCancel(cause);
@@ -109,6 +139,10 @@ internal static class FocusSessionService
         // would have no owner at all. The session record keeps the lever, and the next start puts the
         // block back.
         _firewall.Lift(ActionCause.ApplicationClosing());
+
+        // The window watch dies with the process anyway; stopping it here keeps the shutdown ordered.
+        // The session record keeps the lever, and the next start takes it up again with a sweep.
+        _programGate.Lift();
     }
 
     /// <summary>The broker the connection is configured with, or null where publishing is off or no
@@ -137,15 +171,15 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
 {
     public FocusSessionRecord? Read()
     {
-        var (startedAt, endsAt, screen, cover, input, network) = SettingsService.Read(
+        var (startedAt, endsAt, screen, cover, input, network, programs) = SettingsService.Read(
             s => (s.FocusSessionStartedAt, s.FocusSessionEndsAt, s.FocusSessionDimmedScreen,
                   s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput,
-                  s.FocusSessionBlockedNetwork));
+                  s.FocusSessionBlockedNetwork, s.FocusSessionLimitedPrograms));
         // A document written before the start time was recorded falls back to the end time, which
         // reads as a session with no length. Only the cover's ring uses it, and such a document
         // carries no cover lever, so nothing draws from the fallback.
         return endsAt is { } ends
-            ? new FocusSessionRecord(startedAt ?? ends, ends, screen, cover, input, network)
+            ? new FocusSessionRecord(startedAt ?? ends, ends, screen, cover, input, network, programs)
             : null;
     }
 
@@ -157,6 +191,7 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
         s.FocusSessionCoveredScreen = session.CoversScreen;
         s.FocusSessionBlockedInput = session.BlocksInput;
         s.FocusSessionBlockedNetwork = session.BlocksNetwork;
+        s.FocusSessionLimitedPrograms = session.LimitsPrograms;
     });
 
     public void Clear() => SettingsService.Update(s =>
@@ -167,5 +202,6 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
         s.FocusSessionCoveredScreen = false;
         s.FocusSessionBlockedInput = false;
         s.FocusSessionBlockedNetwork = false;
+        s.FocusSessionLimitedPrograms = false;
     });
 }

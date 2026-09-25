@@ -23,7 +23,9 @@ internal enum FocusSessionOutcome
 /// <param name="EndedAt">When the session actually left the engine.</param>
 /// <param name="BlockedInput">Whether the session still held the mouse and keyboard when it ended.</param>
 /// <param name="BlockedNetwork">Whether the session still held the network block when it ended.</param>
+/// <param name="LimitedPrograms">Whether the session still limited which programs could be used when
+/// it ended.</param>
 internal readonly record struct FocusHistoryEntry(
     DateTimeOffset StartedAt, DateTimeOffset DueAt, DateTimeOffset EndedAt,
     bool DimmedScreen, bool CoveredScreen, FocusSessionOutcome Outcome, bool BlockedInput = false,
-    bool BlockedNetwork = false);
+    bool BlockedNetwork = false, bool LimitedPrograms = false);

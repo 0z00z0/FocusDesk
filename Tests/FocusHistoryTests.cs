@@ -24,7 +24,9 @@ public class FocusHistoryTests
         Assert.Equal("ended-early", FocusHistoryService.Word(FocusSessionOutcome.EndedEarly));
         Assert.Equal("found-stale", FocusHistoryService.Word(FocusSessionOutcome.FoundStale));
 
-        Assert.Equal("started,due,ended,levers,outcome", FocusHistoryService.HeaderColumns);
+        Assert.Equal("started,due,ended,levers,outcome,programs", FocusHistoryService.HeaderColumns);
+        Assert.Equal("limited", FocusHistoryService.ProgramsLimited);
+        Assert.Equal("not-limited", FocusHistoryService.ProgramsNotLimited);
     }
 
     [Fact]
@@ -33,15 +35,15 @@ public class FocusHistoryTests
         var entry = new FocusHistoryEntry(
             Noon, Noon.AddMinutes(60), Noon.AddMinutes(60),
             DimmedScreen: false, CoveredScreen: true, FocusSessionOutcome.RanToTime,
-            BlockedInput: true, BlockedNetwork: true);
+            BlockedInput: true, BlockedNetwork: true, LimitedPrograms: true);
 
         Assert.True(FocusHistoryService.TryParse(FocusHistoryService.Format(entry), out var back));
 
         Assert.Equal(entry.StartedAt, back.StartedAt);
         Assert.Equal(entry.DueAt, back.DueAt);
         Assert.Equal(entry.EndedAt, back.EndedAt);
-        Assert.Equal((false, true, true, true),
-                     (back.DimmedScreen, back.CoveredScreen, back.BlockedInput, back.BlockedNetwork));
+        Assert.Equal((false, true, true, true, true),
+                     (back.DimmedScreen, back.CoveredScreen, back.BlockedInput, back.BlockedNetwork, back.LimitedPrograms));
         Assert.Equal(FocusSessionOutcome.RanToTime, back.Outcome);
     }
 
@@ -75,6 +77,8 @@ public class FocusHistoryTests
 
         Assert.Equal((true, true, false, true),
                      (entry.BlockedNetwork, entry.DimmedScreen, entry.CoveredScreen, entry.BlockedInput));
+        // Written before the final column existed: a session that limited no program.
+        Assert.False(entry.LimitedPrograms);
     }
 
     // ── One row per ending, from the engine itself ──────────────────────────────────────────────

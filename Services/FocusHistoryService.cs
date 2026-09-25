@@ -26,8 +26,9 @@ internal static class FocusHistoryService
         "started/due/ended = ISO 8601 with local UTC offset; " +
         "due = the end time the session was armed for; " +
         "levers = network, screen, cover and input, joined with +, or none; " +
-        "outcome = ran-to-time, ended-early or found-stale.";
-    internal const string HeaderColumns = "started,due,ended,levers,outcome";
+        "outcome = ran-to-time, ended-early or found-stale; " +
+        "programs = limited or not-limited, absent on rows written before the column existed.";
+    internal const string HeaderColumns = "started,due,ended,levers,outcome,programs";
     internal static readonly string Header = HeaderComment + "\n" + HeaderColumns;
 
     private static readonly CsvSampleStore _store = new(FileName, Header);
@@ -139,10 +140,15 @@ internal static class FocusHistoryService
         return levers.Count > 0 ? string.Join('+', levers) : "none";
     }
 
+    /// <summary>The words the final column holds. Stored, so they never change.</summary>
+    internal const string ProgramsLimited = "limited";
+    internal const string ProgramsNotLimited = "not-limited";
+
     internal static string Format(FocusHistoryEntry entry) => string.Join(',',
         Stamp(entry.StartedAt), Stamp(entry.DueAt), Stamp(entry.EndedAt),
         Levers(entry.BlockedNetwork, entry.DimmedScreen, entry.CoveredScreen, entry.BlockedInput),
-        Word(entry.Outcome));
+        Word(entry.Outcome),
+        entry.LimitedPrograms ? ProgramsLimited : ProgramsNotLimited);
 
     private static string Stamp(DateTimeOffset at) =>
         at.ToLocalTime().ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture);
@@ -162,10 +168,11 @@ internal static class FocusHistoryService
         if (Outcome(parts[4]) is not { } outcome) return false;
 
         string[] levers = parts[3].Split('+');
+        // A row written before the final column existed reads as a session that limited nothing.
         entry = new FocusHistoryEntry(
             started, due, ended,
             levers.Contains("screen"), levers.Contains("cover"), outcome, levers.Contains("input"),
-            levers.Contains("network"));
+            levers.Contains("network"), parts.Length > 5 && parts[5] == ProgramsLimited);
         return true;
     }
 

@@ -21,7 +21,7 @@ internal sealed record MqttEntitySources
 }
 
 /// <summary>
-/// FocusDesk's published surface: ten entities, their groups, their capability gates and the domain
+/// FocusDesk's published surface: eleven entities, their groups, their capability gates and the domain
 /// seam each inbound command lands on. Pure — nothing here touches a broker or a settings singleton,
 /// so the same table composes in a test.
 /// </summary>
@@ -46,6 +46,7 @@ internal static class MqttEntityCatalog
     public const string FocusSessionDimsScreen   = "focus_session_dims_screen";
     public const string FocusSessionCoversScreen = "focus_session_covers_screen";
     public const string FocusSessionBlocksInput  = "focus_session_blocks_input";
+    public const string FocusSessionLimitsPrograms = "focus_session_limits_programs";
     public const string FocusSessionState        = "focus_session_state";
     public const string FocusSessionRemaining    = "focus_session_remaining";
 
@@ -150,6 +151,17 @@ internal static class MqttEntityCatalog
                 Debounce = MqttConnection.ReflectDebounce,
                 Read = () => surface()?.FocusBlocksInput,
                 Apply = on => MqttCommandVerdict.Accept(() => set.SetFocusBlocksInput(on)),
+            },
+            new MqttSwitch
+            {
+                // Not gated: whether the window watch starts is decided at arming time. A refused
+                // lever leaves the session running, and this reads off while it runs.
+                EntityId = FocusSessionLimitsPrograms, Name = "Focus session limits programs",
+                Group = MqttPublishGroups.Focus,
+                Category = MqttEntityCategory.Config, Icon = "mdi:apps",
+                Debounce = MqttConnection.ReflectDebounce,
+                Read = () => surface()?.FocusLimitsPrograms,
+                Apply = on => MqttCommandVerdict.Accept(() => set.SetFocusLimitsPrograms(on)),
             },
             MqttEnumSensor.Of(
                 FocusSessionState, "Focus session state", MqttPublishGroups.Focus,

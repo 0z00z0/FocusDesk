@@ -142,6 +142,18 @@ internal static class StartMenuApps
         catch { return false; }
     }
 
+    /// <summary>Whether Windows signs the installed package of this family as its own. False where no
+    /// package of the family can be looked up.</summary>
+    internal static bool IsFamilySignedByWindows(string packageFamily)
+    {
+        try
+        {
+            return new PackageManager().FindPackagesForUser("", packageFamily)
+                                       .Any(p => p.SignatureKind == PackageSignatureKind.System);
+        }
+        catch { return false; }
+    }
+
     /// <summary>Whether any package of this family is installed for the signed-in user.</summary>
     internal static bool IsInstalled(string packageFamily)
     {
