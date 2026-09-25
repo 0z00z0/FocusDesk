@@ -83,6 +83,10 @@ public partial class App : Application
             // at. The icon is what a person sees.
             _hostWindow = new MainWindow();
 
+            // Before the icon, which offers the check from its menu. The sweep of leftover downloads
+            // runs here, while no install can be in flight.
+            AppUpdates.Start(Shutdown);
+
             TrayIconHost.Start(Shutdown);
         }
         catch (Exception ex)
