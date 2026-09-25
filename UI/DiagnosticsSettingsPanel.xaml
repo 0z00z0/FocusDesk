@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="FocusDesk.UI.DiagnosticsSettingsPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:zz="using:ZeroZero.Controls.WinUI"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls">
+
+    <StackPanel Spacing="4">
+        <TextBlock Text="App diagnostics" Style="{StaticResource SectionHeaderStyle}"/>
+
+        <!-- Vertical: beside a row of three buttons the description is squeezed into a narrow
+             column. -->
+        <controls:SettingsCard Header="Settings file"
+                               Description="FocusDesk stores its configuration in settings.json."
+                               ContentAlignment="Vertical"
+                               HorizontalContentAlignment="Stretch">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Open settings folder" Click="OnOpenSettingsFolder"/>
+                <Button Content="Open settings file" Click="OnOpenSettingsFile"/>
+                <Button Content="Reload settings from file" Click="OnReloadSettings"/>
+                <zz:InfoIcon Subject="the settings file"
+                             Info="Reload reads settings.json again, picking up a manual edit or a file synced from another machine."/>
+            </StackPanel>
+        </controls:SettingsCard>
+
+        <controls:SettingsCard Header="Logs"
+                               Description="app.log holds the run's activity. A crash is appended to crash.log, and an unattended update leaves its installer's own log.">
+            <DropDownButton x:Name="OpenLogButton" Content="Open log">
+                <DropDownButton.Flyout>
+                    <MenuFlyout x:Name="LogMenu" Placement="Bottom"/>
+                </DropDownButton.Flyout>
+            </DropDownButton>
+        </controls:SettingsCard>
+    </StackPanel>
+</UserControl>

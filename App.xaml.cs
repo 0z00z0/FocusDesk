@@ -17,6 +17,9 @@ namespace FocusDesk;
 /// process.</remarks>
 public partial class App : Application
 {
+    /// <summary>The plain file every crash arm appends to, beside the log.</summary>
+    internal const string CrashLineFileName = "crash.log";
+
     private Window? _hostWindow;
 
     // Held for the life of the process: the arms stay registered until it ends.
@@ -29,6 +32,10 @@ public partial class App : Application
         // must not get this far.
         if (!SingleInstanceGuard.TryAcquire())
             Environment.Exit(0);
+
+        // The first line of every run, before anything that can throw and before the crash arms are
+        // registered: a log read beside a source tree needs the whole revision to find the commit.
+        StartupVersionLine.Write(new AppLogSink(), typeof(App).Assembly);
 
         InitializeComponent();
 
@@ -43,7 +50,13 @@ public partial class App : Application
 
         // AppDomain and unobserved-task arms come from the shared library; the WinUI arm is the
         // application's own and reports through the same sink.
-        _crashHandlers = CrashHandlers.Register(new CrashHandlerOptions { Sink = new AppLogSink() });
+        // The crash line is a plain file beside the log, written with a flush to disk: the logging
+        // framework's own buffers are not what a process falling over should depend on.
+        _crashHandlers = CrashHandlers.Register(new CrashHandlerOptions
+        {
+            Sink      = new AppLogSink(),
+            CrashLine = new CrashLineAppender(AppPaths.LogFile(CrashLineFileName)),
+        });
         UnhandledException += (_, e) =>
         {
             _crashHandlers.Report("Application.UnhandledException", e.Exception);
@@ -55,8 +68,6 @@ public partial class App : Application
     {
         try
         {
-            AppLog.Info("FocusDesk starting.");
-
             // General crash-resilience infrastructure, independent of any focus-session lever: a
             // deliberate start re-arms resurrection, and the watchdog task itself is (re)registered
             // unconditionally on every start, whether or not a session is running.

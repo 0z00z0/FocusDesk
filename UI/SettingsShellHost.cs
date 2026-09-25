@@ -19,7 +19,8 @@ internal static class SettingsShellHost
     public const string ScreenTag = "screen";
     public const string MqttTag       = "mqtt";
     public const string AppearanceTag = "appearance";
-    public const string AboutTag      = "about";
+    public const string AboutTag       = "about";
+    public const string DiagnosticsTag = "diagnostics";
 
     private static SettingsWindow? _window;
 
@@ -38,6 +39,7 @@ internal static class SettingsShellHost
         MqttSettingsPage? mqtt = null;
         AppearanceSettingsPanel? appearance = null;
         AboutSettingsPanel? about = null;
+        DiagnosticsSettingsPanel? diagnostics = null;
 
         var rectStore = new SettingsWindowRectStore();
         // Only a first open is sized to its content: fitting a remembered rectangle would grow the
@@ -97,6 +99,14 @@ internal static class SettingsShellHost
                     // Built once: the payload is fixed for the run, and the button follows the shared
                     // check from the moment the page exists rather than from when it is looked at.
                     Build = () => about = new AboutSettingsPanel(),
+                },
+                new SettingsSection
+                {
+                    Tag = DiagnosticsTag, Label = "App diagnostics",
+                    Icon = NavIcon("diagnostics"),
+                    Build = () => diagnostics = new DiagnosticsSettingsPanel(),
+                    // The log folder gains files while the window is open.
+                    Enter = () => diagnostics?.Reload(),
                 },
             ],
             InitialTag     = tag,
