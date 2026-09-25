@@ -119,6 +119,15 @@ internal static class TrayIconHost
             yield return TrayMenuItem.Separator();
         }
 
+        // Above everything, and only once a check has found a release. The menu is rebuilt on every
+        // right click, so the badge appears the moment a check ends without anything redrawing it.
+        if (AppUpdates.Available is { VersionText.Length: > 0 } release)
+        {
+            yield return TrayMenuItem.Command($"⬆  Update available: v{release.VersionText}",
+                                              CheckForUpdates);
+            yield return TrayMenuItem.Separator();
+        }
+
         yield return TrayMenuItem.Command("Status…", StatusWindow.Open);
         yield return TrayMenuItem.Command("Settings…", () => SettingsShellHost.Open());
         yield return TrayMenuItem.Separator();
@@ -129,13 +138,20 @@ internal static class TrayIconHost
         yield return TrayMenuItem.Toggle(
             "Launch at startup", startsAtLogon, () => LaunchAtStartup.TrySet(!startsAtLogon));
 
+        yield return TrayMenuItem.Command("Check for updates", CheckForUpdates);
+
         yield return TrayMenuItem.Command("About…", ShowAbout);
         yield return TrayMenuItem.Separator();
         yield return TrayMenuItem.Command("Exit", () => _exit?.Invoke());
     }
 
-    /// <summary>Opens the shared About popup. No update callback is passed, so the window leaves out
-    /// its "Check for updates" button — FocusDesk has no update channel wired yet.</summary>
+    /// <summary>Starts the shared check, or joins the one running, and lets it report in the update
+    /// component's own window. Not awaited: the menu closes on the click and the window is the
+    /// answer.</summary>
+    private static void CheckForUpdates() => _ = AppUpdates.CheckAndReportAsync();
+
+    /// <summary>Opens the shared About popup. No update callback is passed: the menu's own "Check for
+    /// updates" is the entry point, and the About page carries the button.</summary>
     private static void ShowAbout()
     {
         try
