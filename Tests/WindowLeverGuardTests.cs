@@ -25,6 +25,8 @@ public class WindowLeverGuardTests
         Path.Combine("Helpers", "WindowInspector.cs"),
         Path.Combine("Helpers", "WindowEvents.cs"),
         Path.Combine("Helpers", "WindowActions.cs"),
+        Path.Combine("Services", "ProgramGateRules.cs"),
+        Path.Combine("Services", "ProgramGate.cs"),
     ];
 
     /// <summary>Calls that close a window or end a process, or post a message that could.</summary>
