@@ -1,6 +1,8 @@
 using FocusDesk.Helpers;
+using FocusDesk.UI;
 using Xunit;
 using ZeroZero.Brand.Core;
+using ZeroZero.SettingsShell.WinUI;
 
 namespace FocusDesk.Tests;
 
@@ -84,6 +86,17 @@ public class AppPaletteTests
         Assert.True(Contrast(primary, ground) >= 4.5);
         Assert.True(Contrast(secondary, ground) >= 4.5);
         Assert.True(Contrast(secondary, card) >= 4.5);
+    }
+
+    /// <summary>The Settings window is tinted with the purple-grey ground on both themes. Left out,
+    /// the shared shell falls back to the colour Windows mixes from the wallpaper, blue on the
+    /// default one, and nothing fails.</summary>
+    [Fact]
+    public void TheSettingsWindowIsTintedWithTheGround()
+    {
+        Assert.Equal(BackdropColour.Parse("#1B1D28"), SettingsShellHost.BackdropTint.Dark);
+        Assert.Equal(BackdropColour.Parse("#F0F1F7"), SettingsShellHost.BackdropTint.Light);
+        Assert.Matches(@"BackdropTint\s*=\s*BackdropTint\s*,", RepoFiles.Read(@"UI\SettingsShellHost.cs"));
     }
 
     /// <summary>The shared About control writes its product name in white and its version in
