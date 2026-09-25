@@ -58,6 +58,31 @@ public class AppPaletteTests
         Assert.Equal(0x57, amber.B);
     }
 
+    /// <summary>Card descriptions are body text, so the tint holds the WCAG 4.5:1 floor on the worst
+    /// ground each theme gives it: a hovered card over Mica on dark, and a Mica-tinted card on light.
+    /// </summary>
+    [Theory]
+    [InlineData(true, 0xFF333333u)]
+    [InlineData(false, 0xFFE8E8E8u)]
+    public void SecondaryTextClearsTheBodyTextFloor(bool isDark, uint ground) =>
+        Assert.True(Contrast(AppPalette.SecondaryTextTint(isDark), ground) >= 4.5);
+
+    private static double Contrast(uint a, uint b)
+    {
+        double la = Luminance(a), lb = Luminance(b);
+        return (Math.Max(la, lb) + 0.05) / (Math.Min(la, lb) + 0.05);
+    }
+
+    private static double Luminance(uint argb)
+    {
+        static double Linear(uint channel)
+        {
+            double c = (channel & 0xFF) / 255.0;
+            return c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+        }
+        return 0.2126 * Linear(argb >> 16) + 0.7152 * Linear(argb >> 8) + 0.0722 * Linear(argb);
+    }
+
     [Theory]
     [InlineData("#d8a65")]
     [InlineData("#d8a6577")]

@@ -3,7 +3,8 @@
     x:Class="FocusDesk.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives">
+    xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives"
+    xmlns:zz="using:ZeroZero.Controls.WinUI">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -24,6 +25,20 @@
                  AppPalette.cs fills them from the brand constants instead, before any window is
                  built. A Setter value below is different: it resolves against the element it is
                  applied to, which is why the styles can name a brand key directly. -->
+
+            <!-- Every TextBlock without an explicit Style takes the brand face. Keyed styles repeat
+                 the setter, since a keyed style opts out of this one. -->
+            <Style TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource BrandFontFamily}"/>
+            </Style>
+
+            <!-- The shared section header draws its own rule, size and weight and takes its face and
+                 colour from here, so every Settings page's groups are headed alike. Purple, the page
+                 title's colour: the header is a level below it by size and weight. -->
+            <Style TargetType="zz:SettingsSectionHeader">
+                <Setter Property="FontFamily" Value="{StaticResource BrandFontFamily}"/>
+                <Setter Property="Foreground" Value="{ThemeResource BrandPurpleBrush}"/>
+            </Style>
 
             <!-- The heading a Settings page opens with, one level above the shared
                  SettingsSectionHeader that breaks a page into groups. Purple, not the amber accent:
