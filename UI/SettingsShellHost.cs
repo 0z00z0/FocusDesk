@@ -19,6 +19,7 @@ internal static class SettingsShellHost
     public const string ScreenTag = "screen";
     public const string MqttTag       = "mqtt";
     public const string AppearanceTag = "appearance";
+    public const string AboutTag      = "about";
 
     private static SettingsWindow? _window;
 
@@ -36,6 +37,7 @@ internal static class SettingsShellHost
         ScreenSettingsPanel? screen = null;
         MqttSettingsPage? mqtt = null;
         AppearanceSettingsPanel? appearance = null;
+        AboutSettingsPanel? about = null;
 
         var rectStore = new SettingsWindowRectStore();
         // Only a first open is sized to its content: fitting a remembered rectangle would grow the
@@ -88,6 +90,14 @@ internal static class SettingsShellHost
                     // the page is open.
                     Enter = () => appearance?.Reload(),
                 },
+                new SettingsSection
+                {
+                    Tag = AboutTag, Label = "About",
+                    Icon = NavIcon("about"),
+                    // Built once: the payload is fixed for the run, and the button follows the shared
+                    // check from the moment the page exists rather than from when it is looked at.
+                    Build = () => about = new AboutSettingsPanel(),
+                },
             ],
             InitialTag     = tag,
             // FocusDesk follows the system light/dark setting rather than pinning one. The shell
@@ -108,6 +118,9 @@ internal static class SettingsShellHost
             // A probe started from the MQTT page outlives the window, and the panel must not be
             // touched again once this has run.
             mqtt?.Cancel();
+            // The update coordinator lives for the process, so a page left subscribed stays
+            // reachable and keeps touching a torn-down tree.
+            about?.Detach();
         };
         // Straight after the constructor, as the shell requires: it waits for load if it must.
         if (fitToContent) window.FitToPages();
