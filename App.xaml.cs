@@ -107,8 +107,8 @@ public partial class App : Application
 
             // After the icon is registered: the shell's entry for it is what gets written.
             // A preference about where the icon sits is not worth a failed start.
-            try { AppearanceSettingsPanel.ReapplyAtStartup(new RegistryTrayPromotionStore()); }
-            catch (Exception ex) { AppLog.Error("OnLaunched.TrayIconPromotion", ex); }
+            try { AppearanceSettingsPanel.ApplyAtStartup(TrayIconHost.Placement); }
+            catch (Exception ex) { AppLog.Error("OnLaunched.TrayIconPlacement", ex); }
         }
         catch (Exception ex)
         {

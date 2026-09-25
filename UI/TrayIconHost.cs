@@ -95,9 +95,33 @@ internal static class TrayIconHost
     public static void NotePopOutDismissed() => _host?.NotePopOutDismissed();
 
     /// <summary>The identity the shell holds the icon under, which its per-icon settings are keyed
-    /// on; null until the icon is registered. Not necessarily the identity handed to the host: the
-    /// notify-icon library registers one of its own.</summary>
+    /// on; null until the icon is registered. The host registers the one it is handed.</summary>
     public static Guid? ShellId => _host?.ShellId;
+
+    /// <summary>The shared host's placement members, for the Appearance row.</summary>
+    public static ITrayPlacement Placement { get; } = new HostPlacement();
+
+    /// <summary>Reaches whichever host is running. A registry or shell failure is logged and reported
+    /// as nothing written: where the icon sits is not worth taking a caller down for.</summary>
+    private sealed class HostPlacement : ITrayPlacement
+    {
+        public Guid? ShellId => _host?.ShellId;
+
+        public TrayIconPlacement? Placement
+        {
+            get
+            {
+                try { return _host?.Placement; }
+                catch (Exception ex) { AppLog.Error("TrayIconHost.Placement", ex); return null; }
+            }
+        }
+
+        public bool AskFor(TrayIconPlacement wanted)
+        {
+            try { return _host?.AskForPlacement(wanted) ?? false; }
+            catch (Exception ex) { AppLog.Error("TrayIconHost.AskForPlacement", ex); return false; }
+        }
+    }
 
     private static void OnSessionChanged() => _dispatcher?.TryEnqueue(RefreshTooltip);
 

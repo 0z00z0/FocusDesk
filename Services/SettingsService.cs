@@ -80,7 +80,8 @@ internal sealed class AppSettings
 
     /// <summary>Whether the notification-area icon is asked to sit in the main tray rather than in
     /// the overflow flyout. Windows offers no supported way to ask, so this is honoured by writing
-    /// the shell's own undocumented setting and can silently do nothing.</summary>
+    /// the shell's own undocumented setting, takes effect at the next sign-in and can silently do
+    /// nothing.</summary>
     public bool PromoteTrayIcon { get; set; }
 
     /// <summary>Which icon the restore record below belongs to, as a GUID, or null where no record
@@ -88,9 +89,8 @@ internal sealed class AppSettings
     /// one.</summary>
     public string? TrayIconPromotionRestoreFor { get; set; }
 
-    /// <summary>What the shell's own setting held before it was first written: true, false, or null
-    /// where it held nothing at all. Null with a record present is what makes a restore delete the
-    /// value rather than write a zero over it.</summary>
+    /// <summary>Where the icon was drawn before the row first moved it: true for the notification
+    /// area, false or null for the overflow, which the shell reads alike.</summary>
     public bool? TrayIconPromotionRestoreValue { get; set; }
 
     /// <summary>The Settings window's outer rectangle in physical pixels, as the window manager
