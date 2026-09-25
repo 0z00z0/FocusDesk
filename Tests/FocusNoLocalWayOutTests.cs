@@ -90,9 +90,10 @@ public class FocusNoLocalWayOutTests
         var screen = new FakeFocusLever();
         var cover = new FakeFocusLever();
         var engine = new FocusSessionEngine(
-            screen, cover, new FakeFocusLever(), new FakeFocusSessionRecord(), () => now, (_, _) => { });
+            screen, cover, new FakeFocusLever(), new FakeFocusLever(),
+            new FakeFocusSessionRecord(), () => now, (_, _) => { });
 
-        engine.Arm(120, dimsScreen: true, coversScreen: false, blocksInput: false, "a test");
+        engine.Arm(120, dimsScreen: true, coversScreen: false, blocksInput: false, blocksNetwork: false, "a test");
         for (int i = 0; i < 20; i++) engine.RequestCancel("a test");
 
         Assert.Equal(FocusSessionStage.Ending, engine.Snapshot().Stage);
@@ -106,6 +107,13 @@ public class FocusNoLocalWayOutTests
         // Leaving from the menu must hand back a machine that answers. The thread's exit would also
         // release it, but nothing inside the process can measure what a kill does to the block.
         Assert.Matches(new Regex(@"void Stop\(\)[\s\S]*?_inputBlock\.Release\(ActionCause\.ApplicationClosing\(\)\)"),
+                       RepoFiles.Read(Path.Combine("Services", "FocusSessionService.cs")));
+
+    [Fact]
+    public void TheFirewallIsPutBackWhenTheApplicationCloses() =>
+        // The block outlives the process, so one left in place by an exit that nothing restarts
+        // would have no owner at all. The next start writes it again for a session still running.
+        Assert.Matches(new Regex(@"void Stop\(\)[\s\S]*?_firewall\.Lift\(ActionCause\.ApplicationClosing\(\)\)"),
                        RepoFiles.Read(Path.Combine("Services", "FocusSessionService.cs")));
 
     // ── The cover ───────────────────────────────────────────────────────────────────────────────

@@ -232,7 +232,8 @@ internal sealed partial class StatusWindow : Window
         if (session.DimsScreen)   held.Add("dimmed");
         if (session.CoversScreen) held.Add("covered");
 
-        var lines = new List<string>(2);
+        var lines = new List<string>(3);
+        if (session.BlocksNetwork) lines.Add("The network is blocked until the session ends, except for the broker and the allowed programs.");
         if (held.Count > 0) lines.Add($"The screen is {string.Join(" and ", held)} until the session ends.");
         if (session.BlocksInput) lines.Add("The mouse and keyboard are blocked until the session ends.");
 
@@ -312,7 +313,7 @@ internal sealed partial class StatusWindow : Window
     {
         FocusArmOutcome.AlreadyRunning => "A session is already running.",
         FocusArmOutcome.NoLeverChosen  => "Nothing was chosen for a session to do. Turn on a lever on the Focus settings page first.",
-        FocusArmOutcome.LeverRefused   => "A chosen lever would not take it: no brightness change, nothing attached to cover, or no rights to block input.",
+        FocusArmOutcome.LeverRefused   => "No chosen lever would take it: no brightness change, nothing to cover, or no rights or broker for a block.",
         _                              => "Something the session needed failed to engage. Whatever did engage has been lifted again.",
     };
 

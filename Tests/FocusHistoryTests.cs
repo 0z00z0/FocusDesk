@@ -33,14 +33,15 @@ public class FocusHistoryTests
         var entry = new FocusHistoryEntry(
             Noon, Noon.AddMinutes(60), Noon.AddMinutes(60),
             DimmedScreen: false, CoveredScreen: true, FocusSessionOutcome.RanToTime,
-            BlockedInput: true);
+            BlockedInput: true, BlockedNetwork: true);
 
         Assert.True(FocusHistoryService.TryParse(FocusHistoryService.Format(entry), out var back));
 
         Assert.Equal(entry.StartedAt, back.StartedAt);
         Assert.Equal(entry.DueAt, back.DueAt);
         Assert.Equal(entry.EndedAt, back.EndedAt);
-        Assert.Equal((false, true, true), (back.DimmedScreen, back.CoveredScreen, back.BlockedInput));
+        Assert.Equal((false, true, true, true),
+                     (back.DimmedScreen, back.CoveredScreen, back.BlockedInput, back.BlockedNetwork));
         Assert.Equal(FocusSessionOutcome.RanToTime, back.Outcome);
     }
 
@@ -48,9 +49,9 @@ public class FocusHistoryTests
     [Fact]
     public void TheLeversNeverCarryTheColumnSeparator()
     {
-        Assert.Equal("screen+cover+input", FocusHistoryService.Levers(true, true, true));
-        Assert.Equal("none", FocusHistoryService.Levers(false, false, false));
-        Assert.DoesNotContain(',', FocusHistoryService.Levers(true, true, true));
+        Assert.Equal("network+screen+cover+input", FocusHistoryService.Levers(true, true, true, true));
+        Assert.Equal("none", FocusHistoryService.Levers(false, false, false, false));
+        Assert.DoesNotContain(',', FocusHistoryService.Levers(true, true, true, true));
     }
 
     [Fact]
@@ -63,18 +64,17 @@ public class FocusHistoryTests
             out _));
     }
 
-    /// <summary>A row written by a build that had the network and input levers still parses, and
-    /// reads as the two levers this build knows about. The file outlives the build that wrote
-    /// it.</summary>
+    /// <summary>A row in the lever words ChargeKeeper's history file used reads back lever by lever.
+    /// The words are a stored vocabulary: a row copied across by hand still parses.</summary>
     [Fact]
-    public void ARowNamingALeverThisBuildDoesNotHave_StillReadsBack()
+    public void ARowNamingSomeLevers_ReadsBackExactlyThoseLevers()
     {
         Assert.True(FocusHistoryService.TryParse(
             "2026-09-20T12:00:00+00:00,2026-09-20T13:00:00+00:00,2026-09-20T13:00:00+00:00," +
             "network+screen+input,ran-to-time", out var entry));
 
-        Assert.True(entry.DimmedScreen);
-        Assert.False(entry.CoveredScreen);
+        Assert.Equal((true, true, false, true),
+                     (entry.BlockedNetwork, entry.DimmedScreen, entry.CoveredScreen, entry.BlockedInput));
     }
 
     // ── One row per ending, from the engine itself ──────────────────────────────────────────────
@@ -85,19 +85,20 @@ public class FocusHistoryTests
         public FakeFocusLever Screen { get; } = new();
         public FakeFocusLever Cover { get; } = new();
         public FakeFocusLever Input { get; } = new();
+        public FakeFocusLever Network { get; } = new();
         public FakeFocusSessionRecord Record { get; } = new();
         public List<FocusHistoryEntry> Written { get; } = [];
         public FocusSessionEngine Engine { get; }
 
         public Bed() => Engine = new FocusSessionEngine(
-            Screen, Cover, Input, Record, () => Now, (_, _) => { }, Written.Add);
+            Screen, Cover, Input, Network, Record, () => Now, (_, _) => { }, Written.Add);
     }
 
     [Fact]
     public void ASessionThatRanItsLength_IsWrittenDownAsHavingRunToTime()
     {
         var bed = new Bed();
-        bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, blocksInput: false, "a test");
+        bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, blocksInput: false, blocksNetwork: false, "a test");
 
         bed.Now = Noon.AddMinutes(60);
         bed.Engine.Tick();
@@ -114,7 +115,7 @@ public class FocusHistoryTests
     public void ASessionEndedFromHomeAssistant_KeepsTheEndTimeItNeverReached()
     {
         var bed = new Bed();
-        bed.Engine.Arm(120, dimsScreen: true, coversScreen: false, blocksInput: false, "a test");
+        bed.Engine.Arm(120, dimsScreen: true, coversScreen: false, blocksInput: false, blocksNetwork: false, "a test");
 
         bed.Engine.RequestCancel("a test");
         bed.Now = Noon + FocusSessionStages.CancelWait;
@@ -148,7 +149,7 @@ public class FocusHistoryTests
         var bed = new Bed();
         bed.Screen.EngageSucceeds = false;
 
-        bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, blocksInput: false, "a test");
+        bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, blocksInput: false, blocksNetwork: false, "a test");
 
         Assert.Empty(bed.Written);
     }

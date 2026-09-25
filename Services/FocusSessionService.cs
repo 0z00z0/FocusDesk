@@ -7,7 +7,8 @@ namespace FocusDesk.Services;
 /// The Settings page and an MQTT command both resolve through here.
 /// </summary>
 /// <remarks>Nothing on the machine can end a session, by design. The only ways out are Home
-/// Assistant's staged cancel and the session's own duration.</remarks>
+/// Assistant's staged cancel and the session's own duration; the firewall console is the published
+/// way out of the network block alone.</remarks>
 internal static class FocusSessionService
 {
     /// <summary>Often enough that the ten-second confirm window is reported while it stands, and
@@ -17,6 +18,10 @@ internal static class FocusSessionService
     private static readonly InputBlock _inputBlock =
         new(NativeMethods.SetInputBlocked, what => AppLog.Info(what));
 
+    private static readonly FirewallBlockPark _firewall =
+        new(new WindowsFirewallPolicy(), new SettingsFirewallBlockRecord(),
+            (what, cause) => AppLog.Info($"{what}{cause.Clause}"));
+
     private static readonly FocusSessionEngine _engine = new(
         new FocusScreenLever(() => ScreenBrightnessService.IsSupported,
                              ScreenBrightnessService.Set,
@@ -25,6 +30,10 @@ internal static class FocusSessionService
                             ScreenCoverService.Show,
                             ScreenCoverService.Hide),
         new FocusInputLever(_inputBlock, FocusInputLever.ElevationRefusal),
+        new FocusNetworkLever(_firewall, new LiveFocusNetworkTargets(Broker),
+                              FocusNetworkLever.ElevationRefusal,
+                              (what, cause) => AppLog.Info($"{what}{cause.Clause}"),
+                              () => SettingsService.Read(s => s.FocusAllowedPrograms.ToList())),
         new SettingsFocusSessionRecord(),
         () => DateTimeOffset.Now,
         (what, cause) => AppLog.Info($"{what}{cause.Clause}"),
@@ -50,11 +59,12 @@ internal static class FocusSessionService
     /// </summary>
     /// <remarks>Runs after <see cref="ScreenBrightnessService.Start"/>, which puts a dimmed display
     /// back first: a session that is resuming then dims it again and parks the level it found, which
-    /// is the level the session is owed to put back.</remarks>
+    /// is the level the session is owed to put back. Runs after <see cref="MqttService.Start"/> too,
+    /// so a resuming network block is written against the broker the connection uses.</remarks>
     public static void Start()
     {
         // settings.json roams, so it can arrive from another machine carrying no record while this
-        // machine is still dimmed.
+        // machine is still blocked and dimmed.
         SettingsService.Reloaded += KeepRecords;
 
         _engine.Start();
@@ -68,9 +78,11 @@ internal static class FocusSessionService
     /// sets the duration through its own number instead.</param>
     public static FocusArmOutcome Arm(ActionCause cause, int? minutes = null)
     {
-        var (stored, screen, cover, input) = SettingsService.Read(
-            s => (s.FocusSessionMinutes, s.FocusDimsScreen, s.FocusCoversScreen, s.FocusBlocksInput));
-        return _engine.Arm(FocusStartRequest.Minutes(minutes, stored), screen, cover, input, cause);
+        var (stored, screen, cover, input, network) = SettingsService.Read(
+            s => (s.FocusSessionMinutes, s.FocusDimsScreen, s.FocusCoversScreen, s.FocusBlocksInput,
+                  s.FocusBlocksNetwork));
+        return _engine.Arm(FocusStartRequest.Minutes(minutes, stored), screen, cover, input, network,
+                           cause);
     }
 
     public static void RequestCancel(ActionCause cause) => _engine.RequestCancel(cause);
@@ -92,7 +104,19 @@ internal static class FocusSessionService
         // Released here rather than left to the process ending, so a machine that answers does not
         // wait on what a kill does to a block nobody can measure from inside it.
         _inputBlock.Release(ActionCause.ApplicationClosing());
+
+        // The firewall outlives the process, so a block left in place by an exit nothing restarts
+        // would have no owner at all. The session record keeps the lever, and the next start puts the
+        // block back.
+        _firewall.Lift(ActionCause.ApplicationClosing());
     }
+
+    /// <summary>The broker the connection is configured with, or null where publishing is off or no
+    /// host is set: a block with no reachable broker would leave nothing to end the session from.</summary>
+    private static (string? Host, int? Port)? Broker() =>
+        MqttService.Current?.Settings.Read() is { Enabled: true, Host.Length: > 0 } broker
+            ? (broker.Host, broker.Port)
+            : null;
 
     private static void Tick()
     {
@@ -104,6 +128,7 @@ internal static class FocusSessionService
     {
         _engine.KeepRecord();
         ScreenBrightnessService.KeepRecord();
+        _firewall.KeepRecord();
     }
 }
 
@@ -112,14 +137,15 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
 {
     public FocusSessionRecord? Read()
     {
-        var (startedAt, endsAt, screen, cover, input) = SettingsService.Read(
+        var (startedAt, endsAt, screen, cover, input, network) = SettingsService.Read(
             s => (s.FocusSessionStartedAt, s.FocusSessionEndsAt, s.FocusSessionDimmedScreen,
-                  s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput));
+                  s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput,
+                  s.FocusSessionBlockedNetwork));
         // A document written before the start time was recorded falls back to the end time, which
         // reads as a session with no length. Only the cover's ring uses it, and such a document
         // carries no cover lever, so nothing draws from the fallback.
         return endsAt is { } ends
-            ? new FocusSessionRecord(startedAt ?? ends, ends, screen, cover, input)
+            ? new FocusSessionRecord(startedAt ?? ends, ends, screen, cover, input, network)
             : null;
     }
 
@@ -130,6 +156,7 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
         s.FocusSessionDimmedScreen = session.DimsScreen;
         s.FocusSessionCoveredScreen = session.CoversScreen;
         s.FocusSessionBlockedInput = session.BlocksInput;
+        s.FocusSessionBlockedNetwork = session.BlocksNetwork;
     });
 
     public void Clear() => SettingsService.Update(s =>
@@ -139,5 +166,6 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
         s.FocusSessionDimmedScreen = false;
         s.FocusSessionCoveredScreen = false;
         s.FocusSessionBlockedInput = false;
+        s.FocusSessionBlockedNetwork = false;
     });
 }

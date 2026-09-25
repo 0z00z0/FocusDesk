@@ -1,3 +1,4 @@
+using CommunityToolkit.WinUI.Controls;
 using FocusDesk.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -5,8 +6,9 @@ using Microsoft.UI.Xaml.Controls;
 namespace FocusDesk.UI;
 
 /// <summary>
-/// The Focus page: what the session is doing, how long the next one runs, which levers it takes, and
-/// the published way out. Nothing here ends a session — no control on this machine does.
+/// The Focus page: what the session is doing, how long the next one runs, which levers it takes, the
+/// programs that keep the network, and the published way out. Nothing here ends a session — no
+/// control on this machine does.
 /// </summary>
 /// <remarks>The session moves on its own clock and from Home Assistant, so the page follows
 /// <see cref="FocusSessionService.Changed"/> while it is on screen and stops following it when it
@@ -54,25 +56,94 @@ public sealed partial class FocusSettingsPanel : UserControl
         {
             FocusStatusValue.Text = FocusSessionStages.Detail(session, DateTimeOffset.Now);
 
-            var (minutes, dims, covers, input, startFromStatus) = SettingsService.Read(
-                s => (s.FocusSessionMinutes, s.FocusDimsScreen, s.FocusCoversScreen,
-                      s.FocusBlocksInput, s.FocusStartFromDashboard));
+            var (minutes, network, dims, covers, input, startFromStatus) = SettingsService.Read(
+                s => (s.FocusSessionMinutes, s.FocusBlocksNetwork, s.FocusDimsScreen,
+                      s.FocusCoversScreen, s.FocusBlocksInput, s.FocusStartFromDashboard));
 
             FocusLengthChoices.Fill(FocusMinutesCombo, minutes);
 
             // A running session reports the levers it actually holds — a refused input block reads
             // off — and with none running these show the defaults the next session starts from.
+            FocusBlocksNetworkToggle.IsOn = session.IsRunning ? session.BlocksNetwork : network;
             FocusDimsScreenToggle.IsOn   = session.IsRunning ? session.DimsScreen   : dims;
             FocusCoversScreenToggle.IsOn = session.IsRunning ? session.CoversScreen : covers;
             FocusBlocksInputToggle.IsOn  = session.IsRunning ? session.BlocksInput  : input;
+            FocusBlocksNetworkToggle.IsEnabled = !locked;
+            FocusAllowProgramButton.IsEnabled  = !locked;
             FocusDimsScreenToggle.IsEnabled   = !locked;
             FocusCoversScreenToggle.IsEnabled = !locked;
             FocusBlocksInputToggle.IsEnabled  = !locked;
 
             FocusStartFromStatusToggle.IsOn = startFromStatus;
+
+            ShowAllowedPrograms(locked);
         }
         finally { _updating = false; }
     }
+
+    /// <summary>One row per allowed program: its own name, its path beneath, and a way to take it
+    /// off. Locked for the length of a session, like the lever switches.</summary>
+    private void ShowAllowedPrograms(bool locked)
+    {
+        FocusAllowedProgramsPanel.Children.Clear();
+
+        foreach (string path in SettingsService.Read(s => s.FocusAllowedPrograms.ToList()))
+        {
+            var remove = new Button { Content = "Remove", IsEnabled = !locked };
+            string program = path;
+            remove.Click += (_, _) => ChangeAllowedPrograms(
+                list => FocusAllowedPrograms.Remove(list, program, FocusSessionService.LeversAreLocked));
+
+            FocusAllowedProgramsPanel.Children.Add(new SettingsCard
+            {
+                Header      = FocusAllowedPrograms.DisplayName(path),
+                Description = path,
+                Content     = remove,
+            });
+        }
+    }
+
+    /// <summary>Opens the picker and puts what comes back on the list. The picker offers what is open
+    /// now and what the Start menu holds, and keeps a file dialog for a program in neither.</summary>
+    private void OnFocusAllowProgram(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            new ProgramPickerWindow(chosen => DispatcherQueue.TryEnqueue(() => ChangeAllowedPrograms(
+                list => FocusAllowedPrograms.Add(list, chosen, FocusSessionService.LeversAreLocked))))
+                .Activate();
+        }
+        catch (Exception ex) { AppLog.Error("FocusSettingsPanel.OnFocusAllowProgram", ex); }
+    }
+
+    /// <summary>Runs one change against a copy and writes the list back only where it moved, so a
+    /// refusal leaves the document untouched and says why.</summary>
+    private void ChangeAllowedPrograms(Func<IList<string>, FocusAllowVerdict> change)
+    {
+        var list = SettingsService.Read(s => s.FocusAllowedPrograms.ToList());
+        var verdict = change(list);
+
+        if (verdict is FocusAllowVerdict.Added or FocusAllowVerdict.Removed)
+            SettingsService.Update(s => s.FocusAllowedPrograms = list);
+
+        FocusAllowRefusalText.Text = Refusal(verdict);
+        FocusAllowRefusalText.Visibility = FocusAllowRefusalText.Text.Length > 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        Reload();
+    }
+
+    /// <summary>Why the list did not move, in the words of whoever pressed the button. Nothing for a
+    /// change that landed.</summary>
+    private static string Refusal(FocusAllowVerdict verdict) => verdict switch
+    {
+        FocusAllowVerdict.SessionRunning => "The list cannot change while a session is running.",
+        FocusAllowVerdict.NotAProgram    => "That file is not a program a firewall rule can name.",
+        FocusAllowVerdict.ListFull       => $"The list already holds {FocusAllowedPrograms.Maximum} programs, which is as many as it takes.",
+        FocusAllowVerdict.AlreadyAllowed => "That program is already on the list.",
+        FocusAllowVerdict.NotAllowed     => "That program was not on the list.",
+        _                                => "",
+    };
 
     private void OnFocusMinutesChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -80,6 +151,12 @@ public sealed partial class FocusSettingsPanel : UserControl
         if (FocusLengthChoices.Selected(FocusMinutesCombo) is not { } minutes) return;
 
         SettingsService.Update(s => s.FocusSessionMinutes = minutes);
+    }
+
+    private void OnFocusBlocksNetworkToggled(object sender, RoutedEventArgs e)
+    {
+        if (_updating) return;
+        SettingsService.Update(s => s.FocusBlocksNetwork = FocusBlocksNetworkToggle.IsOn);
     }
 
     private void OnFocusDimsScreenToggled(object sender, RoutedEventArgs e)

@@ -12,6 +12,7 @@ internal readonly record struct SurfaceState(
     FocusSessionStage FocusStage,
     int? FocusRemainingMinutes,
     int FocusSessionMinutes,
+    bool FocusBlocksNetwork,
     bool FocusDimsScreen,
     bool FocusCoversScreen,
     bool FocusBlocksInput);
@@ -58,8 +59,9 @@ internal static class SurfaceReader
             FocusStage:            focus.Stage,
             FocusRemainingMinutes: focus.MinutesLeft(now),
             FocusSessionMinutes:   s.FocusSessionMinutes,
-            // A running session reports the levers it actually holds — a refused input block reads
-            // off — and with none running these read the defaults the next session starts from.
+            // A running session reports the levers it actually holds — a refused block reads off —
+            // and with none running these read the defaults the next session starts from.
+            FocusBlocksNetwork:    focus.IsRunning ? focus.BlocksNetwork : s.FocusBlocksNetwork,
             FocusDimsScreen:       focus.IsRunning ? focus.DimsScreen : s.FocusDimsScreen,
             FocusCoversScreen:     focus.IsRunning ? focus.CoversScreen : s.FocusCoversScreen,
             FocusBlocksInput:      focus.IsRunning ? focus.BlocksInput : s.FocusBlocksInput);

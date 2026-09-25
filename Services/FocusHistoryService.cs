@@ -25,7 +25,7 @@ internal static class FocusHistoryService
         RetentionDays.ToString(CultureInfo.InvariantCulture) + " days. " +
         "started/due/ended = ISO 8601 with local UTC offset; " +
         "due = the end time the session was armed for; " +
-        "levers = screen, cover and input, joined with +, or none; " +
+        "levers = network, screen, cover and input, joined with +, or none; " +
         "outcome = ran-to-time, ended-early or found-stale.";
     internal const string HeaderColumns = "started,due,ended,levers,outcome";
     internal static readonly string Header = HeaderComment + "\n" + HeaderColumns;
@@ -129,9 +129,10 @@ internal static class FocusHistoryService
 
     /// <summary>The levers a session owned, joined with a plus because a comma separates the
     /// columns.</summary>
-    internal static string Levers(bool screen, bool cover, bool input)
+    internal static string Levers(bool network, bool screen, bool cover, bool input)
     {
-        var levers = new List<string>(3);
+        var levers = new List<string>(4);
+        if (network) levers.Add("network");
         if (screen) levers.Add("screen");
         if (cover)  levers.Add("cover");
         if (input)  levers.Add("input");
@@ -140,7 +141,7 @@ internal static class FocusHistoryService
 
     internal static string Format(FocusHistoryEntry entry) => string.Join(',',
         Stamp(entry.StartedAt), Stamp(entry.DueAt), Stamp(entry.EndedAt),
-        Levers(entry.DimmedScreen, entry.CoveredScreen, entry.BlockedInput),
+        Levers(entry.BlockedNetwork, entry.DimmedScreen, entry.CoveredScreen, entry.BlockedInput),
         Word(entry.Outcome));
 
     private static string Stamp(DateTimeOffset at) =>
@@ -163,7 +164,8 @@ internal static class FocusHistoryService
         string[] levers = parts[3].Split('+');
         entry = new FocusHistoryEntry(
             started, due, ended,
-            levers.Contains("screen"), levers.Contains("cover"), outcome, levers.Contains("input"));
+            levers.Contains("screen"), levers.Contains("cover"), outcome, levers.Contains("input"),
+            levers.Contains("network"));
         return true;
     }
 
@@ -172,8 +174,8 @@ internal static class FocusHistoryService
     public static string Describe(FocusHistoryEntry entry)
     {
         var ran = entry.EndedAt - entry.StartedAt;
-        string levers = Levers(entry.DimmedScreen, entry.CoveredScreen, entry.BlockedInput)
-            .Replace('+', ',');
+        string levers = Levers(entry.BlockedNetwork, entry.DimmedScreen, entry.CoveredScreen,
+                               entry.BlockedInput).Replace('+', ',');
         return string.Create(CultureInfo.CurrentCulture,
             $"{entry.StartedAt.ToLocalTime():d MMM HH:mm} — {Math.Max(0, (int)ran.TotalMinutes)} min, " +
             $"{levers}, {Ending(entry.Outcome)}");
