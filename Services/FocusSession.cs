@@ -114,6 +114,10 @@ internal sealed class FocusSessionEngine(
     // stage did not move.
     private bool _leversMoved;
 
+    // Set by an arm and nothing else, so a resumed session and every kind of session are treated
+    // alike: only a session that has just started is offered the opening page.
+    private bool _openingPageOwed;
+
     /// <summary>Raised after the session or its stage moves, so every surface reflects it without
     /// waiting for its own refresh.</summary>
     public event Action? Changed;
@@ -180,6 +184,20 @@ internal sealed class FocusSessionEngine(
 
         if (changed) Raise();
         return outcome;
+    }
+
+    /// <summary>Whether the session-start page is still owed to the session now running, answered
+    /// true once per armed session and false from then on.</summary>
+    /// <remarks>Asked only by a surface that is about to show the page, so asking is what uses the
+    /// offer up.</remarks>
+    public bool TakeOpeningPage()
+    {
+        lock (_gate)
+        {
+            if (_session is null || !_openingPageOwed) return false;
+            _openingPageOwed = false;
+            return true;
+        }
     }
 
     /// <summary>A cancel request. The first opens the wait, a repeat during it changes nothing, and
@@ -330,6 +348,7 @@ internal sealed class FocusSessionEngine(
         if (blocksInput && !input.Engage(cause))
             DropInput("Windows refused to block the mouse and keyboard", cause);
 
+        _openingPageOwed = true;
         log($"Focus session started as {FocusSessionKinds.Word(plan.Kind)}, running until "
           + $"{session.EndsAt.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)}", cause);
         return FocusArmOutcome.Armed;
