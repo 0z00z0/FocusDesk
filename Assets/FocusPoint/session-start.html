@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fokuspunkt · 60 sekunder</title>
+<style>
+  :root {
+    --bg: #0b0e11;          /* dyp blågrå, ikke ren svart – mindre kontrastslitasje */
+    --dot: #e8e4da;         /* varm off-white */
+    --ring: #3a4450;        /* dempet stålblå */
+    --ring-active: #7fa08c; /* rolig salviegrønn under nedtelling */
+    --text: #4a5560;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    overflow: hidden;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    cursor: default;
+  }
+  /* Svak radiell vignett som leder blikket innover */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center,
+      transparent 0%, transparent 40%, rgba(0,0,0,0.45) 100%);
+    pointer-events: none;
+  }
+  .stage {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .target {
+    position: relative;
+    width: 220px; height: 220px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .track { fill: none; stroke: var(--ring); stroke-width: 1.5; opacity: 0.5; }
+  .progress {
+    fill: none;
+    stroke: var(--ring-active);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-dasharray: 641; /* 2πr, r=102 */
+    stroke-dashoffset: 641;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+    transition: stroke-dashoffset 0.25s linear;
+  }
+  .dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--dot);
+    box-shadow: 0 0 24px rgba(232,228,218,0.25);
+  }
+  /* Nesten umerkelig puls (~6 pust/min-rytme) for å roe fysiologien */
+  @media (prefers-reduced-motion: no-preference) {
+    .dot.running {
+      animation: breathe 10s ease-in-out infinite;
+    }
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 20px rgba(232,228,218,0.18); }
+    50%      { transform: scale(1.18); box-shadow: 0 0 30px rgba(232,228,218,0.30); }
+  }
+  .hud {
+    position: fixed;
+    bottom: 6vh;
+    left: 0; right: 0;
+    text-align: center;
+    color: var(--text);
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    user-select: none;
+    transition: opacity 0.8s ease;
+  }
+  .hud .time { font-size: 15px; color: #6b7784; }
+  .hud.dim { opacity: 0; }
+  .done-msg {
+    position: fixed;
+    top: 8vh; left: 0; right: 0;
+    text-align: center;
+    color: var(--ring-active);
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    user-select: none;
+  }
+  .done-msg.show { opacity: 1; }
+</style>
+</head>
+<body>
+  <div class="done-msg" id="doneMsg">Ferdig — start arbeidet</div>
+  <div class="stage" id="stage">
+    <div class="target">
+      <svg viewBox="0 0 220 220">
+        <circle class="track" cx="110" cy="110" r="102"/>
+        <circle class="progress" id="progress" cx="110" cy="110" r="102"/>
+      </svg>
+      <div class="dot" id="dot"></div>
+    </div>
+  </div>
+  <div class="hud" id="hud">
+    <div id="hint">Klikk for å starte · 60 s</div>
+    <div class="time" id="time"></div>
+  </div>
+
+<script>
+  const DURATION = 60;
+  const CIRC = 641;
+  let running = false, startTs = null, raf = null;
+
+  const progress = document.getElementById('progress');
+  const dot = document.getElementById('dot');
+  const hud = document.getElementById('hud');
+  const hint = document.getElementById('hint');
+  const timeEl = document.getElementById('time');
+  const doneMsg = document.getElementById('doneMsg');
+
+  function tick(ts) {
+    if (!startTs) startTs = ts;
+    const elapsed = (ts - startTs) / 1000;
+    const remaining = Math.max(0, DURATION - elapsed);
+    progress.style.strokeDashoffset = CIRC * (remaining / DURATION);
+    timeEl.textContent = Math.ceil(remaining) + ' s';
+    if (remaining > 0) {
+      raf = requestAnimationFrame(tick);
+    } else {
+      finish();
+    }
+  }
+
+  function start() {
+    if (running) return;
+    running = true;
+    doneMsg.classList.remove('show');
+    dot.classList.add('running');
+    hint.textContent = 'Hold blikket på punktet · blunking er greit';
+    setTimeout(() => hud.classList.add('dim'), 4000);
+    startTs = null;
+    raf = requestAnimationFrame(tick);
+  }
+
+  function finish() {
+    running = false;
+    dot.classList.remove('running');
+    hud.classList.remove('dim');
+    hint.textContent = 'Klikk for ny runde';
+    timeEl.textContent = '';
+    doneMsg.classList.add('show');
+    if (navigator.vibrate) navigator.vibrate(80);
+  }
+
+  function reset() {
+    cancelAnimationFrame(raf);
+    running = false;
+    progress.style.strokeDashoffset = CIRC;
+    start();
+  }
+
+  document.body.addEventListener('click', () => running ? null : reset());
+  document.body.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); if (!running) reset(); }
+  });
+</script>
+</body>
+</html>

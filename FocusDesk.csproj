@@ -158,6 +158,11 @@
     <Content Update="Assets\FocusPoint\focus-point.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+
+    <!-- The pop-out's session-start page, served from the same folder under its own browser. -->
+    <Content Update="Assets\FocusPoint\session-start.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <!-- Authenticode-signs the Release bin\ output via scripts\sign.ps1. ContinueOnError keeps the
