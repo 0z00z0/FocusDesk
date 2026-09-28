@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace FocusDesk.Services;
 
 /// <summary>What a focus session is doing right now, as a reader of the published surface needs it:
@@ -42,33 +44,41 @@ internal static class FocusSessionStages
     public static IReadOnlyList<string> Words { get; } =
         [.. Enum.GetValues<FocusSessionStage>().Select(Label)];
 
-    /// <summary>The session in one line, for a surface that names no subject of its own. Nothing it
-    /// says can be acted on: nothing local ends a session.</summary>
+    /// <summary>The session in one line, led by its kind: the tray menu, the hover text, the status
+    /// window and the Focus page all show this, so they can never disagree. Nothing it says can be
+    /// acted on: nothing local ends a session.</summary>
     public static string Describe(FocusSnapshot session, DateTimeOffset now) =>
-        session.IsRunning ? $"Focus session: {Detail(session, now)}" : "No focus session is running.";
+        Describe(session, now, AppText.Get);
 
-    /// <summary>The same line without its subject, for a surface whose heading already names the
-    /// session. One composition, so the two can never disagree.</summary>
-    public static string Detail(FocusSnapshot session, DateTimeOffset now)
+    /// <summary>The same line, with the interface text read through <paramref name="text"/>, so a
+    /// test can compose it from each shipped resource file.</summary>
+    /// <remarks>One whole template per stage, with the kind, the minutes and the held levers as
+    /// numbered placeholders, so a translation can move every part.</remarks>
+    internal static string Describe(FocusSnapshot session, DateTimeOffset now, Func<string, string> text)
     {
-        if (!session.IsRunning) return "not running";
+        ArgumentNullException.ThrowIfNull(text);
+        if (!session.IsRunning) return text("FocusDescribeNotRunning");
 
-        int minutes = session.MinutesLeft(now) ?? 0;
-        var levers = new List<string>(4);
-        if (session.BlocksNetwork) levers.Add("network blocked");
-        if (session.DimsScreen)   levers.Add("screen dimmed");
-        if (session.CoversScreen) levers.Add("screen covered");
-        if (session.BlocksInput)  levers.Add("mouse and keyboard blocked");
-        if (session.LimitsPrograms) levers.Add(AppText.Get("FocusDetailProgramsLimited"));
+        // The kind's own lever first, then the optional ones.
+        var levers = new List<string>(5);
+        if (session.CoversScreen)   levers.Add(text("FocusDetailScreenCovered"));
+        if (session.LimitsPrograms) levers.Add(text("FocusDetailProgramsLimited"));
+        if (session.BlocksInput)    levers.Add(text("FocusDetailInputBlocked"));
+        if (session.DimsScreen)     levers.Add(text("FocusDetailScreenDimmed"));
+        if (session.BlocksNetwork)  levers.Add(text("FocusDetailNetworkBlocked"));
 
-        string stage = session.Stage switch
+        string template = text(session.Stage switch
         {
-            FocusSessionStage.Ending  => ", cancel asked for",
-            FocusSessionStage.Confirm => ", waiting for the second request",
-            _                         => "",
-        };
+            FocusSessionStage.Ending  => "FocusDescribeEnding",
+            FocusSessionStage.Confirm => "FocusDescribeConfirm",
+            _                         => "FocusDescribeActive",
+        });
+        string kind = text(session.Kind == FocusSessionKind.ProgramFocus
+                               ? "FocusKindProgramFocus"
+                               : "FocusKindScreenBreak");
+        string held = levers.Count > 0 ? string.Join(", ", levers) : text("FocusDetailNothingHeld");
 
-        return $"{minutes} min left — {string.Join(", ", levers)}{stage}";
+        return string.Format(CultureInfo.CurrentCulture, template, kind, session.MinutesLeft(now) ?? 0, held);
     }
 }
 

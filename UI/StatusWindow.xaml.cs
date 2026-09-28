@@ -244,9 +244,7 @@ internal sealed partial class StatusWindow : Window
             MinutesText.Text = "–";
         }
 
-        StatusText.Text = session.IsRunning
-            ? FocusSessionStages.Detail(session, DateTimeOffset.Now)
-            : "No session is running.";
+        StatusText.Text = FocusSessionStages.Describe(session, DateTimeOffset.Now);
         WayOutText.Visibility = session.IsRunning ? Visibility.Visible : Visibility.Collapsed;
 
         // A second session cannot be armed over a running one, so the button says nothing it cannot

@@ -58,7 +58,7 @@ public sealed partial class FocusSettingsPanel : UserControl
         _updating = true;
         try
         {
-            FocusStatusValue.Text = FocusSessionStages.Detail(session, DateTimeOffset.Now);
+            FocusStatusValue.Text = FocusSessionStages.Describe(session, DateTimeOffset.Now);
 
             var (minutes, network, dims, input, startFromStatus) = SettingsService.Read(
                 s => (s.FocusSessionMinutes, s.FocusBlocksNetwork, s.FocusDimsScreen,
