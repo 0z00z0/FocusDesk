@@ -19,10 +19,16 @@ internal sealed class FocusProgramLever(ProgramGate gate, Func<GateContext?> con
     /// that keeps anything usable. Rows for Windows programs do not count: those are usable
     /// anyway.</summary>
     internal static string? NothingKeptUsable(GateContext context) =>
-        FocusAllowedPrograms.RunEntries(context.Entries)
-                            .Any(e => ProgramCatalogue.OfferFor(e, context.WindowsFolder) != ProgramOffer.NetworkOnly)
+        KeepsAProgramUsable(context.Entries, context.WindowsFolder)
             ? null
             : "no program is chosen to stay usable, so every program window would be minimised";
+
+    /// <summary>Whether any row ticked "can run" keeps a program usable that the limit would otherwise
+    /// minimise. The same rule the lever refuses on, so a surface offering program focus can say so
+    /// before a session is asked for.</summary>
+    internal static bool KeepsAProgramUsable(IEnumerable<FocusProgramEntry> entries, string windowsFolder) =>
+        FocusAllowedPrograms.RunEntries(entries)
+                            .Any(e => ProgramCatalogue.OfferFor(e, windowsFolder) != ProgramOffer.NetworkOnly);
 
     public string? Refusal() =>
         context() is { } read

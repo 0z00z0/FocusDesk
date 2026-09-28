@@ -34,7 +34,8 @@ public class PopOutFocusPointTests
         Assert.Null(session.Attribute("Visibility"));
 
         // Every part of the countdown sits inside the view that stays shown.
-        foreach (string part in new[] { "StartButton", "RingFill", "StatusText", "LeverCard", "HistoryRows" })
+        foreach (string part in new[] { "StartProgramFocusButton", "StartScreenBreakButton", "RingFill",
+                                        "StatusText", "LeverCard", "HistoryRows" })
             Assert.Contains(Named(markup, part), session.Descendants());
 
         // The way back is outside the page's browser and inside the page's view; the way to the page
