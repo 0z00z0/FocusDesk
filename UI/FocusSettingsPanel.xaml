@@ -25,13 +25,32 @@
                       SelectionChanged="OnFocusMinutesChanged"/>
         </controls:SettingsCard>
 
+        <controls:SettingsCard Header="Start a session from the status window"
+                               Description="Adds a Start button to the status window. It starts a session; ending one still needs Home Assistant.">
+            <ToggleSwitch x:Name="FocusStartFromStatusToggle" OnContent="" OffContent=""
+                          MinWidth="0" Toggled="OnFocusStartFromStatusToggled"/>
+        </controls:SettingsCard>
+
         <zz:SettingsSectionHeader Heading="What a session holds"/>
+
+        <!-- The kind the session switch in Home Assistant starts. Locked for the length of a session
+             like every lever switch, and showing the running session's kind while one runs. The texts
+             come from the resource files. -->
+        <controls:SettingsCard x:Name="FocusKindCard">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <RadioButton x:Name="FocusKindProgramFocusRadio" GroupName="FocusKind"
+                             Checked="OnFocusKindChecked"/>
+                <RadioButton x:Name="FocusKindScreenBreakRadio" GroupName="FocusKind"
+                             Checked="OnFocusKindChecked"/>
+            </StackPanel>
+        </controls:SettingsCard>
 
         <!-- One switch per lever, settable here or from Home Assistant — both write through the same
              settings value, so the two stay one. Locked for the length of a session once it starts:
              a lever turned off part-way through would leave its record parked with nothing owning
              it. The network and input blocks fail safe: where one is refused the session runs on
-             without it, and while a session runs its switch shows what is actually held. -->
+             without it, and while a session runs its switch shows what is actually held. The network
+             block sits above both kinds because either can hold it. -->
         <controls:SettingsCard Header="Blocks the network"
                                Description="Blocks every connection for the length of a session, except to the MQTT broker and the programs allowed below.">
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
@@ -42,6 +61,10 @@
             </StackPanel>
         </controls:SettingsCard>
 
+        <!-- Program focus. The list stays editable whatever the stored kind: the status window can
+             start either kind. -->
+        <zz:SettingsSectionHeader x:Name="FocusProgramFocusHeader"/>
+
         <!-- The one program list, one row per program beneath the button, each with "can run" and
              "can use the network". Empty is the whole of what an installation that has chosen no
              program carries. The texts come from the resource files. -->
@@ -51,6 +74,9 @@
         <StackPanel x:Name="FocusAllowedProgramsPanel" Spacing="4"/>
         <TextBlock x:Name="FocusAllowRefusalText" Visibility="Collapsed"
                    TextWrapping="Wrap" FontSize="12" Margin="16,0,16,4"/>
+
+        <!-- Screen break: the cover is the kind itself, so only the two optional levers remain. -->
+        <zz:SettingsSectionHeader x:Name="FocusScreenBreakHeader"/>
 
         <controls:SettingsCard Header="Dims the screen"
                                Description="Lowers the built-in screen's brightness for the length of a session and puts it back afterwards.">
@@ -70,12 +96,6 @@
                 <ToggleSwitch x:Name="FocusBlocksInputToggle" OnContent="" OffContent=""
                               MinWidth="0" Toggled="OnFocusBlocksInputToggled"/>
             </StackPanel>
-        </controls:SettingsCard>
-
-        <controls:SettingsCard Header="Start a session from the status window"
-                               Description="Adds a Start button to the status window. It starts a session; ending one still needs Home Assistant.">
-            <ToggleSwitch x:Name="FocusStartFromStatusToggle" OnContent="" OffContent=""
-                          MinWidth="0" Toggled="OnFocusStartFromStatusToggled"/>
         </controls:SettingsCard>
 
         <zz:SettingsSectionHeader Heading="If you are stuck"/>

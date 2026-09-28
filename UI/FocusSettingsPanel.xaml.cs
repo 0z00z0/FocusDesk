@@ -25,6 +25,12 @@ public sealed partial class FocusSettingsPanel : UserControl
         FocusProgramsCard.Header      = AppText.Get("FocusProgramsHeader");
         FocusProgramsCard.Description = AppText.Get("FocusProgramsDescription");
         FocusAllowProgramButton.Content = AppText.Get("FocusProgramsAddButton");
+        FocusKindCard.Header      = AppText.Get("FocusKindCardHeader");
+        FocusKindCard.Description = AppText.Get("FocusKindCardDescription");
+        FocusKindProgramFocusRadio.Content = AppText.Get("FocusKindProgramFocusOption");
+        FocusKindScreenBreakRadio.Content  = AppText.Get("FocusKindScreenBreakOption");
+        FocusProgramFocusHeader.Heading = AppText.Get("FocusProgramFocusHeading");
+        FocusScreenBreakHeader.Heading  = AppText.Get("FocusScreenBreakHeading");
         Loaded += (_, _) => Reload();
     }
 
@@ -60,11 +66,19 @@ public sealed partial class FocusSettingsPanel : UserControl
         {
             FocusStatusValue.Text = FocusSessionStages.Describe(session, DateTimeOffset.Now);
 
-            var (minutes, network, dims, input, startFromStatus) = SettingsService.Read(
-                s => (s.FocusSessionMinutes, s.FocusBlocksNetwork, s.FocusDimsScreen,
+            var (minutes, kind, network, dims, input, startFromStatus) = SettingsService.Read(
+                s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusBlocksNetwork, s.FocusDimsScreen,
                       s.FocusBlocksInput, s.FocusStartFromDashboard));
 
             FocusLengthChoices.Fill(FocusMinutesCombo, minutes);
+
+            // A running session shows the kind it was started as, which may not be the stored one:
+            // the status window starts either kind without storing it.
+            var shownKind = session.IsRunning ? session.Kind : kind;
+            FocusKindProgramFocusRadio.IsChecked = shownKind == FocusSessionKind.ProgramFocus;
+            FocusKindScreenBreakRadio.IsChecked  = shownKind == FocusSessionKind.ScreenBreak;
+            FocusKindProgramFocusRadio.IsEnabled = !locked;
+            FocusKindScreenBreakRadio.IsEnabled  = !locked;
 
             // A running session reports the levers it actually holds — a refused input block reads
             // off — and with none running these show the defaults the next session starts from.
@@ -206,6 +220,18 @@ public sealed partial class FocusSettingsPanel : UserControl
         if (FocusLengthChoices.Selected(FocusMinutesCombo) is not { } minutes) return;
 
         SettingsService.Update(s => s.FocusSessionMinutes = minutes);
+    }
+
+    private void OnFocusKindChecked(object sender, RoutedEventArgs e)
+    {
+        if (_updating) return;
+        // Checked at the moment of the write, as the list is: a kind changed while a session runs would
+        // leave the page and the running session disagreeing.
+        if (FocusSessionService.LeversAreLocked) { Reload(); return; }
+        var kind = ReferenceEquals(sender, FocusKindProgramFocusRadio)
+            ? FocusSessionKind.ProgramFocus
+            : FocusSessionKind.ScreenBreak;
+        SettingsService.Update(s => s.FocusSessionKind = kind);
     }
 
     private void OnFocusBlocksNetworkToggled(object sender, RoutedEventArgs e)
