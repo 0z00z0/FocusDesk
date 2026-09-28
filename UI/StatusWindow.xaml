@@ -91,9 +91,9 @@
                  point is not showing. -->
             <StackPanel x:Name="SessionView" Spacing="8">
 
-                <!-- The session: the ring and the session's own lines, with the start controls on the
-                     heading row. No control here ends a session — that is the feature's central
-                     property, not an omission. -->
+                <!-- The session: the ring and the session's own lines, with the length on the heading
+                     row and a start button per kind on a row of its own beneath. No control here ends
+                     a session — that is the feature's central property, not an omission. -->
                 <Border Style="{StaticResource CardStyle}">
                     <StackPanel Spacing="6">
                         <Grid ColumnSpacing="8">
@@ -104,15 +104,27 @@
                             <TextBlock Grid.Column="0" Text="Focus session"
                                        Style="{StaticResource CardHeadingStyle}"/>
                             <!-- Shown only where the Focus settings page has turned the start box on. -->
-                            <StackPanel Grid.Column="1" x:Name="StartBox"
-                                        Orientation="Horizontal" Spacing="8">
-                                <ComboBox x:Name="MinutesCombo" VerticalAlignment="Center"
-                                          AutomationProperties.Name="Session length"/>
-                                <Button x:Name="StartButton" VerticalAlignment="Center"
-                                        Content="Start" MinWidth="64"
-                                        Style="{StaticResource AccentButtonStyle}"
-                                        Click="OnStart"/>
-                            </StackPanel>
+                            <ComboBox Grid.Column="1" x:Name="MinutesCombo" VerticalAlignment="Center"
+                                      AutomationProperties.Name="Session length"/>
+                        </Grid>
+
+                        <!-- Both kinds, every time. The stored default carries the accent; starting either
+                             here never changes it. The texts come from the resource files. -->
+                        <Grid x:Name="StartBox" ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <!-- A disabled button shows no hover text of its own, so the reason sits on
+                                 a transparent frame around it. -->
+                            <Grid Grid.Column="0" x:Name="StartProgramFocusFrame" Background="Transparent">
+                                <Button x:Name="StartProgramFocusButton" HorizontalAlignment="Stretch"
+                                        Click="OnStartProgramFocus"/>
+                            </Grid>
+                            <Button Grid.Column="1" x:Name="StartScreenBreakButton"
+                                    HorizontalAlignment="Stretch"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Click="OnStartScreenBreak"/>
                         </Grid>
 
                         <Grid ColumnSpacing="12">

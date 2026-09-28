@@ -215,6 +215,30 @@
     <value>Gå til nedtellingen</value>
     <comment>Label of the button under the focus point on the tray pop-out that returns to the countdown, imperative phrase.</comment>
   </data>
+  <data name="PopOutStartProgramFocus" xml:space="preserve">
+    <value>Programfokus</value>
+    <comment>Button on the tray pop-out that starts a program-focus session, glossary term, capitalised.</comment>
+  </data>
+  <data name="PopOutStartScreenBreak" xml:space="preserve">
+    <value>Skjermpause</value>
+    <comment>Button on the tray pop-out that starts a screen break, glossary term, capitalised.</comment>
+  </data>
+  <data name="PopOutStartProgramFocusInfo" xml:space="preserve">
+    <value>Merk minst ett program som Kan kjøre på Fokus-siden</value>
+    <comment>Hover text on the disabled program-focus button, imperative; Can run names the checkbox; no full stop.</comment>
+  </data>
+  <data name="PopOutRefusalAlreadyRunning" xml:space="preserve">
+    <value>En økt kjører allerede.</value>
+    <comment>Line under the start buttons when a start is refused because one runs, whole sentence.</comment>
+  </data>
+  <data name="PopOutRefusalLeverRefused" xml:space="preserve">
+    <value>Økten fikk ikke det typen trenger: en skjerm å dekke, et program merket Kan kjøre eller en lysstyrke å dempe.</value>
+    <comment>Line under the start buttons when the kind's own lever or the dim refuses, whole sentence.</comment>
+  </data>
+  <data name="PopOutRefusalLeverFailed" xml:space="preserve">
+    <value>Noe økten trengte, slo ikke inn. Det som slo inn, er satt tilbake.</value>
+    <comment>Line under the start buttons when a lever failed after agreeing, whole sentences.</comment>
+  </data>
   <data name="CoverProgramsLimited" xml:space="preserve">
     <value>bare de valgte programmene kan brukes</value>
     <comment>One clause in the cover's list of what the session holds, lower case, no full stop.</comment>
