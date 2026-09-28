@@ -17,7 +17,9 @@
        references — the watchdog task, wired in App.xaml.cs, the settings window shell, and the
        notification-area icon's host — and each carries a PackageReference below. ZeroZero.Tray, the
        plain half of the tray component, arrives with the host and keeps its pin here because the
-       host's own floor must not decide it. ZeroZero.Win32 and ZeroZero.Controls.WinUI are pinned here without
+       host's own floor must not decide it. ZeroZero.Update.Win32, which holds the update flow and
+       the unattended policy, arrives with ZeroZero.Update.WinUI and keeps its pin here for the same
+       reason. ZeroZero.Win32 and ZeroZero.Controls.WinUI are pinned here without
        one: both already arrive transitively (Win32 through Mqtt.WinUI, Brand.WinUI and
        SettingsShell.WinUI, Controls.WinUI through Mqtt.WinUI and SettingsShell.WinUI), FocusDesk
        has no direct caller of either yet, and the family's own pin file declares no version for
@@ -40,8 +42,9 @@
     <PackageVersion Include="ZeroZero.Startup" Version="0.8.1" />
     <PackageVersion Include="ZeroZero.Tray" Version="0.9.0" />
     <PackageVersion Include="ZeroZero.Tray.WinUI" Version="0.9.0" />
-    <PackageVersion Include="ZeroZero.Update" Version="0.11.0" />
-    <PackageVersion Include="ZeroZero.Update.WinUI" Version="0.11.0" />
+    <PackageVersion Include="ZeroZero.Update" Version="0.12.0" />
+    <PackageVersion Include="ZeroZero.Update.Win32" Version="0.12.0" />
+    <PackageVersion Include="ZeroZero.Update.WinUI" Version="0.12.0" />
     <PackageVersion Include="ZeroZero.Win32" Version="0.9.1" />
   </ItemGroup>
 

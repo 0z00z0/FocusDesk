@@ -98,6 +98,11 @@ internal sealed class AppSettings
     /// area, false or null for the overflow, which the shell reads alike.</summary>
     public bool? TrayIconPromotionRestoreValue { get; set; }
 
+    /// <summary>Whether a found update installs with nobody asked, while the machine is locked or
+    /// left alone and no focus session runs. Off by default: it closes FocusDesk for the installer.
+    /// With it off nothing is checked in the background either.</summary>
+    public bool InstallUpdatesUnattended { get; set; }
+
     /// <summary>The Settings window's outer rectangle in physical pixels, as the window manager
     /// last reported it. All four are set together or none is: a partial rectangle is treated as
     /// nothing saved, and the window opens centred on the monitor under the cursor.</summary>

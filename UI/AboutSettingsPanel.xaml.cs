@@ -10,9 +10,10 @@ using ZeroZero.Update.Win32;
 namespace FocusDesk.UI;
 
 /// <summary>
-/// The About page: the shared About control with only its header block framed, and the Check for
-/// updates button under it. The button joins the one check every surface shares, so it shows a check the
-/// notification-area menu started as readily as one it started itself.
+/// The About page: the shared About control with only its header block framed, the Check for
+/// updates button under it, and the switch that lets updates install with nobody asked. The button
+/// joins the one check every surface shares, so it shows a check the notification-area menu started
+/// as readily as one it started itself.
 /// </summary>
 /// <remarks>The coordinator lives for the process, so <see cref="Detach"/> must run when the window
 /// closes or a torn-down page stays reachable and keeps being told about checks.</remarks>
@@ -26,6 +27,9 @@ public sealed partial class AboutSettingsPanel : UserControl
 
     private bool _detached;
 
+    // Set while the switch is brought into line with the stored setting, so that is not a change.
+    private bool _updating;
+
     public AboutSettingsPanel()
     {
         InitializeComponent();
@@ -33,6 +37,14 @@ public sealed partial class AboutSettingsPanel : UserControl
         About.SetInfo(AboutContent.Build());
         About.Width = AboutContent.ContentWidthDip;
         FrameHeader();
+
+        UnattendedUpdatesCard.Width       = AboutContent.ContentWidthDip;
+        UnattendedUpdatesCard.Header      = AppText.Get("UnattendedUpdatesHeader");
+        UnattendedUpdatesCard.Description = AppText.Get("UnattendedUpdatesDescription");
+        UnattendedUpdatesInfo.Subject     = AppText.Get("UnattendedUpdatesSubject");
+        UnattendedUpdatesInfo.Info        = AppText.Get("UnattendedUpdatesInfo");
+        // settings.json roams, so the stored choice can arrive from another machine between visits.
+        Loaded += (_, _) => ReloadUnattended();
 
         Show(UpdateButtonPolicy.Rest);
         CheckForUpdatesButton.Click += (_, _) => OnClick();
@@ -83,6 +95,24 @@ public sealed partial class AboutSettingsPanel : UserControl
                 new GradientStop { Color = AppColors.FromPacked(bottom), Offset = 1 },
             },
         };
+    }
+
+    private void ReloadUnattended()
+    {
+        _updating = true;
+        try { UnattendedUpdatesToggle.IsOn = SettingsService.Read(s => s.InstallUpdatesUnattended); }
+        finally { _updating = false; }
+    }
+
+    /// <summary>Stores the choice. The background path follows the settings itself, so nothing
+    /// else is told.</summary>
+    private void OnUnattendedUpdatesToggled(object sender, RoutedEventArgs e)
+    {
+        if (_updating) return;
+
+        bool wanted = UnattendedUpdatesToggle.IsOn;
+        try { SettingsService.Update(s => s.InstallUpdatesUnattended = wanted); }
+        catch (Exception ex) { AppLog.Error("AboutSettingsPanel.OnUnattendedUpdatesToggled", ex); }
     }
 
     private void OnClick()

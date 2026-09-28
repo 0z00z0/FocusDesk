@@ -3,7 +3,9 @@
     x:Class="FocusDesk.UI.AboutSettingsPanel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:brand="using:ZeroZero.Brand.WinUI">
+    xmlns:brand="using:ZeroZero.Brand.WinUI"
+    xmlns:zz="using:ZeroZero.Controls.WinUI"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls">
 
     <UserControl.Resources>
         <!-- A faint frame for the About control's coloured header block alone, applied to that
@@ -28,5 +30,15 @@
              the check is an action and the card is a statement. -->
         <brand:BrandBracketButton x:Name="CheckForUpdatesButton"
                                   HorizontalAlignment="Center" Margin="0,12,0,0"/>
+
+        <!-- Installing with nobody asked. Off unless switched on; the button above keeps working
+             either way. The texts come from the resource files, and the width follows the card's. -->
+        <controls:SettingsCard x:Name="UnattendedUpdatesCard" Margin="0,16,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <zz:InfoIcon x:Name="UnattendedUpdatesInfo"/>
+                <ToggleSwitch x:Name="UnattendedUpdatesToggle" OnContent="" OffContent=""
+                              MinWidth="0" Toggled="OnUnattendedUpdatesToggled"/>
+            </StackPanel>
+        </controls:SettingsCard>
     </StackPanel>
 </UserControl>

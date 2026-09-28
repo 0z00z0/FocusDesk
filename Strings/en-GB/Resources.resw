@@ -174,4 +174,20 @@
     <value>programs</value>
     <comment>One item in the tray hover's list of levers held, noun, lower case.</comment>
   </data>
+  <data name="UnattendedUpdatesHeader" xml:space="preserve">
+    <value>Install updates by themselves</value>
+    <comment>Header of the switch on the About page, imperative phrase.</comment>
+  </data>
+  <data name="UnattendedUpdatesDescription" xml:space="preserve">
+    <value>Checks once a day and installs while the screen is locked or nothing has been touched for 10 minutes.</value>
+    <comment>Description under the switch on the About page, whole sentence.</comment>
+  </data>
+  <data name="UnattendedUpdatesSubject" xml:space="preserve">
+    <value>installing updates by themselves</value>
+    <comment>Screen-reader subject of the info bubble beside the switch, noun phrase, lower case.</comment>
+  </data>
+  <data name="UnattendedUpdatesInfo" xml:space="preserve">
+    <value>Never during a focus session. FocusDesk closes for the install and starts again afterwards.</value>
+    <comment>Hover text of the info bubble beside the switch, whole sentences.</comment>
+  </data>
 </root>

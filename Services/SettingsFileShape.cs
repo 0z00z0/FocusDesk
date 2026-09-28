@@ -24,12 +24,13 @@ internal sealed class SettingsFile
     public const string FocusKey      = "Focus";
     public const string ScreenKey     = "Screen";
     public const string AppearanceKey = "Appearance";
+    public const string AboutKey      = "About";
     public const string WindowKey     = "Window";
 
     /// <summary>The section names, in the order the document carries them. The store binds a section
     /// by its exact spelling, and one spelled in another case binds nothing and hands back
     /// defaults.</summary>
-    public static readonly string[] SectionNames = [FocusKey, ScreenKey, AppearanceKey, WindowKey];
+    public static readonly string[] SectionNames = [FocusKey, ScreenKey, AppearanceKey, AboutKey, WindowKey];
 
     /// <summary>First key in the file, so the shape is read rather than inferred.</summary>
     [JsonPropertyName(VersionKey), JsonPropertyOrder(0)]
@@ -44,9 +45,12 @@ internal sealed class SettingsFile
     [JsonPropertyName(AppearanceKey), JsonPropertyOrder(3)]
     public AppearanceGroup Appearance { get; set; } = new();
 
+    [JsonPropertyName(AboutKey), JsonPropertyOrder(4)]
+    public AboutGroup About { get; set; } = new();
+
     /// <summary>Not a page: where the Settings window was last left. It trails the pages for that
     /// reason.</summary>
-    [JsonPropertyName(WindowKey), JsonPropertyOrder(4)]
+    [JsonPropertyName(WindowKey), JsonPropertyOrder(5)]
     public WindowGroup Window { get; set; } = new();
 
     internal sealed class ScreenGroup
@@ -108,6 +112,13 @@ internal sealed class SettingsFile
         [JsonPropertyOrder(3)] public bool?   TrayIconPromotionRestoreValue { get; set; }
     }
 
+    internal sealed class AboutGroup
+    {
+        // Nullable so a document written before the row existed reads off, the component's own
+        // default, rather than a choice nobody made.
+        [JsonPropertyOrder(1)] public bool? InstallUpdatesUnattended { get; set; }
+    }
+
     internal sealed class WindowGroup
     {
         [JsonPropertyOrder(1)] public int? SettingsWindowX      { get; set; }
@@ -128,6 +139,7 @@ internal sealed class SettingsFile
                 TrayIconPromotionRestoreFor   = s.TrayIconPromotionRestoreFor,
                 TrayIconPromotionRestoreValue = s.TrayIconPromotionRestoreValue,
             },
+            About = new AboutGroup { InstallUpdatesUnattended = s.InstallUpdatesUnattended },
             Window = new WindowGroup
             {
                 SettingsWindowX      = s.SettingsWindowX,
@@ -187,6 +199,8 @@ internal sealed class SettingsFile
         PromoteTrayIcon               = Appearance.PromoteTrayIcon ?? false,
         TrayIconPromotionRestoreFor   = Appearance.TrayIconPromotionRestoreFor,
         TrayIconPromotionRestoreValue = Appearance.TrayIconPromotionRestoreValue,
+
+        InstallUpdatesUnattended = About.InstallUpdatesUnattended ?? false,
 
         SettingsWindowX      = Window.SettingsWindowX,
         SettingsWindowY      = Window.SettingsWindowY,

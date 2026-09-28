@@ -174,4 +174,20 @@
     <value>programmer</value>
     <comment>One item in the tray hover's list of levers held, noun, lower case.</comment>
   </data>
+  <data name="UnattendedUpdatesHeader" xml:space="preserve">
+    <value>Installer oppdateringer av seg selv</value>
+    <comment>Header of the switch on the About page, imperative phrase.</comment>
+  </data>
+  <data name="UnattendedUpdatesDescription" xml:space="preserve">
+    <value>Ser etter oppdateringer én gang i døgnet og installerer når skjermen er låst eller ingenting er rørt på 10 minutter.</value>
+    <comment>Description under the switch on the About page, whole sentence.</comment>
+  </data>
+  <data name="UnattendedUpdatesSubject" xml:space="preserve">
+    <value>installering av oppdateringer av seg selv</value>
+    <comment>Screen-reader subject of the info bubble beside the switch, noun phrase, lower case.</comment>
+  </data>
+  <data name="UnattendedUpdatesInfo" xml:space="preserve">
+    <value>Aldri under en fokusøkt. FocusDesk lukkes under installeringen og starter igjen etterpå.</value>
+    <comment>Hover text of the info bubble beside the switch, whole sentences.</comment>
+  </data>
 </root>

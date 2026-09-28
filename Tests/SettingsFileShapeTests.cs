@@ -64,6 +64,8 @@ public class SettingsFileShapeTests : IDisposable
         // on. It trails the row for that reason.
         "Appearance.TrayIconPromotionRestoreFor",
         "Appearance.TrayIconPromotionRestoreValue",
+        "About",
+        "About.InstallUpdatesUnattended",
         // Not a page: where the Settings window was last left. It trails the pages for that reason.
         "Window",
         "Window.SettingsWindowX",
@@ -178,6 +180,7 @@ public class SettingsFileShapeTests : IDisposable
             FocusSessionBlockedNetwork = true,
             FocusLimitsPrograms       = true,
             FocusSessionLimitedPrograms = true,
+            InstallUpdatesUnattended  = true,
         };
         Assert.True(SettingsService.WriteTo(before, File_));
 
@@ -224,7 +227,8 @@ public class SettingsFileShapeTests : IDisposable
         s.FocusDimsScreen, s.FocusCoversScreen, s.FocusCoverVisual, s.FocusLimitsPrograms,
         s.FocusSessionLimitedPrograms,
         s.FocusBlocksInput, s.FocusStartFromDashboard, s.FocusSessionStartedAt, s.FocusSessionEndsAt,
-        s.FocusSessionDimmedScreen, s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput);
+        s.FocusSessionDimmedScreen, s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput,
+        s.InstallUpdatesUnattended);
 
     /// <summary>An empty document reads as this application's defaults, not the section types'. The
     /// two differ: a section type declares no session length and no lever, so binding an empty
