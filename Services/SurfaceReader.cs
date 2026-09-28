@@ -35,10 +35,17 @@ internal static class SurfaceReader
     public static SurfaceState Read()
     {
         var focus = FocusSessionService.Current;
-        int? brightness = ScreenBrightnessService.Current;
+        int? brightness = ReadBrightness(
+            () => ScreenBrightnessService.IsSupported, () => ScreenBrightnessService.Current);
         var now = DateTimeOffset.Now;
         return SettingsService.Read(s => From(s, focus, brightness, now));
     }
+
+    /// <summary>The brightness to publish: the live reading only when the machine can be asked, so a
+    /// machine with no display Windows can read this from never pays for — or logs against — a query
+    /// with no answer, every publish cycle, forever.</summary>
+    internal static int? ReadBrightness(Func<bool> isSupported, Func<int?> current) =>
+        isSupported() ? current() : null;
 
     /// <summary>What this machine can honour. Throws rather than answering when the display cannot be
     /// asked, so the announcement keeps the disposition already recorded instead of withdrawing the
