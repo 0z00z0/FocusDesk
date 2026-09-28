@@ -24,7 +24,7 @@
        SettingsShell.WinUI, Controls.WinUI through Mqtt.WinUI and SettingsShell.WinUI), FocusDesk
        has no direct caller of either yet, and the family's own pin file declares no version for
        either — so without CentralPackageTransitivePinningEnabled the whole graph would keep
-       resolving whatever floor Mqtt.WinUI 0.7.3 happens to specify, never the newer releases
+       resolving whatever floor Mqtt.WinUI 0.8.0 happens to specify, never the newer releases
        pinned here. -->
   <PropertyGroup>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
@@ -37,7 +37,7 @@
     <PackageVersion Include="ZeroZero.Controls.WinUI" Version="0.8.0" />
     <PackageVersion Include="ZeroZero.Diagnostics" Version="0.7.0" />
     <PackageVersion Include="ZeroZero.Lifecycle" Version="0.7.1" />
-    <PackageVersion Include="ZeroZero.Mqtt.WinUI" Version="0.7.3" />
+    <PackageVersion Include="ZeroZero.Mqtt.WinUI" Version="0.8.0" />
     <PackageVersion Include="ZeroZero.SettingsShell.WinUI" Version="0.8.0" />
     <PackageVersion Include="ZeroZero.Startup" Version="0.8.1" />
     <PackageVersion Include="ZeroZero.Tray" Version="0.9.0" />
