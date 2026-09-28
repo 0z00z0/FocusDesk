@@ -22,21 +22,19 @@ internal interface ISettingsActions
     /// only.</summary>
     void SetFocusSessionMinutes(int minutes);
 
+    /// <summary>The kind the next session started from Home Assistant runs as. Refused while one
+    /// runs.</summary>
+    void SetFocusSessionKind(FocusSessionKind kind);
+
     /// <summary>Whether the next session blocks the network. Refused while one runs.</summary>
     void SetFocusBlocksNetwork(bool on);
 
-    /// <summary>Whether the next session dims the screen. Refused while one runs.</summary>
+    /// <summary>Whether the next screen break dims the screen. Refused while one runs.</summary>
     void SetFocusDimsScreen(bool on);
 
-    /// <summary>Whether the next session covers every display. Refused while one runs.</summary>
-    void SetFocusCoversScreen(bool on);
-
-    /// <summary>Whether the next session blocks the mouse and keyboard. Refused while one runs.</summary>
-    void SetFocusBlocksInput(bool on);
-
-    /// <summary>Whether the next session limits the machine to the chosen programs. Refused while one
+    /// <summary>Whether the next screen break blocks the mouse and keyboard. Refused while one
     /// runs.</summary>
-    void SetFocusLimitsPrograms(bool on);
+    void SetFocusBlocksInput(bool on);
 }
 
 /// <summary>The live settings writes behind every inbound command.</summary>
@@ -71,20 +69,17 @@ internal sealed class MqttCommandActions : ISettingsActions
 
     public void SetFocusSessionMinutes(int minutes) => Write(s => s.FocusSessionMinutes = minutes);
 
+    public void SetFocusSessionKind(FocusSessionKind kind) => WriteUnlessSessionRunning(
+        s => s.FocusSessionKind = kind, "the kind of session");
+
     public void SetFocusBlocksNetwork(bool on) => WriteUnlessSessionRunning(
         s => s.FocusBlocksNetwork = on, "which lever blocks the network");
 
     public void SetFocusDimsScreen(bool on) => WriteUnlessSessionRunning(
         s => s.FocusDimsScreen = on, "which lever dims the screen");
 
-    public void SetFocusCoversScreen(bool on) => WriteUnlessSessionRunning(
-        s => s.FocusCoversScreen = on, "which lever covers the screen");
-
     public void SetFocusBlocksInput(bool on) => WriteUnlessSessionRunning(
         s => s.FocusBlocksInput = on, "which lever blocks the mouse and keyboard");
-
-    public void SetFocusLimitsPrograms(bool on) => WriteUnlessSessionRunning(
-        s => s.FocusLimitsPrograms = on, "which lever limits the programs");
 
     /// <summary>A lever choice, refused while a session runs. Turning one off part-way through would
     /// either restore the screen while the session still claims to be running, or leave that lever's

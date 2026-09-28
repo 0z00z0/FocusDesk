@@ -14,9 +14,8 @@ internal readonly record struct SurfaceState(
     int FocusSessionMinutes,
     bool FocusBlocksNetwork,
     bool FocusDimsScreen,
-    bool FocusCoversScreen,
     bool FocusBlocksInput,
-    bool FocusLimitsPrograms = false);
+    FocusSessionKind FocusKind = FocusSessionKind.ScreenBreak);
 
 /// <summary>What this machine can actually do. Announcing a control the machine cannot honour would
 /// leave the receiver with an entity that silently does nothing.</summary>
@@ -64,8 +63,9 @@ internal static class SurfaceReader
             // and with none running these read the defaults the next session starts from.
             FocusBlocksNetwork:    focus.IsRunning ? focus.BlocksNetwork : s.FocusBlocksNetwork,
             FocusDimsScreen:       focus.IsRunning ? focus.DimsScreen : s.FocusDimsScreen,
-            FocusCoversScreen:     focus.IsRunning ? focus.CoversScreen : s.FocusCoversScreen,
             FocusBlocksInput:      focus.IsRunning ? focus.BlocksInput : s.FocusBlocksInput,
-            FocusLimitsPrograms:   focus.IsRunning ? focus.LimitsPrograms : s.FocusLimitsPrograms);
+            // A running session reports the kind it was started as; the stored default is the kind
+            // the next session from Home Assistant runs as.
+            FocusKind:             focus.IsRunning ? focus.Kind : s.FocusSessionKind);
     }
 }

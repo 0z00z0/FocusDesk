@@ -13,9 +13,14 @@ internal sealed class AppSettings
     /// backstop against a session that never ends.</summary>
     public int FocusSessionMinutes { get; set; } = FocusSessionEngine.DefaultMinutes;
 
+    /// <summary>The kind a session started from Home Assistant runs as. The status window offers both
+    /// kinds every time and starting one there leaves this alone. A screen break for an installation
+    /// that has never chosen.</summary>
+    public FocusSessionKind FocusSessionKind { get; set; } = FocusSessionKind.ScreenBreak;
+
     /// <summary>Whether the next focus session blocks every network connection but the broker and
-    /// the allowed programs. Off by default: it rewrites the machine's firewall. Where the firewall
-    /// refuses the block the session runs on without it.</summary>
+    /// the allowed programs, whichever kind it is. Off by default: it rewrites the machine's firewall.
+    /// Where the firewall refuses the block the session runs on without it.</summary>
     public bool FocusBlocksNetwork { get; set; }
 
     /// <summary>The one program list: each program by its stable identifier, with "can run", "can use
@@ -27,28 +32,20 @@ internal sealed class AppSettings
     /// Minimise in this version, whatever it holds.</summary>
     public FocusProgramAction FocusProgramsDefaultAction { get; set; } = FocusProgramAction.Minimise;
 
-    /// <summary>Whether the next focus session dims the screen. A default the session starts from,
-    /// not a standing state: the choice is made per session from Home Assistant.</summary>
+    /// <summary>Whether the next screen break dims the screen. A default the session starts from,
+    /// not a standing state. Program focus never dims.</summary>
     public bool FocusDimsScreen { get; set; } = true;
-
-    /// <summary>Whether the next focus session covers every display with a black window. Dimming to
-    /// the panel's floor still leaves enough glow to read by, which is what this lever answers.</summary>
-    public bool FocusCoversScreen { get; set; } = true;
 
     /// <summary>Which visual the screen cover draws: the countdown dial, or the breathing focus
     /// point. A default the session starts from, read when the cover goes up. No control edits it
     /// yet: it is set in the settings document.</summary>
     public CoverVisual FocusCoverVisual { get; set; } = CoverVisual.Ring;
 
-    /// <summary>Whether the next focus session blocks the mouse and keyboard. Off by default: while it
-    /// holds, nothing on the machine answers. Where Windows refuses the block the session runs on
-    /// without it.</summary>
-    public bool FocusBlocksInput { get; set; }
-
-    /// <summary>Whether the next focus session limits the machine to the programs ticked "can run".
-    /// Off by default: every other program window is minimised while it holds. Where it is refused
-    /// the session runs on without it.</summary>
-    public bool FocusLimitsPrograms { get; set; }
+    /// <summary>Whether the next screen break blocks the mouse and keyboard. On by default: the cover
+    /// lets clicks through, so without the block input reaches whatever window has focus beneath it.
+    /// Where Windows refuses the block the session runs on without it. Program focus never blocks
+    /// input.</summary>
+    public bool FocusBlocksInput { get; set; } = true;
 
     /// <summary>Whether the status window offers a control that starts a session. It never offers one
     /// that ends a session, whatever this holds: nothing on the machine ends one.</summary>
@@ -62,6 +59,11 @@ internal sealed class AppSettings
     /// defined by this instant rather than by a countdown, so a machine switched off mid-session
     /// still ends it — at the next start if the instant has already passed.</summary>
     public DateTimeOffset? FocusSessionEndsAt { get; set; }
+
+    /// <summary>The kind the running focus session was started as. Meaningless without
+    /// <see cref="FocusSessionEndsAt"/>; a document written before kinds existed reads as a screen
+    /// break.</summary>
+    public FocusSessionKind FocusSessionRunningKind { get; set; }
 
     /// <summary>Which levers the running session owns, so only what it displaced is put back.
     /// Meaningless without <see cref="FocusSessionEndsAt"/>.</summary>

@@ -313,7 +313,6 @@ internal sealed partial class StatusWindow : Window
     private static string Refusal(FocusArmOutcome outcome) => outcome switch
     {
         FocusArmOutcome.AlreadyRunning => "A session is already running.",
-        FocusArmOutcome.NoLeverChosen  => "Nothing was chosen for a session to do. Turn on a lever on the Focus settings page first.",
         FocusArmOutcome.LeverRefused   => "No chosen lever would take it: no brightness change, nothing to cover, or no rights or broker for a block.",
         _                              => "Something the session needed failed to engage. Whatever did engage has been lifted again.",
     };

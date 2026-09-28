@@ -25,7 +25,9 @@ internal enum FocusSessionOutcome
 /// <param name="BlockedNetwork">Whether the session still held the network block when it ended.</param>
 /// <param name="LimitedPrograms">Whether the session still limited which programs could be used when
 /// it ended.</param>
+/// <param name="Kind">The kind the session was started as, or null for a row written before the
+/// column existed.</param>
 internal readonly record struct FocusHistoryEntry(
     DateTimeOffset StartedAt, DateTimeOffset DueAt, DateTimeOffset EndedAt,
     bool DimmedScreen, bool CoveredScreen, FocusSessionOutcome Outcome, bool BlockedInput = false,
-    bool BlockedNetwork = false, bool LimitedPrograms = false);
+    bool BlockedNetwork = false, bool LimitedPrograms = false, FocusSessionKind? Kind = null);

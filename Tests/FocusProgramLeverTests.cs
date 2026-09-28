@@ -52,22 +52,46 @@ public class FocusProgramLeverTests
         Assert.Null(new FocusProgramLever(_gate, () => Context(Row(Editor, run: true))).Refusal());
     }
 
+    private static FocusSessionPlan ProgramFocus(bool blocksNetwork = false) =>
+        FocusSessionPlan.For(FocusSessionKind.ProgramFocus, blocksNetwork, dimsScreen: false, blocksInput: false);
+
     [Fact]
-    public void ASessionHoldingOnlyThisLeverIsArmed_AndARefusedOneLeavesTheOtherLeversRunning()
+    public void AProgramFocusSessionHoldingOnlyThisLeverIsArmed()
     {
         var programs = new FakeFocusLever();
         var engine = Engine(programs, out _);
 
-        Assert.Equal(FocusArmOutcome.Armed,
-                     engine.Arm(30, false, false, false, false, "a test", limitsPrograms: true));
+        Assert.Equal(FocusArmOutcome.Armed, engine.Arm(30, ProgramFocus(), "a test"));
         Assert.True(engine.Snapshot().LimitsPrograms);
+        Assert.Equal(FocusSessionKind.ProgramFocus, engine.Snapshot().Kind);
+    }
 
-        var refused = new FakeFocusLever { RefusalText = "nothing kept usable" };
-        var second = Engine(refused, out _);
-        Assert.Equal(FocusArmOutcome.Armed,
-                     second.Arm(30, dimsScreen: true, false, false, false, "a test", limitsPrograms: true));
-        Assert.False(second.Snapshot().LimitsPrograms);
+    /// <summary>The program limit is the whole of a program-focus session, so where it refuses the
+    /// session is refused with its reason before the network block it asked for goes on, and where
+    /// the watch will not start nothing is left engaged.</summary>
+    [Fact]
+    public void AProgramFocusSessionIsRefusedWhenTheProgramLimitRefusesOrFails()
+    {
+        var log = new List<string>();
+        var refused = new FakeFocusLever { RefusalText = "no program is ticked Can run" };
+        var record = new FakeFocusSessionRecord();
+        var network = new FakeFocusLever();
+        var engine = new FocusSessionEngine(new FakeFocusLever(), new FakeFocusLever(), new FakeFocusLever(),
+                                            network, record, () => _now, (what, _) => log.Add(what),
+                                            programs: refused);
+
+        Assert.Equal(FocusArmOutcome.LeverRefused, engine.Arm(30, ProgramFocus(blocksNetwork: true), "a test"));
         Assert.Equal(0, refused.Engagements);
+        Assert.Equal(0, network.Engagements);
+        Assert.Null(record.Held);
+        Assert.Contains(log, line => line.Contains("no program is ticked Can run", StringComparison.Ordinal));
+
+        var failing = new FakeFocusLever { EngageSucceeds = false };
+        var second = Engine(failing, out var secondRecord);
+        Assert.Equal(FocusArmOutcome.LeverFailed, second.Arm(30, ProgramFocus(), "a test"));
+        Assert.False(second.Snapshot().IsRunning);
+        Assert.Null(secondRecord.Held);
+        Assert.Equal(1, failing.Lifts);
     }
 
     /// <summary>A watch that died and will not start again is a lever no longer held: the session runs
@@ -79,7 +103,7 @@ public class FocusProgramLeverTests
         var lever = new FocusProgramLever(_gate, () => Context(Row(Editor, run: true)));
         var engine = Engine(lever, out var record);
 
-        engine.Arm(30, dimsScreen: true, false, false, false, "a test", limitsPrograms: true);
+        engine.Arm(30, ProgramFocus(), "a test");
         Assert.True(engine.Snapshot().LimitsPrograms);
 
         _watch.Die();
@@ -120,7 +144,7 @@ public class FocusProgramLeverTests
         var lever = new FocusProgramLever(_gate, () => Context(Row(Editor, run: true)));
         var engine = Engine(lever, out _);
 
-        engine.Arm(1, false, false, false, false, "a test", limitsPrograms: true);
+        engine.Arm(1, ProgramFocus(), "a test");
         Assert.True(_watch.IsRunning);
 
         _now = Noon.AddMinutes(2);

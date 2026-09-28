@@ -41,16 +41,14 @@ public class MqttEntityCatalogTests
             MqttPublishGroups.Focus, MqttEntityCategory.Primary, Icon: "mdi:meditation"),
         new(MqttEntityCatalog.FocusSessionMinutes, "number", "Focus session minutes",
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:timer-outline", Unit: "min"),
+        new(MqttEntityCatalog.FocusSessionType, "select", "Focus session type",
+            MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:shape-outline"),
         new(MqttEntityCatalog.FocusSessionBlocksNetwork, "switch", "Focus session blocks network",
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:lan-disconnect"),
         new(MqttEntityCatalog.FocusSessionDimsScreen, "switch", "Focus session dims screen",
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:brightness-2"),
-        new(MqttEntityCatalog.FocusSessionCoversScreen, "switch", "Focus session covers screen",
-            MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:monitor-off"),
         new(MqttEntityCatalog.FocusSessionBlocksInput, "switch", "Focus session blocks input",
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:keyboard-off"),
-        new(MqttEntityCatalog.FocusSessionLimitsPrograms, "switch", "Focus session limits programs",
-            MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:apps"),
         new(MqttEntityCatalog.FocusSessionState, "sensor", "Focus session state",
             MqttPublishGroups.Focus, MqttEntityCategory.Diagnostic,
             Icon: "mdi:progress-clock", DeviceClass: "enum"),
@@ -76,13 +74,13 @@ public class MqttEntityCatalogTests
     };
 
     [Fact]
-    public void TheTable_HoldsExactlyTheElevenEntitiesTheAppPublishes() =>
+    public void TheTable_HoldsExactlyTheTenEntitiesTheAppPublishes() =>
         Assert.Equal(
             _table.Select(r => r.EntityId).Order(StringComparer.Ordinal),
             MqttTestBed.Declared().All.Select(e => e.EntityId).Order(StringComparer.Ordinal));
 
     [Fact]
-    public void TheEntityMix_IsSixSwitchesTwoSensorsTwoNumbersAndAButton()
+    public void TheEntityMix_IsFourSwitchesTwoSensorsTwoNumbersASelectAndAButton()
     {
         var byPlatform = MqttTestBed.Declared().All
             .GroupBy(e => e.Platform)
@@ -91,9 +89,40 @@ public class MqttEntityCatalogTests
         Assert.Equal(
             new Dictionary<string, int>(StringComparer.Ordinal)
             {
-                ["switch"] = 6, ["sensor"] = 2, ["number"] = 2, ["button"] = 1,
+                ["switch"] = 4, ["sensor"] = 2, ["number"] = 2, ["select"] = 1, ["button"] = 1,
             },
             byPlatform);
+    }
+
+    /// <summary>The kind's identifier and its two option words are what a receiver's automations name,
+    /// and the two switches the kind replaced are gone for good. Literals, so a changed constant fails
+    /// here rather than following along.</summary>
+    [Fact]
+    public void TheKindSelect_OffersExactlyTheTwoFixedWords_AndTheTwoOldSwitchesAreGone()
+    {
+        Assert.Equal("focus_session_type", MqttEntityCatalog.FocusSessionType);
+
+        var select = Assert.IsType<MqttSelect>(MqttTestBed.Declared().Find("focus_session_type"));
+        Assert.Equal(["Screen break", "Program focus"], select.Options());
+
+        var ids = MqttTestBed.Declared().All.Select(e => e.EntityId).ToList();
+        Assert.DoesNotContain("focus_session_covers_screen", ids);
+        Assert.DoesNotContain("focus_session_limits_programs", ids);
+    }
+
+    [Fact]
+    public void TheKindSelect_WritesTheDefaultKindAndReadsTheKindTheSurfaceCarries()
+    {
+        var actions = new FakeSettingsActions();
+        var set = MqttTestBed.Build(MqttTestBed.Surface(focusKind: FocusSessionKind.ProgramFocus),
+                                    settings: actions);
+
+        MqttTestBed.Run(MqttTestBed.Command(set, MqttEntityCatalog.FocusSessionType).Accept("Screen break"));
+        Assert.False(MqttTestBed.Command(set, MqttEntityCatalog.FocusSessionType).Accept("Skjermpause").IsAccepted);
+
+        Assert.Equal(["FocusSessionKind=ScreenBreak"], actions.Calls);
+        Assert.Equal("Program focus",
+                     Assert.IsType<MqttSelect>(set.Find(MqttEntityCatalog.FocusSessionType)).Read());
     }
 
     [Theory]
@@ -181,11 +210,10 @@ public class MqttEntityCatalogTests
 
         MqttTestBed.Run(MqttTestBed.Command(set, MqttEntityCatalog.FocusSessionMinutes).Accept("90"));
         MqttTestBed.Run(MqttTestBed.Command(set, MqttEntityCatalog.FocusSessionDimsScreen).Accept("OFF"));
-        MqttTestBed.Run(MqttTestBed.Command(set, MqttEntityCatalog.FocusSessionCoversScreen).Accept("ON"));
-        MqttTestBed.Run(MqttTestBed.Command(set, MqttEntityCatalog.FocusSessionLimitsPrograms).Accept("ON"));
+        MqttTestBed.Run(MqttTestBed.Command(set, MqttEntityCatalog.FocusSessionType).Accept("Program focus"));
 
         Assert.Equal(
-            ["FocusSessionMinutes=90", "FocusDimsScreen=False", "FocusCoversScreen=True", "FocusLimitsPrograms=True"],
+            ["FocusSessionMinutes=90", "FocusDimsScreen=False", "FocusSessionKind=ProgramFocus"],
             actions.Calls);
     }
 

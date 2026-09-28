@@ -76,18 +76,20 @@ internal static class FocusSessionService
         _timer = new Timer(_ => Tick(), null, TickInterval, TickInterval);
     }
 
-    /// <summary>Starts a session from the defaults the settings hold. The lever choices are whatever
-    /// was last left in them; the duration is <paramref name="minutes"/> where a surface asked for
-    /// one, and the stored default otherwise.</summary>
+    /// <summary>Starts a session from the defaults the settings hold. The switches are whatever was
+    /// last left in them; the duration and the kind are the ones a surface asked for, and the stored
+    /// defaults otherwise.</summary>
     /// <param name="minutes">The duration chosen in the start box. Null from Home Assistant, which
     /// sets the duration through its own number instead.</param>
-    public static FocusArmOutcome Arm(ActionCause cause, int? minutes = null)
+    /// <param name="kind">The kind chosen in the start box. Null from Home Assistant, which sets the
+    /// kind through its own select instead. A kind chosen here is never stored.</param>
+    public static FocusArmOutcome Arm(ActionCause cause, int? minutes = null, FocusSessionKind? kind = null)
     {
-        var (stored, screen, cover, input, network, programs) = SettingsService.Read(
-            s => (s.FocusSessionMinutes, s.FocusDimsScreen, s.FocusCoversScreen, s.FocusBlocksInput,
-                  s.FocusBlocksNetwork, s.FocusLimitsPrograms));
-        return _engine.Arm(FocusStartRequest.Minutes(minutes, stored), screen, cover, input, network,
-                           cause, programs);
+        var (stored, storedKind, screen, input, network) = SettingsService.Read(
+            s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusDimsScreen, s.FocusBlocksInput,
+                  s.FocusBlocksNetwork));
+        var plan = FocusSessionPlan.For(kind ?? storedKind, network, screen, input);
+        return _engine.Arm(FocusStartRequest.Minutes(minutes, stored), plan, cause);
     }
 
     /// <summary>What the focus-app lever decides against, read when a session arms or resumes: the
@@ -171,15 +173,16 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
 {
     public FocusSessionRecord? Read()
     {
-        var (startedAt, endsAt, screen, cover, input, network, programs) = SettingsService.Read(
+        var (startedAt, endsAt, screen, cover, input, network, programs, kind) = SettingsService.Read(
             s => (s.FocusSessionStartedAt, s.FocusSessionEndsAt, s.FocusSessionDimmedScreen,
                   s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput,
-                  s.FocusSessionBlockedNetwork, s.FocusSessionLimitedPrograms));
+                  s.FocusSessionBlockedNetwork, s.FocusSessionLimitedPrograms,
+                  s.FocusSessionRunningKind));
         // A document written before the start time was recorded falls back to the end time, which
         // reads as a session with no length. Only the cover's ring uses it, and such a document
         // carries no cover lever, so nothing draws from the fallback.
         return endsAt is { } ends
-            ? new FocusSessionRecord(startedAt ?? ends, ends, screen, cover, input, network, programs)
+            ? new FocusSessionRecord(startedAt ?? ends, ends, screen, cover, input, network, programs, kind)
             : null;
     }
 
@@ -192,12 +195,14 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
         s.FocusSessionBlockedInput = session.BlocksInput;
         s.FocusSessionBlockedNetwork = session.BlocksNetwork;
         s.FocusSessionLimitedPrograms = session.LimitsPrograms;
+        s.FocusSessionRunningKind = session.Kind;
     });
 
     public void Clear() => SettingsService.Update(s =>
     {
         s.FocusSessionStartedAt = null;
         s.FocusSessionEndsAt = null;
+        s.FocusSessionRunningKind = FocusSessionKind.ScreenBreak;
         s.FocusSessionDimmedScreen = false;
         s.FocusSessionCoveredScreen = false;
         s.FocusSessionBlockedInput = false;

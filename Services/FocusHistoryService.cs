@@ -27,8 +27,9 @@ internal static class FocusHistoryService
         "due = the end time the session was armed for; " +
         "levers = network, screen, cover and input, joined with +, or none; " +
         "outcome = ran-to-time, ended-early or found-stale; " +
-        "programs = limited or not-limited, absent on rows written before the column existed.";
-    internal const string HeaderColumns = "started,due,ended,levers,outcome,programs";
+        "programs = limited or not-limited, absent on rows written before the column existed; " +
+        "kind = program-focus or screen-break, absent on rows written before the column existed.";
+    internal const string HeaderColumns = "started,due,ended,levers,outcome,programs,kind";
     internal static readonly string Header = HeaderComment + "\n" + HeaderColumns;
 
     private static readonly CsvSampleStore _store = new(FileName, Header);
@@ -144,11 +145,16 @@ internal static class FocusHistoryService
     internal const string ProgramsLimited = "limited";
     internal const string ProgramsNotLimited = "not-limited";
 
-    internal static string Format(FocusHistoryEntry entry) => string.Join(',',
-        Stamp(entry.StartedAt), Stamp(entry.DueAt), Stamp(entry.EndedAt),
-        Levers(entry.BlockedNetwork, entry.DimmedScreen, entry.CoveredScreen, entry.BlockedInput),
-        Word(entry.Outcome),
-        entry.LimitedPrograms ? ProgramsLimited : ProgramsNotLimited);
+    internal static string Format(FocusHistoryEntry entry)
+    {
+        string row = string.Join(',',
+            Stamp(entry.StartedAt), Stamp(entry.DueAt), Stamp(entry.EndedAt),
+            Levers(entry.BlockedNetwork, entry.DimmedScreen, entry.CoveredScreen, entry.BlockedInput),
+            Word(entry.Outcome),
+            entry.LimitedPrograms ? ProgramsLimited : ProgramsNotLimited);
+        // An entry with no kind is one read from an earlier row, which carried no such column.
+        return entry.Kind is { } kind ? row + "," + FocusSessionKinds.Word(kind) : row;
+    }
 
     private static string Stamp(DateTimeOffset at) =>
         at.ToLocalTime().ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture);
@@ -168,11 +174,13 @@ internal static class FocusHistoryService
         if (Outcome(parts[4]) is not { } outcome) return false;
 
         string[] levers = parts[3].Split('+');
-        // A row written before the final column existed reads as a session that limited nothing.
+        // A row written before the programs column existed reads as a session that limited nothing,
+        // and one written before the kind column existed carries no kind.
         entry = new FocusHistoryEntry(
             started, due, ended,
             levers.Contains("screen"), levers.Contains("cover"), outcome, levers.Contains("input"),
-            levers.Contains("network"), parts.Length > 5 && parts[5] == ProgramsLimited);
+            levers.Contains("network"), parts.Length > 5 && parts[5] == ProgramsLimited,
+            parts.Length > 6 ? FocusSessionKinds.FromWord(parts[6]) : null);
         return true;
     }
 

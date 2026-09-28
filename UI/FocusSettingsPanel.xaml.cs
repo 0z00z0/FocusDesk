@@ -25,10 +25,6 @@ public sealed partial class FocusSettingsPanel : UserControl
         FocusProgramsCard.Header      = AppText.Get("FocusProgramsHeader");
         FocusProgramsCard.Description = AppText.Get("FocusProgramsDescription");
         FocusAllowProgramButton.Content = AppText.Get("FocusProgramsAddButton");
-        FocusLimitsProgramsCard.Header      = AppText.Get("FocusLimitsProgramsHeader");
-        FocusLimitsProgramsCard.Description = AppText.Get("FocusLimitsProgramsDescription");
-        FocusLimitsProgramsInfo.Subject = AppText.Get("FocusLimitsProgramsSubject");
-        FocusLimitsProgramsInfo.Info    = AppText.Get("FocusLimitsProgramsInfo");
         Loaded += (_, _) => Reload();
     }
 
@@ -64,10 +60,9 @@ public sealed partial class FocusSettingsPanel : UserControl
         {
             FocusStatusValue.Text = FocusSessionStages.Detail(session, DateTimeOffset.Now);
 
-            var (minutes, network, dims, covers, input, startFromStatus, programs) = SettingsService.Read(
+            var (minutes, network, dims, input, startFromStatus) = SettingsService.Read(
                 s => (s.FocusSessionMinutes, s.FocusBlocksNetwork, s.FocusDimsScreen,
-                      s.FocusCoversScreen, s.FocusBlocksInput, s.FocusStartFromDashboard,
-                      s.FocusLimitsPrograms));
+                      s.FocusBlocksInput, s.FocusStartFromDashboard));
 
             FocusLengthChoices.Fill(FocusMinutesCombo, minutes);
 
@@ -75,14 +70,10 @@ public sealed partial class FocusSettingsPanel : UserControl
             // off — and with none running these show the defaults the next session starts from.
             FocusBlocksNetworkToggle.IsOn = session.IsRunning ? session.BlocksNetwork : network;
             FocusDimsScreenToggle.IsOn   = session.IsRunning ? session.DimsScreen   : dims;
-            FocusCoversScreenToggle.IsOn = session.IsRunning ? session.CoversScreen : covers;
             FocusBlocksInputToggle.IsOn  = session.IsRunning ? session.BlocksInput  : input;
-            FocusLimitsProgramsToggle.IsOn = session.IsRunning ? session.LimitsPrograms : programs;
-            FocusLimitsProgramsToggle.IsEnabled = !locked;
             FocusBlocksNetworkToggle.IsEnabled = !locked;
             FocusAllowProgramButton.IsEnabled  = !locked;
             FocusDimsScreenToggle.IsEnabled   = !locked;
-            FocusCoversScreenToggle.IsEnabled = !locked;
             FocusBlocksInputToggle.IsEnabled  = !locked;
 
             FocusStartFromStatusToggle.IsOn = startFromStatus;
@@ -229,25 +220,10 @@ public sealed partial class FocusSettingsPanel : UserControl
         SettingsService.Update(s => s.FocusDimsScreen = FocusDimsScreenToggle.IsOn);
     }
 
-    private void OnFocusCoversScreenToggled(object sender, RoutedEventArgs e)
-    {
-        if (_updating) return;
-        SettingsService.Update(s => s.FocusCoversScreen = FocusCoversScreenToggle.IsOn);
-    }
-
     private void OnFocusBlocksInputToggled(object sender, RoutedEventArgs e)
     {
         if (_updating) return;
         SettingsService.Update(s => s.FocusBlocksInput = FocusBlocksInputToggle.IsOn);
-    }
-
-    private void OnFocusLimitsProgramsToggled(object sender, RoutedEventArgs e)
-    {
-        if (_updating) return;
-        // Checked at the moment of the write, as the list is: a switch moved while a session runs would
-        // leave the running session and its record disagreeing.
-        if (FocusSessionService.LeversAreLocked) { Reload(); return; }
-        SettingsService.Update(s => s.FocusLimitsPrograms = FocusLimitsProgramsToggle.IsOn);
     }
 
     private void OnFocusStartFromStatusToggled(object sender, RoutedEventArgs e)
