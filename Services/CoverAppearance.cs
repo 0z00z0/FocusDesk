@@ -10,6 +10,32 @@ internal enum CoverVisual
     FocusPoint,
 }
 
+/// <summary>What one cover draws at one moment.</summary>
+internal enum CoverScene
+{
+    /// <summary>The one-minute breathing focus point every cover opens on.</summary>
+    Opening,
+
+    /// <summary>The dial, for the rest of the session.</summary>
+    Ring,
+
+    /// <summary>The focus-point page, for the rest of the session.</summary>
+    FocusPoint,
+}
+
+/// <summary>The cover's order of play: the opening first, then the visual the session was armed
+/// with.</summary>
+internal static class CoverSequence
+{
+    /// <summary>The scene for a reading. The opening is the same whichever visual follows it, and the
+    /// visual that follows is handed the same reading, so its countdown carries on from the time
+    /// actually left rather than starting over.</summary>
+    internal static CoverScene SceneAt(FocusCoverReading? reading, CoverVisual visual) =>
+        reading is { IsOpening: true } ? CoverScene.Opening
+        : visual == CoverVisual.FocusPoint ? CoverScene.FocusPoint
+        : CoverScene.Ring;
+}
+
 /// <summary>
 /// How the cover presents itself for one session: which visual it draws, and how brightly.
 /// </summary>

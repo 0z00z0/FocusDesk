@@ -30,6 +30,24 @@ internal readonly record struct FocusCoverReading(
     internal double DialFraction => IsFinalStretch
         ? Math.Clamp(SecondsLeft / FinalStretchSeconds, 0, 1)
         : FractionLeft;
+
+    /// <summary>How long the cover opens on the breathing focus point: the minute the session-start
+    /// exercise runs for.</summary>
+    internal const double OpeningSeconds = 60;
+
+    /// <summary>The opening's length for this session: the minute, or the whole session where that is
+    /// shorter, so the cover never changes under somebody to a visual they never saw start. None for
+    /// a record with no length, which cannot say where its first minute was.</summary>
+    internal double OpeningLength => TotalSeconds > 0 ? Math.Min(OpeningSeconds, TotalSeconds) : 0;
+
+    /// <summary>Seconds of the opening still to run; zero once it has.</summary>
+    internal double OpeningSecondsLeft =>
+        OpeningLength > 0 ? Math.Max(0, SecondsLeft - (TotalSeconds - OpeningLength)) : 0;
+
+    /// <summary>Whether the cover is still in its opening. Read off the session's own clock rather
+    /// than a timer in the window, so it plays once: a cover rebuilt part-way picks up where the minute
+    /// had got to, and one put back after it does not play it again.</summary>
+    internal bool IsOpening => OpeningSecondsLeft > 0;
 }
 
 /// <summary>
