@@ -66,19 +66,19 @@ internal sealed class SettingsFile
         // defaults rather than zero minutes and two levers switched off — a session that could
         // never be armed.
         [JsonPropertyOrder(1)] public int?  FocusSessionMinutes     { get; set; }
-        [JsonPropertyOrder(2)] public FocusSessionKind? FocusSessionKind { get; set; }
-        [JsonPropertyOrder(3)] public bool? FocusBlocksNetwork      { get; set; }
+        [JsonPropertyOrder(2)] public bool? FocusStartFromDashboard { get; set; }
+        [JsonPropertyOrder(3)] public FocusSessionKind? FocusSessionKind { get; set; }
+        [JsonPropertyOrder(4)] public bool? FocusBlocksNetwork      { get; set; }
         // Null only in a document written before the list existed, which is what lets its path list
         // migrate. Written as an empty list rather than null, because the store never deletes a key:
         // the earlier list stays in the file and must never migrate a second time.
-        [JsonPropertyOrder(4)] public List<FocusProgramEntry>? FocusPrograms { get; set; }
-        [JsonPropertyOrder(5)] public FocusProgramAction? FocusProgramsDefaultAction { get; set; }
-        [JsonPropertyOrder(6)] public bool? FocusDimsScreen         { get; set; }
+        [JsonPropertyOrder(5)] public List<FocusProgramEntry>? FocusPrograms { get; set; }
+        [JsonPropertyOrder(6)] public FocusProgramAction? FocusProgramsDefaultAction { get; set; }
+        [JsonPropertyOrder(7)] public bool? FocusDimsScreen         { get; set; }
         // The cover's visual, written as its name rather than as a number: a document a person opens
         // reads "ring" or "focus-point", and a name unknown to this build falls back to the dial.
-        [JsonPropertyOrder(7)] public string? FocusCoverVisual      { get; set; }
-        [JsonPropertyOrder(8)] public bool? FocusBlocksInput        { get; set; }
-        [JsonPropertyOrder(9)] public bool? FocusStartFromDashboard { get; set; }
+        [JsonPropertyOrder(8)] public string? FocusCoverVisual      { get; set; }
+        [JsonPropertyOrder(9)] public bool? FocusBlocksInput        { get; set; }
         // The running session and the firewall state it displaced. State rather than settings:
         // nothing on the page edits these, so they trail the visible rows.
         [JsonPropertyOrder(10)] public DateTimeOffset? FocusSessionStartedAt { get; set; }

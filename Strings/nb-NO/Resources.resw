@@ -13,6 +13,32 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
 
+  <!-- Focus page: the kind of session and the heading over each kind's own settings. -->
+  <data name="FocusKindCardHeader" xml:space="preserve">
+    <value>Type økt</value>
+    <comment>Header of the card choosing the kind on the Focus page, noun phrase.</comment>
+  </data>
+  <data name="FocusKindCardDescription" xml:space="preserve">
+    <value>Det en økt startet fra Home Assistant gjør. Statusvinduet tilbyr begge.</value>
+    <comment>Description under the kind card, whole sentences; the status window is the tray pop-out.</comment>
+  </data>
+  <data name="FocusKindProgramFocusOption" xml:space="preserve">
+    <value>Programfokus</value>
+    <comment>Radio button choosing program focus on the kind card, glossary term, capitalised.</comment>
+  </data>
+  <data name="FocusKindScreenBreakOption" xml:space="preserve">
+    <value>Skjermpause</value>
+    <comment>Radio button choosing screen break on the kind card, glossary term, capitalised.</comment>
+  </data>
+  <data name="FocusProgramFocusHeading" xml:space="preserve">
+    <value>Programfokus</value>
+    <comment>Section heading over the program list on the Focus page, glossary term, capitalised.</comment>
+  </data>
+  <data name="FocusScreenBreakHeading" xml:space="preserve">
+    <value>Skjermpause</value>
+    <comment>Section heading over the dim and input switches on the Focus page, glossary term, capitalised.</comment>
+  </data>
+
   <!-- Focus page: the Programs section. -->
   <data name="FocusProgramsHeader" xml:space="preserve">
     <value>Programmer</value>
