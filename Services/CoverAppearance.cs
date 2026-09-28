@@ -27,11 +27,13 @@ internal enum CoverScene
 /// with.</summary>
 internal static class CoverSequence
 {
-    /// <summary>The scene for a reading. The opening is the same whichever visual follows it, and the
-    /// visual that follows is handed the same reading, so its countdown carries on from the time
-    /// actually left rather than starting over.</summary>
-    internal static CoverScene SceneAt(FocusCoverReading? reading, CoverVisual visual) =>
-        reading is { IsOpening: true } ? CoverScene.Opening
+    /// <summary>The scene for a reading. The opening belongs to a screen break, the kind that always
+    /// covers the screen; it is the same whichever visual follows it, and the visual that follows is
+    /// handed the same reading, so its countdown carries on from the time actually left rather than
+    /// starting over.</summary>
+    internal static CoverScene SceneAt(FocusCoverReading? reading, CoverVisual visual,
+                                       FocusSessionKind kind) =>
+        kind == FocusSessionKind.ScreenBreak && reading is { IsOpening: true } ? CoverScene.Opening
         : visual == CoverVisual.FocusPoint ? CoverScene.FocusPoint
         : CoverScene.Ring;
 }

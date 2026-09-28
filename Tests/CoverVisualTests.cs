@@ -122,7 +122,8 @@ public class CoverVisualTests
     // ── The opening ─────────────────────────────────────────────────────────────────────────────
 
     private static CoverScene SceneAt(FocusSnapshot session, double seconds, CoverVisual chosen) =>
-        CoverSequence.SceneAt(FocusCoverCountdown.For(session, Noon.AddSeconds(seconds)), chosen);
+        CoverSequence.SceneAt(FocusCoverCountdown.For(session, Noon.AddSeconds(seconds)), chosen,
+                              session.Kind);
 
     [Theory]
     [InlineData(false)]
@@ -146,7 +147,8 @@ public class CoverVisualTests
         // The minute is part of the session, not added in front of it: sixty-one seconds in, the page
         // that takes over is told an hour less those seconds, not handed a fresh hour.
         var reading = FocusCoverCountdown.For(Session(60, dims: true), Noon.AddSeconds(61))!.Value;
-        Assert.Equal(CoverScene.FocusPoint, CoverSequence.SceneAt(reading, CoverVisual.FocusPoint));
+        Assert.Equal(CoverScene.FocusPoint,
+                     CoverSequence.SceneAt(reading, CoverVisual.FocusPoint, FocusSessionKind.ScreenBreak));
 
         using var message = JsonDocument.Parse(Message(reading, screenIsDimmed: true));
         Assert.Equal(3600, message.RootElement.GetProperty("totalSeconds").GetDouble());
@@ -176,6 +178,16 @@ public class CoverVisualTests
         // at once rather than an opening that never ends.
         var session = new FocusSnapshot(FocusSessionStage.Active, null, Noon.AddMinutes(20),
                                         DimsScreen: true, CoversScreen: true);
+
+        Assert.Equal(CoverScene.Ring, SceneAt(session, 0, CoverVisual.Ring));
+    }
+
+    [Fact]
+    public void OnlyAScreenBreakOpensOnTheFocusPoint()
+    {
+        // The opening belongs to the kind that always covers the screen. A program focus never
+        // covers it; were a cover ever drawn for one, it would not open on the exercise.
+        var session = Session(60, dims: true) with { Kind = FocusSessionKind.ProgramFocus };
 
         Assert.Equal(CoverScene.Ring, SceneAt(session, 0, CoverVisual.Ring));
     }

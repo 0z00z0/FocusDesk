@@ -75,7 +75,9 @@ internal static class ScreenCoverService
 
         IsShowing = true;
         _visual   = Chosen();
-        _opening  = FocusCoverCountdown.For(_session(), DateTimeOffset.Now) is { IsOpening: true };
+        var session = _session();
+        _opening  = CoverSequence.SceneAt(FocusCoverCountdown.For(session, DateTimeOffset.Now),
+                                          _visual, session.Kind) == CoverScene.Opening;
         string opening = _opening ? " after the one-minute focus point" : "";
         AppLog.Info($"Focus: the screen cover goes up as the {CoverAppearance.NameOf(_visual)} visual{opening}{cause.Clause}.");
         return ui.TryEnqueue(Raise);
@@ -142,7 +144,7 @@ internal static class ScreenCoverService
             else if (AnyCoverIsGone()) { AppLog.Info("Focus: a screen cover had gone, and is put back."); Rebuild(); }
 
             var reading = FocusCoverCountdown.For(session, DateTimeOffset.Now);
-            bool opening = reading is { IsOpening: true };
+            bool opening = CoverSequence.SceneAt(reading, _visual, session.Kind) == CoverScene.Opening;
             if (_opening && !opening)
                 AppLog.Info($"Focus: the cover's opening focus point has run, and the {CoverAppearance.NameOf(_visual)} visual takes over.");
             _opening = opening;
@@ -157,7 +159,7 @@ internal static class ScreenCoverService
             foreach (var window in _windows)
             {
                 window.KeepOnTop();
-                window.Apply(reading, levers, revealed, appearance);
+                window.Apply(reading, session.Kind, levers, revealed, appearance);
             }
         }
         catch (Exception ex) { AppLog.Error("ScreenCoverService.OnTick", ex); }

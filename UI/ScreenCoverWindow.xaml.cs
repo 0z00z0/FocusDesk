@@ -24,8 +24,8 @@ namespace FocusDesk.UI;
 /// <para>Bounds come from the display this cover is for, in physical pixels, so a mixed-scale
 /// arrangement leaves no strip uncovered. The panel it reveals is sized in device-independent units
 /// and scaled as one, so it is the same physical size whatever that display's scale factor is.</para>
-/// <para>Every cover opens on the one-minute breathing focus point, drawn here, and then fades to
-/// the visual the session was armed with. The opening runs off the session's clock
+/// <para>A screen break's cover opens on the one-minute breathing focus point, drawn here, and then
+/// fades to the visual the session was armed with. The opening runs off the session's clock
 /// (<see cref="CoverSequence"/>), so it plays once however often the cover is rebuilt.</para>
 /// <para>Two visuals follow it, chosen per session. The dial is drawn here; the focus point is a
 /// bundled page drawn by an embedded browser and fed the same countdown through
@@ -226,10 +226,10 @@ internal sealed partial class ScreenCoverWindow : Window
     /// <summary>Draws the countdown and decides whether the panel is showing.</summary>
     /// <remarks>The opening and the focus point are each the whole cover, so the reveal that governs
     /// the dial applies to neither.</remarks>
-    internal void Apply(FocusCoverReading? reading, string levers, bool revealed,
-                        CoverAppearance appearance)
+    internal void Apply(FocusCoverReading? reading, FocusSessionKind kind, string levers,
+                        bool revealed, CoverAppearance appearance)
     {
-        var scene = CoverSequence.SceneAt(reading, _visual);
+        var scene = CoverSequence.SceneAt(reading, _visual, kind);
         Enter(scene);
 
         if (scene == CoverScene.Opening && reading is { } opening)
