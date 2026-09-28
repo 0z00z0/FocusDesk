@@ -161,7 +161,6 @@ internal static class TrayIconHost
             yield return TrayMenuItem.Separator();
         }
 
-        yield return TrayMenuItem.Command("Status…", StatusWindow.Open);
         yield return TrayMenuItem.Command("Settings…", () => SettingsShellHost.Open());
         yield return TrayMenuItem.Separator();
 
