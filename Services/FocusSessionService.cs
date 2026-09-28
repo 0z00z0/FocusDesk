@@ -117,6 +117,10 @@ internal static class FocusSessionService
 
     public static void RequestCancel(ActionCause cause) => _engine.RequestCancel(cause);
 
+    /// <summary>Whether the pop-out should open on the session-start page: true once for each
+    /// session armed, and asked only by a pop-out that is on screen.</summary>
+    public static bool TakeOpeningPage() => _engine.TakeOpeningPage();
+
     /// <summary>Whether a lever switch may be changed. Refused while a session runs: a lever turned
     /// off part-way through would leave its record parked with nothing owning it.</summary>
     public static bool LeversAreLocked => IsRunning;
