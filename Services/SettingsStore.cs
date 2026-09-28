@@ -177,6 +177,7 @@ internal sealed class SettingsStore
             Focus      = Bind<SettingsFile.FocusGroup>(SettingsFile.FocusKey),
             Screen     = Bind<SettingsFile.ScreenGroup>(SettingsFile.ScreenKey),
             Appearance = Bind<SettingsFile.AppearanceGroup>(SettingsFile.AppearanceKey),
+            About      = Bind<SettingsFile.AboutGroup>(SettingsFile.AboutKey),
             Window     = Bind<SettingsFile.WindowGroup>(SettingsFile.WindowKey),
         };
         return (file, conflict);
@@ -203,6 +204,7 @@ internal sealed class SettingsStore
         Put(SettingsFile.FocusKey,      file.Focus);
         Put(SettingsFile.ScreenKey,     file.Screen);
         Put(SettingsFile.AppearanceKey, file.Appearance);
+        Put(SettingsFile.AboutKey,      file.About);
         Put(SettingsFile.WindowKey,     file.Window);
 
         if (landed) return true;

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using FocusDesk.Helpers;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using ZeroZero.Update;
 using ZeroZero.Update.Win32;
@@ -10,7 +11,8 @@ namespace FocusDesk.Services;
 
 /// <summary>
 /// The application's updates: the configured component, the one check every surface joins, the
-/// release the last check found, and the install a found release starts.
+/// release the last check found, and the install a found release starts. Installing with nobody
+/// asked is <see cref="UnattendedInstalls"/>, started from here over the same service.
 /// </summary>
 /// <remarks>
 /// <para>Every check runs silently, so the component puts nothing on screen of its own and each
@@ -76,8 +78,27 @@ internal static class AppUpdates
             Checks    = new UpdateCheckCoordinator(CheckAsync);
 
             _service.SweepStaleDownloads(StaleDownloadAge);
+
+            // The background path shares the service, so its installer leaves the same handover.
+            UnattendedInstalls.Start(_service,
+                                     installing: version => _launcher.TargetVersion = version,
+                                     shutdown: OnWindowThread(shutdown));
         }
         catch (Exception ex) { AppLog.Error("AppUpdates.Start", ex); }
+    }
+
+    /// <summary>Hands a shutdown called from a pool thread to the thread that owns the windows, where
+    /// the tray icon and the host window are taken down. Captured here, on that thread.</summary>
+    private static Action OnWindowThread(Action shutdown)
+    {
+        var windows = DispatcherQueue.GetForCurrentThread();
+        return () =>
+        {
+            if (windows?.TryEnqueue(() => shutdown()) == true) return;
+            // Setup then finds FocusDesk still running, installs nothing and records why, which the
+            // next start reports.
+            AppLog.Info("Update: the shutdown for the installer could not reach the window thread.");
+        };
     }
 
     /// <summary>

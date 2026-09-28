@@ -121,7 +121,7 @@ var
 
 // True when the application started this run for its own update. That run is silent like a winget
 // or scheduled one and cannot be told from them by WizardSilent, yet it differs in every way that
-// matters here: a user asked for it, the application is elevated and exiting for it, and it expects
+// matters here: a user asked for it or switched it on, the application is elevated and exiting for it, and it expects
 // to be started again afterwards. The switch is passed by the application's unattended update.
 function StartedByTheApplication(): Boolean;
 begin
@@ -258,7 +258,8 @@ end;
 
 // ---------------------------------------------------------------------------
 // The application's own update. Unattended by request: it was agreed to in the application's update
-// dialog, so no wizard is shown and no message box can be answered.
+// window, or switched on once on its About page to install with nobody at the machine, so no wizard
+// is shown and no message box can be answered.
 // ---------------------------------------------------------------------------
 
 // The application queues its own exit as it starts this run, so that exit is still in flight when

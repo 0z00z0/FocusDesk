@@ -23,7 +23,9 @@ so each start asks for consent once, unless it starts at sign-in through the log
 installer offers.
 
 Releases are signed by `CN=ZeroZero Software`, and the application installs an update only when it
-carries that signature.
+carries that signature. Updates are checked for from the menu or the About page. A switch on the
+About page, off until turned on, lets them install by themselves while the screen is locked or the
+machine has been left alone for ten minutes, and never during a focus session.
 
 ## Home Assistant
 

@@ -27,5 +27,8 @@ updater reads.
 - Settings has six pages: Focus, Screen, MQTT, Appearance, About and App diagnostics.
 - An update is checked for on request, from the menu or the About page, and only a release signed by
   ZeroZero Software is installed.
+- A switch on the About page, off until turned on, lets updates install by themselves: checked once a
+  day and installed while the screen is locked or the machine has been left alone for ten minutes,
+  never during a focus session.
 - The application needs administrator rights, so each start asks for consent once, unless it starts
   at sign-in through the logon task the installer offers.
