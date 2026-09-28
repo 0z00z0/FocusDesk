@@ -28,14 +28,11 @@ public sealed partial class MqttSettingsPage : UserControl
             return;
         }
 
-        Panel.Initialise(new MqttPanelSetup
+        Panel.Initialise(new MqttPanelSetup(_mqtt.Connection)
         {
             Settings        = _mqtt.Settings,
             Groups          = _mqtt.Groups,
             TopicRoot       = MqttEntityCatalog.TopicRoot,
-            Activity        = _mqtt.Activity,
-            ConnectionState = () => _mqtt.State,
-            PublishNow      = _mqtt.PublishNowAsync,
             // Both run the real paths: the panel's device-id dialogue has already promised the old
             // entities are removed, which only the connection's apply keeps, and the announced entity
             // set is baked into the retained document, which only a republish rewrites.
