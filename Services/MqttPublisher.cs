@@ -127,6 +127,12 @@ internal sealed class MqttPublisher : IDisposable
     /// own, so a cached answer is stale the moment the page stops looking.</summary>
     public MqttConnectionState State => _connection.State;
 
+    /// <summary>The live connection, for the settings panel's constructor overload. The module reads
+    /// the activity record, the connection state, the remembered endpoint and publish-now from it
+    /// directly, so the panel's Status rows and the closed Broker line cannot describe different
+    /// sources.</summary>
+    public MqttConnection Connection => _connection;
+
     /// <summary>Raised on every connection state change, on whichever background thread made it.</summary>
     public event Action<MqttConnectionState>? StateChanged
     {
