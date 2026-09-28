@@ -12,12 +12,18 @@
     --ring-active: #7fa08c; /* rolig salviegrønn under nedtelling */
     --text: #4a5560;
   }
+  /* The brand face, copied beside this page (see FocusDesk.csproj) so the page reads right on a
+     machine without Cascadia Mono installed rather than falling back silently. */
+  @font-face {
+    font-family: "Cascadia Mono";
+    src: url("CascadiaMono.ttf") format("truetype");
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
     width: 100%; height: 100%;
     background: var(--bg);
     overflow: hidden;
-    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-family: "Cascadia Mono", ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
     cursor: default;
   }
   /* Svak radiell vignett som leder blikket innover */

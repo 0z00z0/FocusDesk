@@ -165,6 +165,26 @@
     </Content>
   </ItemGroup>
 
+  <!-- session-start.html loads the brand typeface itself, through a WebView2 virtual host mapped to
+       Assets\FocusPoint\ (see UI\StatusWindow.xaml.cs; UI\ScreenCoverWindow.xaml.cs maps the same
+       physical folder for focus-point.html). ZeroZero.Brand.WinUI already copies CascadiaMono.ttf
+       into the build and publish output, but beside ZeroZero.Brand.WinUI\Assets\Fonts\, a folder the
+       virtual host mapping cannot reach. These two targets copy the same file the package already
+       placed into Assets\FocusPoint\ alongside the pages, rather than sourcing it separately. -->
+  <Target Name="CopyBrandFontToFocusPoint" AfterTargets="Build"
+          Condition="Exists('$(OutDir)ZeroZero.Brand.WinUI\Assets\Fonts\CascadiaMono.ttf')">
+    <Copy SourceFiles="$(OutDir)ZeroZero.Brand.WinUI\Assets\Fonts\CascadiaMono.ttf"
+          DestinationFolder="$(OutDir)Assets\FocusPoint\"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyBrandFontToFocusPointOnPublish" AfterTargets="Publish"
+          Condition="Exists('$(PublishDir)ZeroZero.Brand.WinUI\Assets\Fonts\CascadiaMono.ttf')">
+    <Copy SourceFiles="$(PublishDir)ZeroZero.Brand.WinUI\Assets\Fonts\CascadiaMono.ttf"
+          DestinationFolder="$(PublishDir)Assets\FocusPoint\"
+          SkipUnchangedFiles="true" />
+  </Target>
+
   <!-- Authenticode-signs the Release bin\ output via scripts\sign.ps1. ContinueOnError keeps the
        build green regardless of why signing failed, not only when no certificate is present -
        build-installer.ps1's own later signing calls still catch a real failure before a release
