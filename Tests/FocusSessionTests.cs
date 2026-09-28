@@ -778,17 +778,28 @@ public class FocusSessionTests
 
     // ── What the session reads as ───────────────────────────────────────────────────────────────
 
+    /// <summary>The one line every surface shows, composed from each shipped file: led by the kind,
+    /// then the time left, then what is held, in words a person at the machine reads.</summary>
     [Fact]
-    public void TheSessionLineNamesTheLeversItOwnsAndTheTimeLeft()
+    public void TheSessionLineLeadsWithTheKindInBothLanguages()
     {
-        var session = new FocusSnapshot(FocusSessionStage.Active, Noon, Noon.AddMinutes(30),
-                                        DimsScreen: true, CoversScreen: true);
+        var screenBreak = new FocusSnapshot(FocusSessionStage.Active, Noon, Noon.AddMinutes(42),
+                                            DimsScreen: false, CoversScreen: true, BlocksInput: true);
+        var programFocus = new FocusSnapshot(FocusSessionStage.Confirm, Noon, Noon.AddMinutes(5),
+                                             DimsScreen: false, CoversScreen: false, BlocksNetwork: true,
+                                             LimitsPrograms: true, Kind: FocusSessionKind.ProgramFocus);
 
-        string line = FocusSessionStages.Detail(session, Noon);
-
-        Assert.Contains("30 min left", line, StringComparison.Ordinal);
-        Assert.Contains("screen dimmed", line, StringComparison.Ordinal);
-        Assert.Contains("screen covered", line, StringComparison.Ordinal);
+        Assert.Equal("Screen break: 42 min left — screen covered, mouse and keyboard blocked",
+                     FocusSessionStages.Describe(screenBreak, Noon, ShippedStrings.For("en-GB")));
+        Assert.Equal("Skjermpause: 42 min igjen — skjermen dekket, tastatur og mus blokkert",
+                     FocusSessionStages.Describe(screenBreak, Noon, ShippedStrings.For("nb-NO")));
+        Assert.Equal("Program focus: 5 min left — programs limited, network blocked, waiting for the second request",
+                     FocusSessionStages.Describe(programFocus, Noon, ShippedStrings.For("en-GB")));
+        Assert.StartsWith("Programfokus: 5 min igjen — ",
+                          FocusSessionStages.Describe(programFocus, Noon, ShippedStrings.For("nb-NO")),
+                          StringComparison.Ordinal);
+        Assert.Equal("No focus session is running.",
+                     FocusSessionStages.Describe(FocusSnapshot.None, Noon, ShippedStrings.For("en-GB")));
     }
 
     [Fact]

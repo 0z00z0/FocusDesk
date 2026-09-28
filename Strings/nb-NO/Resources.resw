@@ -125,6 +125,53 @@
     <comment>Button that adds the selected program, imperative.</comment>
   </data>
 
+  <!-- The one session description the tray menu, the hover text, the status window and the Focus
+       page share: a template per stage, led by the kind, with the held levers as a joined list. -->
+  <data name="FocusDescribeActive" xml:space="preserve">
+    <value>{0}: {1} min igjen — {2}</value>
+    <comment>Session line while running; {0} kind name, {1} whole minutes left (plural), {2} comma-joined levers held.</comment>
+  </data>
+  <data name="FocusDescribeEnding" xml:space="preserve">
+    <value>{0}: {1} min igjen — {2}, avbrudd bedt om</value>
+    <comment>Session line during the cancel wait; placeholders as in FocusDescribeActive.</comment>
+  </data>
+  <data name="FocusDescribeConfirm" xml:space="preserve">
+    <value>{0}: {1} min igjen — {2}, venter på den andre forespørselen</value>
+    <comment>Session line while the cancel can be confirmed from Home Assistant; placeholders as in FocusDescribeActive.</comment>
+  </data>
+  <data name="FocusDescribeNotRunning" xml:space="preserve">
+    <value>Ingen fokusøkt kjører.</value>
+    <comment>Session line when nothing runs, whole sentence.</comment>
+  </data>
+  <data name="FocusKindProgramFocus" xml:space="preserve">
+    <value>Programfokus</value>
+    <comment>Kind name leading the session line, glossary term, capitalised.</comment>
+  </data>
+  <data name="FocusKindScreenBreak" xml:space="preserve">
+    <value>Skjermpause</value>
+    <comment>Kind name leading the session line, glossary term, capitalised.</comment>
+  </data>
+  <data name="FocusDetailScreenCovered" xml:space="preserve">
+    <value>skjermen dekket</value>
+    <comment>One item in the comma-joined list of what a running session holds, lower case, no full stop.</comment>
+  </data>
+  <data name="FocusDetailInputBlocked" xml:space="preserve">
+    <value>tastatur og mus blokkert</value>
+    <comment>One item in the comma-joined list of what a running session holds, lower case, no full stop.</comment>
+  </data>
+  <data name="FocusDetailScreenDimmed" xml:space="preserve">
+    <value>skjermen dempet</value>
+    <comment>One item in the comma-joined list of what a running session holds, lower case, no full stop.</comment>
+  </data>
+  <data name="FocusDetailNetworkBlocked" xml:space="preserve">
+    <value>nettverket blokkert</value>
+    <comment>One item in the comma-joined list of what a running session holds, lower case, no full stop.</comment>
+  </data>
+  <data name="FocusDetailNothingHeld" xml:space="preserve">
+    <value>ingenting holdes</value>
+    <comment>Stands in for the list when a running session has lost every lever, lower case, no full stop.</comment>
+  </data>
+
   <!-- The focus-app lever: what each surface says while it holds. -->
   <data name="FocusDetailProgramsLimited" xml:space="preserve">
     <value>programmer begrenset</value>
@@ -161,10 +208,6 @@
   <data name="CoverFocusPointDone" xml:space="preserve">
     <value>Ferdig — start arbeidet</value>
     <comment>Line on the focus-point cover when the countdown reaches its end, no full stop.</comment>
-  </data>
-  <data name="TrayHeldPrograms" xml:space="preserve">
-    <value>programmer</value>
-    <comment>One item in the tray hover's list of levers held, noun, lower case.</comment>
   </data>
   <data name="UnattendedUpdatesHeader" xml:space="preserve">
     <value>Installer oppdateringer av seg selv</value>

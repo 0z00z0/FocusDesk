@@ -23,18 +23,20 @@ public class TrayTooltipTextTests
     /// wherever the Home Assistant line still appears its status word is whole, never a cut
     /// fragment — the label ahead of it is what the shared host shortens first, since the status is
     /// carried as the line's protected suffix.</summary>
-    [Fact]
-    public void TheLongestTooltipNeverGarblesHomeAssistantStatus()
+    [Theory]
+    [InlineData("en-GB")]
+    [InlineData("nb-NO")]
+    public void TheLongestTooltipNeverGarblesHomeAssistantStatus(string language)
     {
         MqttConnectionState?[] brokers = [null, .. Enum.GetValues<MqttConnectionState>().Cast<MqttConnectionState?>()];
+        var text = ShippedStrings.For(language);
 
         foreach (var stage in new[] { FocusSessionStage.Active, FocusSessionStage.Ending, FocusSessionStage.Confirm })
         foreach (var broker in brokers)
         {
             var session = new FocusSnapshot(stage, Noon, Noon.AddMinutes(999), DimsScreen: true,
-                                            CoversScreen: true, BlocksInput: true, BlocksNetwork: true,
-                                            LimitsPrograms: true);
-            var lines = TrayTooltipText.Lines(session, broker, Noon).ToList();
+                                            CoversScreen: true, BlocksInput: true, BlocksNetwork: true);
+            var lines = TrayTooltipText.Lines(session, broker, Noon, text).ToList();
 
             string composed = TrayTooltip.Compose(lines);
 
@@ -51,18 +53,23 @@ public class TrayTooltipTextTests
         }
     }
 
-    /// <summary>An ordinary session — one lever, well short of the extreme case — shows every line
-    /// whole, product line, stage, minutes, lever and Home Assistant status alike.</summary>
-    [Fact]
-    public void AnOrdinarySessionKeepsEveryLineWhole()
+    /// <summary>An ordinary screen break — covered with the mouse and keyboard blocked, the switch's
+    /// default — shows every line whole in both languages: the product line, the session line led by
+    /// its kind, and the Home Assistant status.</summary>
+    [Theory]
+    [InlineData("en-GB", "Screen break: 25 min left")]
+    [InlineData("nb-NO", "Skjermpause: 25 min igjen")]
+    public void AnOrdinarySessionKeepsEveryLineWhole(string language, string lead)
     {
         var session = new FocusSnapshot(FocusSessionStage.Active, Noon, Noon.AddMinutes(25),
-                                        DimsScreen: true, CoversScreen: false);
-        var lines = TrayTooltipText.Lines(session, MqttConnectionState.Connected, Noon).ToList();
+                                        DimsScreen: false, CoversScreen: true, BlocksInput: true);
+        var lines = TrayTooltipText.Lines(session, MqttConnectionState.Connected, Noon,
+                                          ShippedStrings.For(language)).ToList();
 
         string composed = TrayTooltip.Compose(lines);
 
         Assert.Equal(string.Join('\n', lines.Select(l => (l.Text ?? "") + (l.Suffix ?? ""))), composed);
+        Assert.Contains(lead, composed, StringComparison.Ordinal);
         Assert.EndsWith("Home Assistant: connected", composed, StringComparison.Ordinal);
     }
 }
