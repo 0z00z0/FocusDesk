@@ -95,7 +95,8 @@ public class FocusNoLocalWayOutTests
             screen, cover, new FakeFocusLever(), new FakeFocusLever(),
             new FakeFocusSessionRecord(), () => now, (_, _) => { });
 
-        engine.Arm(120, dimsScreen: true, coversScreen: false, blocksInput: false, blocksNetwork: false, "a test");
+        engine.Arm(120, FocusSessionPlan.For(FocusSessionKind.ScreenBreak, blocksNetwork: false,
+                                             dimsScreen: true, blocksInput: false), "a test");
         for (int i = 0; i < 20; i++) engine.RequestCancel("a test");
 
         Assert.Equal(FocusSessionStage.Ending, engine.Snapshot().Stage);

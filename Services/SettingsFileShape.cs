@@ -66,24 +66,24 @@ internal sealed class SettingsFile
         // defaults rather than zero minutes and two levers switched off — a session that could
         // never be armed.
         [JsonPropertyOrder(1)] public int?  FocusSessionMinutes     { get; set; }
-        [JsonPropertyOrder(2)] public bool? FocusBlocksNetwork      { get; set; }
-        [JsonPropertyOrder(3)] public bool? FocusLimitsPrograms     { get; set; }
+        [JsonPropertyOrder(2)] public FocusSessionKind? FocusSessionKind { get; set; }
+        [JsonPropertyOrder(3)] public bool? FocusBlocksNetwork      { get; set; }
         // Null only in a document written before the list existed, which is what lets its path list
         // migrate. Written as an empty list rather than null, because the store never deletes a key:
         // the earlier list stays in the file and must never migrate a second time.
         [JsonPropertyOrder(4)] public List<FocusProgramEntry>? FocusPrograms { get; set; }
         [JsonPropertyOrder(5)] public FocusProgramAction? FocusProgramsDefaultAction { get; set; }
         [JsonPropertyOrder(6)] public bool? FocusDimsScreen         { get; set; }
-        [JsonPropertyOrder(7)] public bool? FocusCoversScreen       { get; set; }
         // The cover's visual, written as its name rather than as a number: a document a person opens
         // reads "ring" or "focus-point", and a name unknown to this build falls back to the dial.
-        [JsonPropertyOrder(8)] public string? FocusCoverVisual      { get; set; }
-        [JsonPropertyOrder(9)] public bool? FocusBlocksInput        { get; set; }
-        [JsonPropertyOrder(10)] public bool? FocusStartFromDashboard { get; set; }
+        [JsonPropertyOrder(7)] public string? FocusCoverVisual      { get; set; }
+        [JsonPropertyOrder(8)] public bool? FocusBlocksInput        { get; set; }
+        [JsonPropertyOrder(9)] public bool? FocusStartFromDashboard { get; set; }
         // The running session and the firewall state it displaced. State rather than settings:
         // nothing on the page edits these, so they trail the visible rows.
-        [JsonPropertyOrder(11)] public DateTimeOffset? FocusSessionStartedAt { get; set; }
-        [JsonPropertyOrder(12)] public DateTimeOffset? FocusSessionEndsAt    { get; set; }
+        [JsonPropertyOrder(10)] public DateTimeOffset? FocusSessionStartedAt { get; set; }
+        [JsonPropertyOrder(11)] public DateTimeOffset? FocusSessionEndsAt    { get; set; }
+        [JsonPropertyOrder(12)] public FocusSessionKind FocusSessionRunningKind { get; set; }
         [JsonPropertyOrder(13)] public bool FocusSessionBlockedNetwork { get; set; }
         [JsonPropertyOrder(14)] public bool FocusSessionDimmedScreen   { get; set; }
         [JsonPropertyOrder(15)] public bool FocusSessionCoveredScreen  { get; set; }
@@ -150,17 +150,17 @@ internal sealed class SettingsFile
             Focus = new FocusGroup
             {
                 FocusSessionMinutes       = s.FocusSessionMinutes,
+                FocusSessionKind          = s.FocusSessionKind,
                 FocusBlocksNetwork        = s.FocusBlocksNetwork,
-                FocusLimitsPrograms       = s.FocusLimitsPrograms,
                 FocusPrograms             = s.FocusPrograms,
                 FocusProgramsDefaultAction = s.FocusProgramsDefaultAction,
                 FocusDimsScreen           = s.FocusDimsScreen,
-                FocusCoversScreen         = s.FocusCoversScreen,
                 FocusCoverVisual          = CoverAppearance.NameOf(s.FocusCoverVisual),
                 FocusBlocksInput          = s.FocusBlocksInput,
                 FocusStartFromDashboard   = s.FocusStartFromDashboard,
                 FocusSessionStartedAt     = s.FocusSessionStartedAt,
                 FocusSessionEndsAt        = s.FocusSessionEndsAt,
+                FocusSessionRunningKind   = s.FocusSessionRunningKind,
                 FocusSessionDimmedScreen  = s.FocusSessionDimmedScreen,
                 FocusSessionCoveredScreen = s.FocusSessionCoveredScreen,
                 FocusSessionBlockedInput  = s.FocusSessionBlockedInput,
@@ -176,19 +176,21 @@ internal sealed class SettingsFile
         ScreenSavedBrightness = Screen.ScreenSavedBrightness,
 
         FocusSessionMinutes       = Focus.FocusSessionMinutes ?? FocusSessionEngine.DefaultMinutes,
+        // Nothing carries over from the two lever switches the kind replaced: an installation that
+        // has never chosen a kind gets a screen break.
+        FocusSessionKind          = Focus.FocusSessionKind ?? FocusSessionKind.ScreenBreak,
         FocusBlocksNetwork        = Focus.FocusBlocksNetwork ?? false,
-        FocusLimitsPrograms       = Focus.FocusLimitsPrograms ?? false,
         // A document with no program list but an earlier path list migrates; one with neither reads
         // as an empty list.
         FocusPrograms             = Focus.FocusPrograms ?? FocusAllowedPrograms.Migrate(Focus.FocusAllowedPrograms),
         FocusProgramsDefaultAction = Focus.FocusProgramsDefaultAction ?? FocusProgramAction.Minimise,
         FocusDimsScreen           = Focus.FocusDimsScreen ?? true,
-        FocusCoversScreen         = Focus.FocusCoversScreen ?? true,
         FocusCoverVisual          = CoverAppearance.ParseVisual(Focus.FocusCoverVisual),
-        FocusBlocksInput          = Focus.FocusBlocksInput ?? false,
+        FocusBlocksInput          = Focus.FocusBlocksInput ?? true,
         FocusStartFromDashboard   = Focus.FocusStartFromDashboard ?? true,
         FocusSessionStartedAt     = Focus.FocusSessionStartedAt,
         FocusSessionEndsAt        = Focus.FocusSessionEndsAt,
+        FocusSessionRunningKind   = Focus.FocusSessionRunningKind,
         FocusSessionDimmedScreen  = Focus.FocusSessionDimmedScreen,
         FocusSessionCoveredScreen = Focus.FocusSessionCoveredScreen,
         FocusSessionBlockedInput  = Focus.FocusSessionBlockedInput,

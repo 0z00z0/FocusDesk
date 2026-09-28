@@ -82,10 +82,12 @@ internal static class FocusSessionStages
 /// asked for the block and was refused it, or lost it: the lever fails safe.</param>
 /// <param name="BlocksNetwork">Whether the network block is held, on the same terms.</param>
 /// <param name="LimitsPrograms">Whether only the chosen programs can be used, on the same terms.</param>
+/// <param name="Kind">The kind the running session was started as. Meaningless when none is
+/// running.</param>
 internal readonly record struct FocusSnapshot(
     FocusSessionStage Stage, DateTimeOffset? StartedAt, DateTimeOffset? EndsAt,
     bool DimsScreen, bool CoversScreen, bool BlocksInput = false, bool BlocksNetwork = false,
-    bool LimitsPrograms = false)
+    bool LimitsPrograms = false, FocusSessionKind Kind = FocusSessionKind.ScreenBreak)
 {
     public static readonly FocusSnapshot None =
         new(FocusSessionStage.Off, null, null, false, false);
@@ -107,13 +109,9 @@ internal enum FocusArmOutcome
     /// <summary>A session is already running, so there is nothing to arm.</summary>
     AlreadyRunning,
 
-    /// <summary>No lever at all was chosen. A switch that counts down and does nothing is
-    /// indistinguishable from a broken one, so nothing is armed.</summary>
-    NoLeverChosen,
-
-    /// <summary>A chosen lever refused — the display accepts no brightness, nothing is attached for a
-    /// cover to go over, or every chosen block was refused. Nothing is armed, and nothing is
-    /// half-engaged.</summary>
+    /// <summary>The lever the kind always holds refused — nothing is attached for a cover to go over,
+    /// or no program is kept usable — or the display accepts no brightness for a chosen dim. Nothing is
+    /// armed, and nothing is half-engaged.</summary>
     LeverRefused,
 
     /// <summary>Every lever agreed and one then failed to engage. Whatever did engage is lifted

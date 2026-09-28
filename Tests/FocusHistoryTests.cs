@@ -24,18 +24,23 @@ public class FocusHistoryTests
         Assert.Equal("ended-early", FocusHistoryService.Word(FocusSessionOutcome.EndedEarly));
         Assert.Equal("found-stale", FocusHistoryService.Word(FocusSessionOutcome.FoundStale));
 
-        Assert.Equal("started,due,ended,levers,outcome,programs", FocusHistoryService.HeaderColumns);
+        Assert.Equal("started,due,ended,levers,outcome,programs,kind", FocusHistoryService.HeaderColumns);
         Assert.Equal("limited", FocusHistoryService.ProgramsLimited);
         Assert.Equal("not-limited", FocusHistoryService.ProgramsNotLimited);
+        Assert.Equal("program-focus", FocusSessionKinds.Word(FocusSessionKind.ProgramFocus));
+        Assert.Equal("screen-break", FocusSessionKinds.Word(FocusSessionKind.ScreenBreak));
     }
 
-    [Fact]
-    public void ARowSurvivesBeingWrittenAndReadBack()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ARowSurvivesBeingWrittenAndReadBack(bool programFocus)
     {
+        var kind = programFocus ? FocusSessionKind.ProgramFocus : FocusSessionKind.ScreenBreak;
         var entry = new FocusHistoryEntry(
             Noon, Noon.AddMinutes(60), Noon.AddMinutes(60),
             DimmedScreen: false, CoveredScreen: true, FocusSessionOutcome.RanToTime,
-            BlockedInput: true, BlockedNetwork: true, LimitedPrograms: true);
+            BlockedInput: true, BlockedNetwork: true, LimitedPrograms: true, Kind: kind);
 
         Assert.True(FocusHistoryService.TryParse(FocusHistoryService.Format(entry), out var back));
 
@@ -45,6 +50,20 @@ public class FocusHistoryTests
         Assert.Equal((false, true, true, true, true),
                      (back.DimmedScreen, back.CoveredScreen, back.BlockedInput, back.BlockedNetwork, back.LimitedPrograms));
         Assert.Equal(FocusSessionOutcome.RanToTime, back.Outcome);
+        Assert.Equal(kind, back.Kind);
+    }
+
+    /// <summary>A row written before the kind column existed still reads, and says no kind rather
+    /// than guessing one.</summary>
+    [Fact]
+    public void ARowWithoutTheKindColumn_ReadsWithNoKind()
+    {
+        Assert.True(FocusHistoryService.TryParse(
+            "2026-09-20T12:00:00+00:00,2026-09-20T13:00:00+00:00,2026-09-20T13:00:00+00:00," +
+            "cover+input,ran-to-time,not-limited", out var entry));
+
+        Assert.True(entry.CoveredScreen);
+        Assert.Null(entry.Kind);
     }
 
     /// <summary>A comma separates the columns, so the levers cannot be joined with one.</summary>
@@ -90,19 +109,21 @@ public class FocusHistoryTests
         public FakeFocusLever Cover { get; } = new();
         public FakeFocusLever Input { get; } = new();
         public FakeFocusLever Network { get; } = new();
+        public FakeFocusLever Programs { get; } = new();
         public FakeFocusSessionRecord Record { get; } = new();
         public List<FocusHistoryEntry> Written { get; } = [];
         public FocusSessionEngine Engine { get; }
 
         public Bed() => Engine = new FocusSessionEngine(
-            Screen, Cover, Input, Network, Record, () => Now, (_, _) => { }, Written.Add);
+            Screen, Cover, Input, Network, Record, () => Now, (_, _) => { }, Written.Add, Programs);
     }
 
     [Fact]
     public void ASessionThatRanItsLength_IsWrittenDownAsHavingRunToTime()
     {
         var bed = new Bed();
-        bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, blocksInput: false, blocksNetwork: false, "a test");
+        bed.Engine.Arm(60, FocusSessionPlan.For(FocusSessionKind.ProgramFocus, blocksNetwork: true,
+                                                dimsScreen: true, blocksInput: true), "a test");
 
         bed.Now = Noon.AddMinutes(60);
         bed.Engine.Tick();
@@ -112,14 +133,17 @@ public class FocusHistoryTests
         Assert.Equal(Noon, written.StartedAt);
         Assert.Equal(Noon.AddMinutes(60), written.DueAt);
         Assert.Equal(Noon.AddMinutes(60), written.EndedAt);
-        Assert.Equal((true, false), (written.DimmedScreen, written.CoveredScreen));
+        Assert.Equal((false, false, true, true), (written.DimmedScreen, written.CoveredScreen,
+                                                  written.BlockedNetwork, written.LimitedPrograms));
+        Assert.Equal(FocusSessionKind.ProgramFocus, written.Kind);
     }
 
     [Fact]
     public void ASessionEndedFromHomeAssistant_KeepsTheEndTimeItNeverReached()
     {
         var bed = new Bed();
-        bed.Engine.Arm(120, dimsScreen: true, coversScreen: false, blocksInput: false, blocksNetwork: false, "a test");
+        bed.Engine.Arm(120, FocusSessionPlan.For(FocusSessionKind.ScreenBreak, blocksNetwork: false,
+                                                 dimsScreen: true, blocksInput: false), "a test");
 
         bed.Engine.RequestCancel("a test");
         bed.Now = Noon + FocusSessionStages.CancelWait;
@@ -153,7 +177,8 @@ public class FocusHistoryTests
         var bed = new Bed();
         bed.Screen.EngageSucceeds = false;
 
-        bed.Engine.Arm(60, dimsScreen: true, coversScreen: false, blocksInput: false, blocksNetwork: false, "a test");
+        bed.Engine.Arm(60, FocusSessionPlan.For(FocusSessionKind.ScreenBreak, blocksNetwork: false,
+                                                dimsScreen: true, blocksInput: false), "a test");
 
         Assert.Empty(bed.Written);
     }

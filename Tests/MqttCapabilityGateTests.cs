@@ -20,22 +20,22 @@ public class MqttCapabilityGateTests
 
     [Fact]
     public void OnAMachineWithASettableDisplay_EveryEntityIsAnnounced() =>
-        Assert.Equal(11, WithCapabilities(PublishCapabilities.Full).Published(null).Count);
+        Assert.Equal(10, WithCapabilities(PublishCapabilities.Full).Published(null).Count);
 
     [Fact]
     public void WithNoDisplayThatAcceptsABrightness_BothScreenEntitiesAndTheFocusScreenLeverGo()
     {
         // A slider and a button that reach nothing are worse than no entities at all: the receiver
         // shows a control, the machine ignores it, and nothing says why. The session's screen lever
-        // is the same control under another name, so it goes with them. The cover lever stays: a
-        // black window goes over a panel whether or not that panel accepts a brightness.
+        // is the same control under another name, so it goes with them. The kind stays: a screen
+        // break's cover goes over a panel whether or not that panel accepts a brightness.
         var published = Published(WithCapabilities(
             PublishCapabilities.Full with { ScreenBrightness = false }));
 
         Assert.DoesNotContain(MqttEntityCatalog.ScreenBrightness, published);
         Assert.DoesNotContain(MqttEntityCatalog.ScreenBrightnessRestore, published);
         Assert.DoesNotContain(MqttEntityCatalog.FocusSessionDimsScreen, published);
-        Assert.Contains(MqttEntityCatalog.FocusSessionCoversScreen, published);
+        Assert.Contains(MqttEntityCatalog.FocusSessionType, published);
         Assert.Contains(MqttEntityCatalog.FocusSession, published);
     }
 

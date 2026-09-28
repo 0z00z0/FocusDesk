@@ -39,17 +39,17 @@ public class SettingsFileShapeTests : IDisposable
         "ConfigVersion",
         "Focus",
         "Focus.FocusSessionMinutes",
+        "Focus.FocusSessionKind",
         "Focus.FocusBlocksNetwork",
-        "Focus.FocusLimitsPrograms",
         "Focus.FocusPrograms",
         "Focus.FocusProgramsDefaultAction",
         "Focus.FocusDimsScreen",
-        "Focus.FocusCoversScreen",
         "Focus.FocusCoverVisual",
         "Focus.FocusBlocksInput",
         "Focus.FocusStartFromDashboard",
         "Focus.FocusSessionStartedAt",
         "Focus.FocusSessionEndsAt",
+        "Focus.FocusSessionRunningKind",
         "Focus.FocusSessionBlockedNetwork",
         "Focus.FocusSessionDimmedScreen",
         "Focus.FocusSessionCoveredScreen",
@@ -173,12 +173,13 @@ public class SettingsFileShapeTests : IDisposable
             FocusProgramsDefaultAction = FocusProgramAction.AskToClose,
             FocusDimsScreen           = false,
             FocusCoverVisual          = CoverVisual.FocusPoint,
-            FocusBlocksInput          = true,
+            FocusBlocksInput          = false,
             FocusSessionEndsAt        = new DateTimeOffset(2026, 9, 20, 13, 0, 0, TimeSpan.Zero),
             FocusSessionCoveredScreen = true,
             FocusSessionBlockedInput  = true,
             FocusSessionBlockedNetwork = true,
-            FocusLimitsPrograms       = true,
+            FocusSessionKind          = FocusSessionKind.ProgramFocus,
+            FocusSessionRunningKind   = FocusSessionKind.ProgramFocus,
             FocusSessionLimitedPrograms = true,
             InstallUpdatesUnattended  = true,
         };
@@ -221,10 +222,39 @@ public class SettingsFileShapeTests : IDisposable
         Assert.Empty(SettingsService.ReadFrom(File_)!.FocusPrograms);
     }
 
+    /// <summary>The two lever switches the kind replaced carry nothing over: a document that asked for
+    /// the program limit and no cover still reads as a screen break, and this build never writes
+    /// either key. The store never deletes a key, so what stood there stays unread.</summary>
+    [Fact]
+    public void TheTwoReplacedSwitchesAreNeitherReadNorWritten()
+    {
+        Directory.CreateDirectory(_dir);
+        System.IO.File.WriteAllText(File_,
+            "{ \"ConfigVersion\": 1, \"Focus\": { \"FocusLimitsPrograms\": true, \"FocusCoversScreen\": false } }");
+
+        var loaded = SettingsService.ReadFrom(File_);
+
+        Assert.NotNull(loaded);
+        Assert.Equal(FocusSessionKind.ScreenBreak, loaded!.FocusSessionKind);
+        Assert.Equal(FocusSessionKind.ScreenBreak, loaded.FocusSessionRunningKind);
+
+        loaded.FocusSessionKind = FocusSessionKind.ProgramFocus;
+        Assert.True(SettingsService.WriteTo(loaded, File_));
+        string written = System.IO.File.ReadAllText(File_);
+        Assert.Contains("\"FocusSessionKind\": \"ProgramFocus\"", written, StringComparison.Ordinal);
+        Assert.Contains("FocusLimitsPrograms", written, StringComparison.Ordinal);
+        Assert.Equal(FocusSessionKind.ProgramFocus, SettingsService.ReadFrom(File_)!.FocusSessionKind);
+
+        string fresh = Path.Combine(_dir, "fresh.json");
+        Assert.True(SettingsService.WriteTo(new AppSettings(), fresh));
+        Assert.DoesNotContain("FocusLimitsPrograms", System.IO.File.ReadAllText(fresh), StringComparison.Ordinal);
+        Assert.DoesNotContain("FocusCoversScreen", System.IO.File.ReadAllText(fresh), StringComparison.Ordinal);
+    }
+
     private static string Describe(AppSettings s) => string.Join('|',
         s.ScreenSavedBrightness, s.FocusSessionMinutes, s.FocusBlocksNetwork,
         string.Join(';', s.FocusPrograms), s.FocusProgramsDefaultAction, s.FocusSessionBlockedNetwork,
-        s.FocusDimsScreen, s.FocusCoversScreen, s.FocusCoverVisual, s.FocusLimitsPrograms,
+        s.FocusDimsScreen, s.FocusCoverVisual, s.FocusSessionKind, s.FocusSessionRunningKind,
         s.FocusSessionLimitedPrograms,
         s.FocusBlocksInput, s.FocusStartFromDashboard, s.FocusSessionStartedAt, s.FocusSessionEndsAt,
         s.FocusSessionDimmedScreen, s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput,

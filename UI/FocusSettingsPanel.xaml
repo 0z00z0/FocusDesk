@@ -42,16 +42,6 @@
             </StackPanel>
         </controls:SettingsCard>
 
-        <!-- The focus-app lever. Fails safe like the network and input blocks, and locked for the
-             length of a session like every lever switch. The texts come from the resource files. -->
-        <controls:SettingsCard x:Name="FocusLimitsProgramsCard">
-            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                <zz:InfoIcon x:Name="FocusLimitsProgramsInfo"/>
-                <ToggleSwitch x:Name="FocusLimitsProgramsToggle" OnContent="" OffContent=""
-                              MinWidth="0" Toggled="OnFocusLimitsProgramsToggled"/>
-            </StackPanel>
-        </controls:SettingsCard>
-
         <!-- The one program list, one row per program beneath the button, each with "can run" and
              "can use the network". Empty is the whole of what an installation that has chosen no
              program carries. The texts come from the resource files. -->
@@ -69,16 +59,6 @@
                              Info="A lever cannot change while a session runs: its record would be left with nothing owning it."/>
                 <ToggleSwitch x:Name="FocusDimsScreenToggle" OnContent="" OffContent=""
                               MinWidth="0" Toggled="OnFocusDimsScreenToggled"/>
-            </StackPanel>
-        </controls:SettingsCard>
-
-        <controls:SettingsCard Header="Covers the screen"
-                               Description="Puts a black window over every display for the length of a session.">
-            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                <zz:InfoIcon Subject="the screen cover"
-                             Info="A lever cannot change while a session runs: its record would be left with nothing owning it."/>
-                <ToggleSwitch x:Name="FocusCoversScreenToggle" OnContent="" OffContent=""
-                              MinWidth="0" Toggled="OnFocusCoversScreenToggled"/>
             </StackPanel>
         </controls:SettingsCard>
 
