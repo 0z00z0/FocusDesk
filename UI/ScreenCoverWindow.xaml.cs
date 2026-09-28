@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using FocusDesk.Helpers;
 using FocusDesk.Services;
@@ -9,6 +10,8 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.Web.WebView2.Core;
 using Windows.Graphics;
+using Color = Windows.UI.Color;
+using Point = Windows.Foundation.Point;
 
 namespace FocusDesk.UI;
 
@@ -21,8 +24,11 @@ namespace FocusDesk.UI;
 /// <para>Bounds come from the display this cover is for, in physical pixels, so a mixed-scale
 /// arrangement leaves no strip uncovered. The panel it reveals is sized in device-independent units
 /// and scaled as one, so it is the same physical size whatever that display's scale factor is.</para>
-/// <para>Two visuals, chosen per session. The dial is drawn here; the focus point is a bundled page
-/// drawn by an embedded browser and fed the same countdown through
+/// <para>A screen break's cover opens on the one-minute breathing focus point, drawn here, and then
+/// fades to the visual the session was armed with. The opening runs off the session's clock
+/// (<see cref="CoverSequence"/>), so it plays once however often the cover is rebuilt.</para>
+/// <para>Two visuals follow it, chosen per session. The dial is drawn here; the focus point is a
+/// bundled page drawn by an embedded browser and fed the same countdown through
 /// <see cref="CoverSessionMessage"/>. A browser that cannot start falls back to the dial, because a
 /// cover that draws nothing is a black screen nobody can explain.</para>
 /// <para>Nothing here ends a session. The cover goes when the session does, and a run that died
@@ -51,6 +57,36 @@ internal sealed partial class ScreenCoverWindow : Window
     /// focus-point page breathes on and the two visuals read as one family.</summary>
     private static readonly TimeSpan BreathHalf      = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan BreathHalfFinal = TimeSpan.FromSeconds(2);
+
+    /// <summary>The opening's circle, on the same centre as the dial.</summary>
+    private const double OpeningRadius = 102;
+
+    /// <summary>The opening dot's breath, as the exercise draws it: five seconds out, five back, on
+    /// the browser's own ease-in-out curve.</summary>
+    private static readonly TimeSpan OpeningBreathHalf = TimeSpan.FromSeconds(5);
+
+    /// <summary>How long the line under the point stays before fading, and how long the fade
+    /// takes.</summary>
+    private const double OpeningHintSeconds = 4;
+
+    private static readonly TimeSpan OpeningHintFade = TimeSpan.FromMilliseconds(800);
+
+    /// <summary>The fade from the opening to the visual that follows it.</summary>
+    private static readonly TimeSpan OpeningFade = TimeSpan.FromMilliseconds(1200);
+
+    /// <summary>The exercise's colours, and the quieter set the focus-point page uses where the
+    /// screen is not also being dimmed. The glow is the dot's colour at the alpha of its brightest
+    /// breath.</summary>
+    private readonly record struct OpeningPalette(Color Dot, Color Ring, Color Active, Color Text,
+                                                  byte GlowAlpha);
+
+    private static readonly OpeningPalette OpeningFull = new(
+        AppColors.FromHex("#e8e4da"), AppColors.FromHex("#3a4450"),
+        AppColors.FromHex("#7fa08c"), AppColors.FromHex("#4a5560"), GlowAlpha: 77);
+
+    private static readonly OpeningPalette OpeningHeldBack = new(
+        AppColors.FromHex("#8d8a83"), AppColors.FromHex("#232a31"),
+        AppColors.FromHex("#4c6054"), AppColors.FromHex("#2f363d"), GlowAlpha: 43);
 
     /// <summary>The browser's own store, beside the settings rather than beside the executable: the
     /// program folder is not writable for the user the session runs as.</summary>
@@ -84,6 +120,22 @@ internal sealed partial class ScreenCoverWindow : Window
     private bool _pageIsReady;
     private string? _unsent;
 
+    /// <summary>What the cover is drawing now; null until the first reading lands.</summary>
+    private CoverScene? _scene;
+
+    private Storyboard? _openingBreath;
+    private Storyboard? _openingFade;
+    private bool _drawsEveryFrame;
+    private bool _openingDrawn;
+    private bool _hintShown;
+    private bool? _openingHeldBack;
+
+    /// <summary>When the opening ends, on the stopwatch's clock, and how long it runs in all. Set
+    /// again from every reading, so the arc drawn between readings never drifts from the
+    /// session.</summary>
+    private long _openingEndsAt;
+    private double _openingLength;
+
     internal ScreenCoverWindow(CoverVisual visual)
     {
         InitializeComponent();
@@ -96,6 +148,9 @@ internal sealed partial class ScreenCoverWindow : Window
         RingFill.Stroke = _fill;
         LeadDot.Fill    = _fill;
         UnitText.Text   = AppText.Get("CoverMinutesLeft");
+
+        // The exercise sets its line in capitals; the text itself is the interface language's.
+        OpeningHint.Text = AppText.Get("CoverFocusPointHint").ToUpper(CultureInfo.CurrentCulture);
 
         // A whole spent dial until the first reading lands, so no frame shows an empty canvas.
         TickSpent.Data = GaugeTicks.Range(Cx, Cy, TickOuterRadius, 0, GaugeTicks.Count,
@@ -137,6 +192,8 @@ internal sealed partial class ScreenCoverWindow : Window
     {
         _sweep?.Stop();
         _breath?.Stop();
+        StopOpening();
+        _openingFade?.Stop();
 
         // Closes the browser's own processes; they otherwise outlive the window.
         try { _page?.Close(); }
@@ -167,11 +224,21 @@ internal sealed partial class ScreenCoverWindow : Window
     }
 
     /// <summary>Draws the countdown and decides whether the panel is showing.</summary>
-    /// <remarks>The focus point is the whole cover and stands for the session's length, so the reveal
-    /// that governs the dial does not apply to it.</remarks>
-    internal void Apply(FocusCoverReading? reading, string levers, bool revealed,
-                        CoverAppearance appearance)
+    /// <remarks>The opening and the focus point are each the whole cover, so the reveal that governs
+    /// the dial applies to neither.</remarks>
+    internal void Apply(FocusCoverReading? reading, FocusSessionKind kind, string levers,
+                        bool revealed, CoverAppearance appearance)
     {
+        var scene = CoverSequence.SceneAt(reading, _visual, kind);
+        Enter(scene);
+
+        if (scene == CoverScene.Opening && reading is { } opening)
+        {
+            DrawOpening(opening, appearance);
+            Reveal.Visibility = Visibility.Collapsed;
+            return;
+        }
+
         if (_visual == CoverVisual.FocusPoint)
         {
             if (reading is { } session) Send(session, appearance);
@@ -271,6 +338,179 @@ internal sealed partial class ScreenCoverWindow : Window
         Storyboard.SetTarget(animation, target);
         Storyboard.SetTargetProperty(animation, property);
         return animation;
+    }
+
+    /// <summary>Moves the cover to a scene. Leaving the opening fades it over whatever follows, so the
+    /// minute ends in the visual taking over rather than in a message nobody can act on.</summary>
+    private void Enter(CoverScene scene)
+    {
+        if (scene == _scene) return;
+        bool wasOpening = _scene == CoverScene.Opening;
+        _scene = scene;
+
+        if (scene == CoverScene.Opening)
+        {
+            _openingFade?.Stop();
+            Opening.Opacity           = 1;
+            Opening.Visibility        = Visibility.Visible;
+            FocusPointHost.Visibility = Visibility.Collapsed;
+            StartOpening();
+            return;
+        }
+
+        StopOpening();
+        FocusPointHost.Visibility = Visibility.Visible;
+
+        if (!wasOpening || !_animate)
+        {
+            Opening.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var fade = new DoubleAnimation
+        {
+            From                     = 1,
+            To                       = 0,
+            Duration                 = new Duration(OpeningFade),
+            EasingFunction           = new SineEase { EasingMode = EasingMode.EaseInOut },
+            EnableDependentAnimation = true,
+        };
+        Storyboard.SetTarget(fade, Opening);
+        Storyboard.SetTargetProperty(fade, "Opacity");
+
+        _openingFade = new Storyboard();
+        _openingFade.Children.Add(fade);
+        _openingFade.Completed += (_, _) =>
+        {
+            if (_scene != CoverScene.Opening) Opening.Visibility = Visibility.Collapsed;
+        };
+        _openingFade.Begin();
+    }
+
+    /// <summary>Sets the dot breathing and the arc drawing every frame. Where the machine asks for no
+    /// animation the dot holds still at its resting glow and the arc moves on the once-a-second
+    /// reading instead, as the dial's readings do.</summary>
+    private void StartOpening()
+    {
+        _openingDrawn = false;
+
+        if (!_animate)
+        {
+            OpeningGlowScale.ScaleX = OpeningGlowScale.ScaleY = 1.15;
+            OpeningGlow.Opacity     = 0.83;
+            return;
+        }
+
+        // The glow's blur widens from 20 to 30 as the dot swells, so it grows further than the dot.
+        _openingBreath = new Storyboard { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever };
+        _openingBreath.Children.Add(Breath(OpeningDotScale,  "ScaleX",  1,   1.18));
+        _openingBreath.Children.Add(Breath(OpeningDotScale,  "ScaleY",  1,   1.18));
+        _openingBreath.Children.Add(Breath(OpeningGlowScale, "ScaleX",  1,   1.4));
+        _openingBreath.Children.Add(Breath(OpeningGlowScale, "ScaleY",  1,   1.4));
+        _openingBreath.Children.Add(Breath(OpeningGlow,      "Opacity", 0.6, 1));
+        _openingBreath.Begin();
+
+        CompositionTarget.Rendering += OnOpeningFrame;
+        _drawsEveryFrame = true;
+    }
+
+    private void StopOpening()
+    {
+        _openingBreath?.Stop();
+        _openingBreath = null;
+
+        if (_drawsEveryFrame) CompositionTarget.Rendering -= OnOpeningFrame;
+        _drawsEveryFrame = false;
+    }
+
+    /// <summary>One half of the breath on the curve a browser's ease-in-out follows, so the dot swells
+    /// exactly as the exercise's does.</summary>
+    private static DoubleAnimationUsingKeyFrames Breath(DependencyObject target, string property,
+                                                        double from, double to)
+    {
+        var animation = new DoubleAnimationUsingKeyFrames { EnableDependentAnimation = true };
+        animation.KeyFrames.Add(new DiscreteDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.Zero),
+            Value   = from,
+        });
+        animation.KeyFrames.Add(new SplineDoubleKeyFrame
+        {
+            KeyTime   = KeyTime.FromTimeSpan(OpeningBreathHalf),
+            Value     = to,
+            KeySpline = new KeySpline { ControlPoint1 = new Point(0.42, 0), ControlPoint2 = new Point(0.58, 1) },
+        });
+        Storyboard.SetTarget(animation, target);
+        Storyboard.SetTargetProperty(animation, property);
+        return animation;
+    }
+
+    /// <summary>The opening at one reading: its palette, where the minute has got to, and whether the
+    /// line under the point is still due.</summary>
+    private void DrawOpening(FocusCoverReading r, CoverAppearance appearance)
+    {
+        if (_openingHeldBack != appearance.IsHeldBack) Paint(appearance.IsHeldBack ? OpeningHeldBack : OpeningFull);
+        _openingHeldBack = appearance.IsHeldBack;
+
+        _openingLength = r.OpeningLength;
+        _openingEndsAt = Stopwatch.GetTimestamp() + (long)(r.OpeningSecondsLeft * Stopwatch.Frequency);
+        DrawOpeningArc();
+
+        // A cover rebuilt after the line has gone does not bring it back.
+        bool hintDue = r.OpeningLength - r.OpeningSecondsLeft < OpeningHintSeconds;
+        if (!_openingDrawn)
+        {
+            _openingDrawn       = true;
+            _hintShown          = hintDue;
+            OpeningHint.Opacity = hintDue ? 1 : 0;
+        }
+        else if (_hintShown && !hintDue) FadeHint();
+    }
+
+    private void Paint(OpeningPalette palette)
+    {
+        OpeningTrack.Stroke    = new SolidColorBrush(palette.Ring);
+        OpeningProgress.Stroke = new SolidColorBrush(palette.Active);
+        OpeningDot.Fill        = new SolidColorBrush(palette.Dot);
+        OpeningHint.Foreground = new SolidColorBrush(palette.Text);
+
+        var glow = palette.Dot;
+        var brush = new RadialGradientBrush();
+        brush.GradientStops.Add(new GradientStop { Offset = 0.0,  Color = Color.FromArgb(palette.GlowAlpha, glow.R, glow.G, glow.B) });
+        brush.GradientStops.Add(new GradientStop { Offset = 0.26, Color = Color.FromArgb(palette.GlowAlpha, glow.R, glow.G, glow.B) });
+        brush.GradientStops.Add(new GradientStop { Offset = 0.6,  Color = Color.FromArgb((byte)(palette.GlowAlpha / 3), glow.R, glow.G, glow.B) });
+        brush.GradientStops.Add(new GradientStop { Offset = 1.0,  Color = Color.FromArgb(0, glow.R, glow.G, glow.B) });
+        OpeningGlow.Fill = brush;
+    }
+
+    private void OnOpeningFrame(object? sender, object e) => DrawOpeningArc();
+
+    /// <summary>The arc fills clockwise from twelve o'clock as the opening runs, whole at its
+    /// end.</summary>
+    private void DrawOpeningArc()
+    {
+        double left = Math.Max(0, (_openingEndsAt - Stopwatch.GetTimestamp()) / (double)Stopwatch.Frequency);
+        double done = _openingLength > 0 ? Math.Clamp(1 - left / _openingLength, 0, 1) : 1;
+        OpeningProgress.Data = RingGeometry.Arc(Cx, Cy, OpeningRadius, 0, 360 * done);
+    }
+
+    private void FadeHint()
+    {
+        _hintShown = false;
+        if (!_animate) { OpeningHint.Opacity = 0; return; }
+
+        var fade = new DoubleAnimation
+        {
+            From                     = OpeningHint.Opacity,
+            To                       = 0,
+            Duration                 = new Duration(OpeningHintFade),
+            EnableDependentAnimation = true,
+        };
+        Storyboard.SetTarget(fade, OpeningHint);
+        Storyboard.SetTargetProperty(fade, "Opacity");
+        var board = new Storyboard();
+        board.Children.Add(fade);
+        board.Begin();
     }
 
     /// <summary>Builds the embedded browser and points it at the bundled page. Fire-and-forget by
