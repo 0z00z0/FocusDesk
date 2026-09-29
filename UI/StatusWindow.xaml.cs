@@ -25,12 +25,14 @@ namespace FocusDesk.UI;
 /// <para>One window at a time. Clicking away or pressing Escape hides it rather than closing it, so
 /// the next click re-shows the same window; a long idle spell destroys it and the click after that
 /// builds it again.</para>
-/// <para>Nothing here ends a session. The start box starts one; the way out is Home Assistant's
-/// staged cancel and the session's own clock, and the window says so while one runs.</para>
-/// <para>The first time the pop-out is on screen after a session arms, it shows the session-start
-/// focus point in place of the countdown, once per session. The header's button brings the page back
-/// at any time, and the button under the page returns to the countdown. Hiding the window drops the
-/// page, so no browser runs behind a hidden pop-out.</para>
+/// <para>Nothing here ends a session. The start box starts one: the two kind buttons only choose,
+/// and the Start button arms the chosen kind. The way out is Home Assistant's staged cancel and the
+/// session's own clock, and the window says so while one runs.</para>
+/// <para>The first time the pop-out is on screen after a program focus arms, it shows the
+/// session-start focus point in place of the countdown, once per session. A screen break shows the
+/// countdown at once, because its cover opens on the focus point itself. The header's button brings
+/// the page back at any time, and the button under the page returns to the countdown. Hiding the
+/// window drops the page, so no browser runs behind a hidden pop-out.</para>
 /// </remarks>
 internal sealed partial class StatusWindow : Window
 {
@@ -84,8 +86,12 @@ internal sealed partial class StatusWindow : Window
     private WebView2? _page;
 
     /// <summary>The accent style the markup gives the screen-break button, kept so it can move to
-    /// whichever kind is the stored default.</summary>
+    /// whichever kind is chosen.</summary>
     private readonly Style _accentStyle;
+
+    /// <summary>The kind the Start button arms. Set to the stored default each time the window is
+    /// shown, and changed only by the two kind buttons; never written back to the settings.</summary>
+    private FocusSessionKind _chosenKind;
 
     /// <summary>Opens the pop-out, or brings the hidden one back.</summary>
     public static void Open()
@@ -118,9 +124,10 @@ internal sealed partial class StatusWindow : Window
         AutomationProperties.SetName(FocusPointButton, showFocusPoint);
         SkipButton.Content = AppText.Get("PopOutFocusPointSkip");
 
-        _accentStyle = StartScreenBreakButton.Style;
-        StartProgramFocusButton.Content = AppText.Get("PopOutStartProgramFocus");
-        StartScreenBreakButton.Content  = AppText.Get("PopOutStartScreenBreak");
+        _accentStyle = ScreenBreakChoice.Style;
+        ProgramFocusChoice.Content = AppText.Get("PopOutStartProgramFocus");
+        ScreenBreakChoice.Content  = AppText.Get("PopOutStartScreenBreak");
+        StartButton.Content        = AppText.Get("PopOutStart");
 
         // The session moves on its own clock and from Home Assistant, so the window follows both:
         // the engine's event for a stage moving, and a tick for the minutes running down.
@@ -166,6 +173,8 @@ internal sealed partial class StatusWindow : Window
     private void ShowPopOut()
     {
         _idleClose.Stop();
+        _chosenKind = SettingsService.Read(s => s.FocusSessionKind);
+        RefusalText.Visibility = Visibility.Collapsed;
         Reload();
         if (FocusSessionService.TakeOpeningPage()) ShowFocusPoint();
         Place();
@@ -257,9 +266,10 @@ internal sealed partial class StatusWindow : Window
 
         // A second session cannot be armed over a running one, so the buttons say nothing they cannot
         // do. The refusal line from an earlier attempt goes with them.
-        StartProgramFocusButton.IsEnabled = !session.IsRunning && _programFocusPossible;
-        StartScreenBreakButton.IsEnabled  = !session.IsRunning;
-        MinutesCombo.IsEnabled = !session.IsRunning;
+        ProgramFocusChoice.IsEnabled = !session.IsRunning && _programFocusPossible;
+        ScreenBreakChoice.IsEnabled  = !session.IsRunning;
+        StartButton.IsEnabled        = !session.IsRunning;
+        MinutesCombo.IsEnabled       = !session.IsRunning;
         if (session.IsRunning) RefusalText.Visibility = Visibility.Collapsed;
     }
 
@@ -267,28 +277,38 @@ internal sealed partial class StatusWindow : Window
     /// focus is refused without one, so its button says so before it is pressed.</summary>
     private bool _programFocusPossible;
 
-    /// <summary>The start box: the length, and a button per kind with the stored default in the accent.
-    /// Hidden altogether where the Focus settings page has not turned it on: a machine that is only
-    /// ever set going from Home Assistant has no use for it.</summary>
+    /// <summary>The start box: the length, the Start button, and a button per kind with the chosen one
+    /// in the accent. Hidden altogether where the Focus settings page has not turned it on: a machine
+    /// that is only ever set going from Home Assistant has no use for it.</summary>
     private void ShowStartBox()
     {
-        var (offered, minutes, kind, programs) = SettingsService.Read(
-            s => (s.FocusStartFromDashboard, s.FocusSessionMinutes, s.FocusSessionKind, s.FocusPrograms.ToList()));
+        var (offered, minutes, programs) = SettingsService.Read(
+            s => (s.FocusStartFromDashboard, s.FocusSessionMinutes, s.FocusPrograms.ToList()));
 
         var shown = offered ? Visibility.Visible : Visibility.Collapsed;
-        StartBox.Visibility = shown;
-        MinutesCombo.Visibility = shown;
+        KindChoices.Visibility = shown;
+        StartRow.Visibility = shown;
         if (!offered) return;
 
         FocusLengthChoices.Fill(MinutesCombo, minutes);
 
-        StartProgramFocusButton.Style = kind == FocusSessionKind.ProgramFocus ? _accentStyle : null;
-        StartScreenBreakButton.Style  = kind == FocusSessionKind.ScreenBreak  ? _accentStyle : null;
-
         _programFocusPossible = FocusProgramLever.KeepsAProgramUsable(programs, WindowsPrograms.Folder);
-        ToolTipService.SetToolTip(StartProgramFocusFrame,
+        ToolTipService.SetToolTip(ProgramFocusFrame,
             _programFocusPossible ? null : AppText.Get("PopOutStartProgramFocusInfo"));
-        StartProgramFocusButton.IsEnabled = _programFocusPossible && !FocusSessionService.IsRunning;
+        ProgramFocusChoice.IsEnabled = _programFocusPossible && !FocusSessionService.IsRunning;
+
+        // A kind whose button is disabled cannot stay chosen, or Start would arm what the window
+        // says cannot run.
+        if (!_programFocusPossible && _chosenKind == FocusSessionKind.ProgramFocus)
+            _chosenKind = FocusSessionKind.ScreenBreak;
+        ShowChosenKind();
+    }
+
+    /// <summary>Puts the accent on the chosen kind and takes it off the other.</summary>
+    private void ShowChosenKind()
+    {
+        ProgramFocusChoice.Style = _chosenKind == FocusSessionKind.ProgramFocus ? _accentStyle : null;
+        ScreenBreakChoice.Style  = _chosenKind == FocusSessionKind.ScreenBreak  ? _accentStyle : null;
     }
 
     /// <summary>What the session holds. Tinted while a lever is in force and in the plain card fill
@@ -354,16 +374,24 @@ internal sealed partial class StatusWindow : Window
         Opacity = secondary ? 0.65 : 1,
     };
 
-    private void OnStartProgramFocus(object sender, RoutedEventArgs e) =>
-        Start(FocusSessionKind.ProgramFocus, "Program focus button");
+    private void OnChooseProgramFocus(object sender, RoutedEventArgs e) => Choose(FocusSessionKind.ProgramFocus);
 
-    private void OnStartScreenBreak(object sender, RoutedEventArgs e) =>
-        Start(FocusSessionKind.ScreenBreak, "Screen break button");
+    private void OnChooseScreenBreak(object sender, RoutedEventArgs e) => Choose(FocusSessionKind.ScreenBreak);
 
-    /// <summary>Starts a session of the pressed kind for the chosen length. The switches come from the
+    /// <summary>Chooses the kind the Start button arms. Nothing starts, and nothing is stored: the
+    /// stored default is what Home Assistant starts, and it stays as it was. A refusal from an earlier
+    /// start was about the other choice, so it goes.</summary>
+    private void Choose(FocusSessionKind chosen)
+    {
+        _chosenKind = chosen;
+        RefusalText.Visibility = Visibility.Collapsed;
+        ShowChosenKind();
+    }
+
+    /// <summary>Starts a session of the chosen kind for the chosen length. The switches come from the
     /// settings. The length is stored for the next session; the kind is not, so the stored default —
     /// what Home Assistant starts — stays as it was.</summary>
-    private void Start(FocusSessionKind kind, string button)
+    private void OnStart(object sender, RoutedEventArgs e)
     {
         if (FocusLengthChoices.Selected(MinutesCombo) is not { } minutes) return;
 
@@ -371,7 +399,7 @@ internal sealed partial class StatusWindow : Window
         // stored rather than held for this one start.
         SettingsService.Update(s => s.FocusSessionMinutes = minutes);
 
-        var outcome = FocusSessionService.Arm(ActionCause.StatusWindow(button), minutes, kind);
+        var outcome = FocusSessionService.Arm(ActionCause.StatusWindow("Start button"), minutes, _chosenKind);
         if (outcome == FocusArmOutcome.Armed)
         {
             RefusalText.Visibility = Visibility.Collapsed;

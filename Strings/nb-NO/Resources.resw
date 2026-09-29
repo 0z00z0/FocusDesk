@@ -217,11 +217,15 @@
   </data>
   <data name="PopOutStartProgramFocus" xml:space="preserve">
     <value>Programfokus</value>
-    <comment>Button on the tray pop-out that starts a program-focus session, glossary term, capitalised.</comment>
+    <comment>Button on the tray pop-out that chooses program focus as the kind Start arms, glossary term, capitalised.</comment>
   </data>
   <data name="PopOutStartScreenBreak" xml:space="preserve">
     <value>Skjermpause</value>
-    <comment>Button on the tray pop-out that starts a screen break, glossary term, capitalised.</comment>
+    <comment>Button on the tray pop-out that chooses a screen break as the kind Start arms, glossary term, capitalised.</comment>
+  </data>
+  <data name="PopOutStart" xml:space="preserve">
+    <value>Start</value>
+    <comment>Button on the tray pop-out that starts a session of the chosen kind, imperative verb.</comment>
   </data>
   <data name="PopOutStartProgramFocusInfo" xml:space="preserve">
     <value>Merk minst ett program som Kan kjøre på Fokus-siden</value>

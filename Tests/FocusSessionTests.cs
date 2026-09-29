@@ -573,18 +573,18 @@ public class FocusSessionTests
     // ── The session-start page is offered once per armed session ────────────────────────────────
 
     [Fact]
-    public void TheSessionStartPage_IsOwedOncePerArm_WhateverTheLevers_AndNeverAgainMidSession()
+    public void TheSessionStartPage_IsOwedOncePerArm_AndNeverAgainMidSession()
     {
         var bed = new Bed();
         Assert.False(bed.Engine.TakeOpeningPage());
 
-        bed.Engine.Arm(30, ScreenBreak(dims: true, input: true), "a test");
+        bed.Engine.Arm(30, ProgramFocus(network: true), "a test");
         Assert.True(bed.Engine.TakeOpeningPage());
         Assert.False(bed.Engine.TakeOpeningPage());
 
         // Nothing that moves a running session hands the offer back: the clock, a lever lost, a
         // cancel attempt, or a second arm refused because one already runs.
-        bed.Input.HoldSucceeds = false;
+        bed.Network.HoldSucceeds = false;
         bed.Advance(TimeSpan.FromMinutes(5));
         bed.Engine.Tick();
         bed.Engine.RequestCancel("a test");
@@ -595,7 +595,7 @@ public class FocusSessionTests
         bed.Engine.Tick();
         Assert.Equal(FocusSessionStage.Off, bed.Engine.Snapshot().Stage);
 
-        // The next arm owes it again, as the other kind, because the offer keys on arming alone.
+        // The next arm owes it again.
         bed.Engine.Arm(20, ProgramFocus(), "a test");
         Assert.True(bed.Engine.TakeOpeningPage());
     }
