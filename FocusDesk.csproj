@@ -159,15 +159,15 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
 
-    <!-- The pop-out's session-start page, served from the same folder under its own browser. -->
+    <!-- The session-start breathing page, beside the cover's page. Nothing in the application loads
+         it: the focus-point window draws the same exercise natively. -->
     <Content Update="Assets\FocusPoint\session-start.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
   <!-- session-start.html loads the brand typeface itself, through a WebView2 virtual host mapped to
-       Assets\FocusPoint\ (see UI\StatusWindow.xaml.cs; UI\ScreenCoverWindow.xaml.cs maps the same
-       physical folder for focus-point.html). ZeroZero.Brand.WinUI already copies CascadiaMono.ttf
+       Assets\FocusPoint\ (UI\ScreenCoverWindow.xaml.cs maps that folder for focus-point.html). ZeroZero.Brand.WinUI already copies CascadiaMono.ttf
        into the build and publish output, but beside ZeroZero.Brand.WinUI\Assets\Fonts\, a folder the
        virtual host mapping cannot reach. These two targets copy the same file the package already
        placed into Assets\FocusPoint\ alongside the pages, rather than sourcing it separately. -->

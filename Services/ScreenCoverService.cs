@@ -38,10 +38,6 @@ internal static class ScreenCoverService
     /// building it again, and the choice belongs to the session that was armed.</summary>
     private static CoverVisual _visual = CoverVisual.Ring;
 
-    /// <summary>Whether the last tick found the covers still in their opening, so the hand-over to
-    /// the chosen visual is logged once.</summary>
-    private static bool _opening;
-
     private static readonly List<ScreenCoverWindow> _windows = [];
     private static IReadOnlyList<RectInt32> _covering = [];
 
@@ -75,11 +71,7 @@ internal static class ScreenCoverService
 
         IsShowing = true;
         _visual   = Chosen();
-        var session = _session();
-        _opening  = CoverSequence.SceneAt(FocusCoverCountdown.For(session, DateTimeOffset.Now),
-                                          _visual, session.Kind) == CoverScene.Opening;
-        string opening = _opening ? " after the one-minute focus point" : "";
-        AppLog.Info($"Focus: the screen cover goes up as the {CoverAppearance.NameOf(_visual)} visual{opening}{cause.Clause}.");
+        AppLog.Info($"Focus: the screen cover goes up as the {CoverAppearance.NameOf(_visual)} visual{cause.Clause}.");
         return ui.TryEnqueue(Raise);
     }
 
@@ -144,11 +136,6 @@ internal static class ScreenCoverService
             else if (AnyCoverIsGone()) { AppLog.Info("Focus: a screen cover had gone, and is put back."); Rebuild(); }
 
             var reading = FocusCoverCountdown.For(session, DateTimeOffset.Now);
-            bool opening = CoverSequence.SceneAt(reading, _visual, session.Kind) == CoverScene.Opening;
-            if (_opening && !opening)
-                AppLog.Info($"Focus: the cover's opening focus point has run, and the {CoverAppearance.NameOf(_visual)} visual takes over.");
-            _opening = opening;
-
             string levers = Levers(session);
             bool revealed = NativeMethods.SinceLastInput() is { } since && since < RevealFor;
 
@@ -159,7 +146,7 @@ internal static class ScreenCoverService
             foreach (var window in _windows)
             {
                 window.KeepOnTop();
-                window.Apply(reading, session.Kind, levers, revealed, appearance);
+                window.Apply(reading, levers, revealed, appearance);
             }
         }
         catch (Exception ex) { AppLog.Error("ScreenCoverService.OnTick", ex); }

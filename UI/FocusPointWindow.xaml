@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Window
+    x:Class="FocusDesk.UI.FocusPointWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- The session-start breathing exercise, on its own blue-grey with a vignette leading the eye
+         inward. Dark whatever the system theme, so the button's hover and pressed states are the dark
+         ones on this ground. Every text is set from the resource files in the constructor. -->
+    <Grid Background="#FF0B0E11" RequestedTheme="Dark" KeyboardAcceleratorPlacementMode="Hidden">
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="Escape" Invoked="OnEscapeInvoked"/>
+        </Grid.KeyboardAccelerators>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="104"/>
+            <RowDefinition Height="44"/>
+        </Grid.RowDefinitions>
+
+        <Rectangle Grid.RowSpan="3">
+            <Rectangle.Fill>
+                <!-- Reaches its darkest at the corners: a radius of the half-diagonal. -->
+                <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5"
+                                     RadiusX="0.7071" RadiusY="0.7071">
+                    <GradientStop Color="#00000000" Offset="0.0"/>
+                    <GradientStop Color="#00000000" Offset="0.4"/>
+                    <GradientStop Color="#73000000" Offset="1.0"/>
+                </RadialGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+
+        <!-- The exercise's 220-unit target: a faint circle, the arc filling it clockwise from twelve
+             o'clock over the minute, and the dot breathing at its centre with a glow that swells
+             further than the dot. -->
+        <Grid Grid.Row="0" Width="220" Height="220" Margin="0,24,0,0"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Canvas Width="220" Height="220">
+                <Path Stroke="#FF3A4450" StrokeThickness="1.5" Opacity="0.5">
+                    <Path.Data>
+                        <EllipseGeometry Center="110,110" RadiusX="102" RadiusY="102"/>
+                    </Path.Data>
+                </Path>
+                <Path x:Name="Progress"
+                      Stroke="#FF7FA08C"
+                      StrokeThickness="1.5"
+                      StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round"/>
+            </Canvas>
+
+            <Ellipse x:Name="Glow"
+                     Width="54" Height="54"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                     RenderTransformOrigin="0.5,0.5">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop Color="#4DE8E4DA" Offset="0.0"/>
+                        <GradientStop Color="#4DE8E4DA" Offset="0.26"/>
+                        <GradientStop Color="#19E8E4DA" Offset="0.6"/>
+                        <GradientStop Color="#00E8E4DA" Offset="1.0"/>
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+                <Ellipse.RenderTransform>
+                    <ScaleTransform x:Name="GlowScale" ScaleX="1" ScaleY="1"/>
+                </Ellipse.RenderTransform>
+            </Ellipse>
+            <Ellipse Width="14" Height="14" Fill="#FFE8E4DA"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                     RenderTransformOrigin="0.5,0.5">
+                <Ellipse.RenderTransform>
+                    <ScaleTransform x:Name="DotScale" ScaleX="1" ScaleY="1"/>
+                </Ellipse.RenderTransform>
+            </Ellipse>
+        </Grid>
+
+        <!-- Hidden until the minute has run, then faded in. Its row keeps its height throughout, so
+             nothing above moves when it appears. Large, but only an outline on the ground. -->
+        <Button Grid.Row="1" x:Name="StartSessionButton"
+                Visibility="Collapsed" Opacity="0"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                MinWidth="260" Height="52" Padding="28,0" CornerRadius="26"
+                FontSize="18"
+                Background="Transparent"
+                BorderBrush="#FF3A4450" BorderThickness="1"
+                Foreground="#FFC9C5BC"
+                Click="OnStartSession"/>
+
+        <!-- The quiet line near the foot for the first few seconds, as the exercise shows it. -->
+        <TextBlock Grid.Row="2" x:Name="Hint"
+                   FontSize="13"
+                   CharacterSpacing="120"
+                   Foreground="#FF4A5560"
+                   TextAlignment="Center"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Top"/>
+    </Grid>
+</Window>

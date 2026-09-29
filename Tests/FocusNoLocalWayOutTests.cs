@@ -20,10 +20,9 @@ public class FocusNoLocalWayOutTests
 {
     /// <summary>Every public method the engine offers, each read and found to end nothing but through
     /// the staged cancel and the clock. A method added beside these could be a second route, and the
-    /// wait and the second request would guard neither. <c>TakeOpeningPage</c> only reads and clears
-    /// the once-per-session offer of the session-start page.</summary>
+    /// wait and the second request would guard neither.</summary>
     private static readonly string[] EngineMethods =
-        ["Snapshot", "Start", "Arm", "RequestCancel", "Tick", "KeepRecord", "TakeOpeningPage"];
+        ["Snapshot", "Start", "Arm", "RequestCancel", "Tick", "KeepRecord"];
 
     [Fact]
     public void TheEngineOffersNoWayToEndASessionBesideTheStagedCancelAndTheClock()
