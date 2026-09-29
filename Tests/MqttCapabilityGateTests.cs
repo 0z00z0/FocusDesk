@@ -68,14 +68,14 @@ public class MqttCapabilityGateTests
 
         Assert.Equal(
             screenEntities.Order(StringComparer.Ordinal),
-            set.Withheld(groups).Select(e => e.EntityId).Order(StringComparer.Ordinal));
+            set.Resolve(groups, null).Withheld.Select(e => e.EntityId).Order(StringComparer.Ordinal));
     }
 
     [Fact]
     public void AFreshInstallation_AnnouncesEveryGroup()
     {
         // Nothing has been toggled, so each key takes its own declared default, and both are on.
-        Assert.Empty(MqttTestBed.Declared().Withheld(MqttTestBed.Groups()));
+        Assert.Empty(MqttTestBed.Declared().Resolve(MqttTestBed.Groups(), null).Withheld);
     }
 
     /// <summary>Switching the focus group off leaves the feature with no way to end a session but
