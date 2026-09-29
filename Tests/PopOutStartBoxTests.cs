@@ -7,9 +7,9 @@ using Xunit;
 namespace FocusDesk.Tests;
 
 /// <summary>
-/// The pop-out's start box: the two kind buttons only choose, the one Start button is the only thing
-/// that arms a session, and nothing in it changes the stored default kind, which is what the session
-/// switch in Home Assistant starts.
+/// The pop-out's start box: the two kind buttons only choose, the one Start button opens the
+/// focus-point window and arms nothing itself, and nothing in it changes the stored default kind,
+/// which is what the session switch in Home Assistant starts.
 /// </summary>
 /// <remarks>Source text: the window is WinUI code-behind that needs a display, and what must never
 /// appear in it is a call or a write, not a value.</remarks>
@@ -40,23 +40,27 @@ public class PopOutStartBoxTests
             string text = RepoFiles.Member(popOut, member);
             Assert.DoesNotContain("Arm(", text);
             Assert.DoesNotContain("OnStart(", text);
+            Assert.DoesNotContain("FocusPointWindow.Open(", text);
             Assert.DoesNotContain("SettingsService.Update", text);
         }
 
-        // The window arms in one place, and that place is the Start button's handler.
-        Assert.Single(Regex.Matches(popOut, @"FocusSessionService\.Arm\("));
-        Assert.Contains("FocusSessionService.Arm(", RepoFiles.Member(popOut, "OnStart"));
+        // The pop-out arms nothing: its Start button opens the focus-point window, and the session
+        // starts from that window's own button.
+        Assert.DoesNotContain("FocusSessionService.Arm(", popOut);
+        Assert.Contains("FocusPointWindow.Open(", RepoFiles.Member(popOut, "OnStart"));
     }
 
     [Fact]
     public void StartingFromThePopOut_NeverWritesTheStoredDefaultKind()
     {
         string popOut = PopOut;
+        string focusPoint = RepoFiles.Read(Path.Combine("UI", "FocusPointWindow.xaml.cs"));
 
         // A write here would make the next session started from Home Assistant run as whichever kind
         // was last chosen in the pop-out.
         Assert.DoesNotMatch(new Regex(@"\.FocusSessionKind\s*="), popOut);
-        // The chosen kind goes to the session as an argument, for that one start.
-        Assert.Matches(new Regex(@"FocusSessionService\.Arm\([^;]*\b_chosenKind\)"), popOut);
+        Assert.DoesNotMatch(new Regex(@"\.FocusSessionKind\s*="), focusPoint);
+        // The chosen kind goes to the focus-point window as an argument, for that one start.
+        Assert.Matches(new Regex(@"FocusPointWindow\.Open\(_chosenKind, minutes\)"), popOut);
     }
 }

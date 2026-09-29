@@ -570,52 +570,6 @@ public class FocusSessionTests
         Assert.Equal(1, bed.Network.Lifts);
     }
 
-    // ── The session-start page is offered once per armed session ────────────────────────────────
-
-    [Fact]
-    public void TheSessionStartPage_IsOwedOncePerArm_AndNeverAgainMidSession()
-    {
-        var bed = new Bed();
-        Assert.False(bed.Engine.TakeOpeningPage());
-
-        bed.Engine.Arm(30, ProgramFocus(network: true), "a test");
-        Assert.True(bed.Engine.TakeOpeningPage());
-        Assert.False(bed.Engine.TakeOpeningPage());
-
-        // Nothing that moves a running session hands the offer back: the clock, a lever lost, a
-        // cancel attempt, or a second arm refused because one already runs.
-        bed.Network.HoldSucceeds = false;
-        bed.Advance(TimeSpan.FromMinutes(5));
-        bed.Engine.Tick();
-        bed.Engine.RequestCancel("a test");
-        bed.Engine.Arm(30, ProgramFocus(), "a test");
-        Assert.False(bed.Engine.TakeOpeningPage());
-
-        bed.Advance(TimeSpan.FromMinutes(25));
-        bed.Engine.Tick();
-        Assert.Equal(FocusSessionStage.Off, bed.Engine.Snapshot().Stage);
-
-        // The next arm owes it again.
-        bed.Engine.Arm(20, ProgramFocus(), "a test");
-        Assert.True(bed.Engine.TakeOpeningPage());
-    }
-
-    [Fact]
-    public void TheSessionStartPage_IsNotOwedToAResumedSessionOrToOneThatEndedUnseen()
-    {
-        var resumed = new Bed();
-        resumed.Record.Held = new FocusSessionRecord(Noon, Noon.AddMinutes(30), DimsScreen: true, CoversScreen: false);
-        resumed.Engine.Start();
-        Assert.Equal(FocusSessionStage.Active, resumed.Engine.Snapshot().Stage);
-        Assert.False(resumed.Engine.TakeOpeningPage());
-
-        var unseen = new Bed();
-        unseen.Engine.Arm(10, ScreenBreak(dims: true), "a test");
-        unseen.Advance(TimeSpan.FromMinutes(10));
-        unseen.Engine.Tick();
-        Assert.False(unseen.Engine.TakeOpeningPage());
-    }
-
     // ── The length a start request runs for ─────────────────────────────────────────────────────
 
     [Fact]

@@ -48,6 +48,10 @@ internal readonly record struct ActionCause
     public static ActionCause StatusWindow(string control) =>
         new($"the {control} on the status window");
 
+    /// <summary>The button that starts the session once the focus-point window's minute has run.</summary>
+    public static ActionCause FocusPointWindow() =>
+        new("the start button on the focus-point window");
+
     /// <summary>Something a run that ended without tidying up left behind, put back at startup.</summary>
     public static ActionCause StartupRestore(string what) =>
         new($"{what} left by a previous run, put back at startup");

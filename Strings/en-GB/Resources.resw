@@ -207,13 +207,17 @@
     <value>Only the chosen programs can be used until the session ends.</value>
     <comment>Line on the tray pop-out while the lever holds, whole sentence.</comment>
   </data>
-  <data name="PopOutFocusPointShow" xml:space="preserve">
+  <data name="FocusPointWindowTitle" xml:space="preserve">
     <value>Focus point</value>
-    <comment>Label of the tray pop-out's header button that shows the session-start focus point, noun phrase.</comment>
+    <comment>Title bar of the window with the one-minute breathing exercise before a session starts, noun phrase.</comment>
   </data>
-  <data name="PopOutFocusPointSkip" xml:space="preserve">
-    <value>Skip to countdown</value>
-    <comment>Label of the button under the focus point on the tray pop-out that returns to the countdown, imperative phrase.</comment>
+  <data name="FocusPointWindowStart" xml:space="preserve">
+    <value>Start focus session</value>
+    <comment>Button that appears after the breathing minute and starts the chosen session, imperative phrase.</comment>
+  </data>
+  <data name="FocusPointWindowHint" xml:space="preserve">
+    <value>Keep the eyes on the point · blinking is fine</value>
+    <comment>Quiet line under the breathing point on the focus-point window, shown in capitals, no full stop.</comment>
   </data>
   <data name="PopOutStartProgramFocus" xml:space="preserve">
     <value>Program focus</value>

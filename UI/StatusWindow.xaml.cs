@@ -4,11 +4,9 @@ using FocusDesk.Services;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.Web.WebView2.Core;
 using Windows.Foundation;
 using Windows.Graphics;
 using ZeroZero.Brand.Core;
@@ -26,13 +24,9 @@ namespace FocusDesk.UI;
 /// the next click re-shows the same window; a long idle spell destroys it and the click after that
 /// builds it again.</para>
 /// <para>Nothing here ends a session. The start box starts one: the two kind buttons only choose,
-/// and the Start button arms the chosen kind. The way out is Home Assistant's staged cancel and the
+/// and the Start button opens the focus-point window with the chosen kind and length, whose own
+/// button arms the session after its minute. The way out is Home Assistant's staged cancel and the
 /// session's own clock, and the window says so while one runs.</para>
-/// <para>The first time the pop-out is on screen after a program focus arms, it shows the
-/// session-start focus point in place of the countdown, once per session. A screen break shows the
-/// countdown at once, because its cover opens on the focus point itself. The header's button brings
-/// the page back at any time, and the button under the page returns to the countdown. Hiding the
-/// window drops the page, so no browser runs behind a hidden pop-out.</para>
 /// </remarks>
 internal sealed partial class StatusWindow : Window
 {
@@ -54,23 +48,6 @@ internal sealed partial class StatusWindow : Window
     /// day.</summary>
     private static readonly TimeSpan IdleCloseAfter = TimeSpan.FromMinutes(20);
 
-    /// <summary>The pop-out browser's own store, apart from the screen cover's. Two environments
-    /// over one store work only while every option matches, and a mismatch refuses whichever starts
-    /// second; a store of its own cannot fail that way.</summary>
-    private const string PageBrowserFolder = "WebView2-PopOut";
-
-    /// <summary>The host name the bundled page is served under, in the reserved <c>.invalid</c>
-    /// namespace so it can never resolve to anything on the network.</summary>
-    private const string PageHost = "pop-out.focusdesk.invalid";
-
-    private const string PageFile = "session-start.html";
-
-    /// <summary>The page's own background, so the browser shows no light frame while it loads.</summary>
-    private static readonly Windows.UI.Color PageGround = Windows.UI.Color.FromArgb(0xFF, 0x0B, 0x0E, 0x11);
-
-    /// <summary>One browser environment for the process, kept across pop-out windows.</summary>
-    private static Task<CoreWebView2Environment>? _browser;
-
     private static StatusWindow? _open;
 
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromSeconds(1) };
@@ -82,14 +59,11 @@ internal sealed partial class StatusWindow : Window
     /// rebuild rows under the pointer.</summary>
     private string? _historyShown;
 
-    /// <summary>The focus point's browser while the page is showing, and null otherwise.</summary>
-    private WebView2? _page;
-
     /// <summary>The accent style the markup gives the screen-break button, kept so it can move to
     /// whichever kind is chosen.</summary>
     private readonly Style _accentStyle;
 
-    /// <summary>The kind the Start button arms. Set to the stored default each time the window is
+    /// <summary>The kind the Start button hands the focus-point window. Set to the stored default each time the window is
     /// shown, and changed only by the two kind buttons; never written back to the settings.</summary>
     private FocusSessionKind _chosenKind;
 
@@ -108,6 +82,16 @@ internal sealed partial class StatusWindow : Window
         window.ShowPopOut();
     }
 
+    /// <summary>Opens the pop-out with the reason a start from the focus-point window armed
+    /// nothing, since that window has already closed.</summary>
+    public static void OpenWithRefusal(FocusArmOutcome outcome)
+    {
+        Open();
+        if (_open is not { } window) return;
+        window.RefusalText.Text = Refusal(outcome);
+        window.RefusalText.Visibility = Visibility.Visible;
+    }
+
     private StatusWindow()
     {
         InitializeComponent();
@@ -118,11 +102,6 @@ internal sealed partial class StatusWindow : Window
         RingTrack.Data = RingGeometry.Arc(
             RingCentre, RingCentre, RingRadius, RingGeometry.StartAngle, RingGeometry.Sweep);
         RingFill.Stroke = _ringFill;
-
-        string showFocusPoint = AppText.Get("PopOutFocusPointShow");
-        FocusPointButtonText.Text = showFocusPoint;
-        AutomationProperties.SetName(FocusPointButton, showFocusPoint);
-        SkipButton.Content = AppText.Get("PopOutFocusPointSkip");
 
         _accentStyle = ScreenBreakChoice.Style;
         ProgramFocusChoice.Content = AppText.Get("PopOutStartProgramFocus");
@@ -146,7 +125,6 @@ internal sealed partial class StatusWindow : Window
             _tick.Stop();
             _idleClose.Stop();
             FocusSessionService.Changed -= OnSessionChanged;
-            DropPage();
         };
     }
 
@@ -176,7 +154,6 @@ internal sealed partial class StatusWindow : Window
         _chosenKind = SettingsService.Read(s => s.FocusSessionKind);
         RefusalText.Visibility = Visibility.Collapsed;
         Reload();
-        if (FocusSessionService.TakeOpeningPage()) ShowFocusPoint();
         Place();
         AppWindow.Show();
         Activate();
@@ -192,7 +169,6 @@ internal sealed partial class StatusWindow : Window
         TrayIconHost.NotePopOutDismissed();
         _tick.Stop();
         AppWindow.Hide();
-        ShowCountdown();
         // Restarted, so each hide gets a full idle spell measured from itself.
         _idleClose.Stop();
         _idleClose.Start();
@@ -217,18 +193,7 @@ internal sealed partial class StatusWindow : Window
         if (e.WindowActivationState == WindowActivationState.Deactivated) Dismiss();
     }
 
-    private void OnSessionChanged() => DispatcherQueue.TryEnqueue(() =>
-    {
-        Reload();
-        OfferFocusPoint();
-    });
-
-    /// <summary>Shows the focus point where a session has armed since it was last offered. Only a
-    /// window on screen takes the offer: one that is hidden leaves it for its next show.</summary>
-    private void OfferFocusPoint()
-    {
-        if (AppWindow.IsVisible && FocusSessionService.TakeOpeningPage()) ShowFocusPoint();
-    }
+    private void OnSessionChanged() => DispatcherQueue.TryEnqueue(Reload);
 
     /// <summary>Reads the session, the settings and the history, and brings every part of the window
     /// into line with them.</summary>
@@ -378,7 +343,7 @@ internal sealed partial class StatusWindow : Window
 
     private void OnChooseScreenBreak(object sender, RoutedEventArgs e) => Choose(FocusSessionKind.ScreenBreak);
 
-    /// <summary>Chooses the kind the Start button arms. Nothing starts, and nothing is stored: the
+    /// <summary>Chooses the kind the Start button hands on. Nothing starts, and nothing is stored: the
     /// stored default is what Home Assistant starts, and it stays as it was. A refusal from an earlier
     /// start was about the other choice, so it goes.</summary>
     private void Choose(FocusSessionKind chosen)
@@ -388,28 +353,14 @@ internal sealed partial class StatusWindow : Window
         ShowChosenKind();
     }
 
-    /// <summary>Starts a session of the chosen kind for the chosen length. The switches come from the
-    /// settings. The length is stored for the next session; the kind is not, so the stored default —
-    /// what Home Assistant starts — stays as it was.</summary>
+    /// <summary>Opens the focus-point window for the chosen kind and length. Nothing is armed and
+    /// nothing is stored here: the session starts from that window's own button, after its minute.</summary>
     private void OnStart(object sender, RoutedEventArgs e)
     {
         if (FocusLengthChoices.Selected(MinutesCombo) is not { } minutes) return;
 
-        // The chosen length is what the next session runs for from wherever it is started, so it is
-        // stored rather than held for this one start.
-        SettingsService.Update(s => s.FocusSessionMinutes = minutes);
-
-        var outcome = FocusSessionService.Arm(ActionCause.StatusWindow("Start button"), minutes, _chosenKind);
-        if (outcome == FocusArmOutcome.Armed)
-        {
-            RefusalText.Visibility = Visibility.Collapsed;
-            Reload();
-            OfferFocusPoint();
-            return;
-        }
-
-        RefusalText.Text = Refusal(outcome);
-        RefusalText.Visibility = Visibility.Visible;
+        RefusalText.Visibility = Visibility.Collapsed;
+        FocusPointWindow.Open(_chosenKind, minutes);
     }
 
     /// <summary>Why nothing started, in the words of whoever pressed the button. Every one of these
@@ -420,105 +371,6 @@ internal sealed partial class StatusWindow : Window
         FocusArmOutcome.LeverRefused   => "PopOutRefusalLeverRefused",
         _                              => "PopOutRefusalLeverFailed",
     });
-
-    private void OnShowFocusPoint(object sender, RoutedEventArgs e) => ShowFocusPoint();
-
-    private void OnSkipFocusPoint(object sender, RoutedEventArgs e) => ShowCountdown();
-
-    /// <summary>Puts the focus point in place of the countdown. A page already showing is left to
-    /// run rather than started over.</summary>
-    private void ShowFocusPoint()
-    {
-        SessionView.Visibility      = Visibility.Collapsed;
-        FocusPointButton.Visibility = Visibility.Collapsed;
-        FocusPointView.Visibility   = Visibility.Visible;
-        if (_page is null) StartPage();
-    }
-
-    /// <summary>Puts the countdown back and closes the page's browser.</summary>
-    private void ShowCountdown()
-    {
-        DropPage();
-        FocusPointView.Visibility   = Visibility.Collapsed;
-        SessionView.Visibility      = Visibility.Visible;
-        FocusPointButton.Visibility = Visibility.Visible;
-    }
-
-    /// <summary>Closes the browser's own processes, which otherwise outlive the control.</summary>
-    private void DropPage()
-    {
-        var page = _page;
-        _page = null;
-        if (page is null) return;
-
-        try { page.Close(); }
-        catch (Exception ex) { AppLog.Error("StatusWindow.ClosePage", ex); }
-        try { FocusPointHost.Children.Clear(); }
-        catch (Exception ex) { AppLog.Error("StatusWindow.ClearPage", ex); }
-    }
-
-    /// <summary>Builds the embedded browser and points it at the bundled page. Fire-and-forget, so
-    /// nothing escapes it: a failure logs and the countdown comes back. The page keeps its pointer
-    /// and keyboard input, because its own clicks and keys start and restart its countdown.</summary>
-    private async void StartPage()
-    {
-        var view = new WebView2 { DefaultBackgroundColor = PageGround };
-        FocusPointHost.Children.Add(view);
-        _page = view;
-
-        try
-        {
-            // A store that failed to open is tried afresh rather than failing every later attempt.
-            if (_browser is { IsFaulted: true } or { IsCanceled: true }) _browser = null;
-
-            // An explicit store. The default for an unpackaged application sits beside the
-            // executable, in a program folder the session's user cannot write to.
-            _browser ??= CoreWebView2Environment.CreateWithOptionsAsync(
-                "", AppPaths.DataFile(PageBrowserFolder), new CoreWebView2EnvironmentOptions())
-                .AsTask();
-
-            await view.EnsureCoreWebView2Async(await _browser);
-
-            // Skipped or hidden while the browser was starting: the page is no longer wanted.
-            if (!ReferenceEquals(_page, view)) return;
-
-            var core = view.CoreWebView2;
-            core.SetVirtualHostNameToFolderMapping(
-                PageHost,
-                Path.Combine(AppContext.BaseDirectory, "Assets", "FocusPoint"),
-                CoreWebView2HostResourceAccessKind.Allow);
-
-            // A page, not a browser: no menu, no developer tools, no browser shortcuts, no zoom.
-            core.Settings.AreDevToolsEnabled               = false;
-            core.Settings.AreDefaultContextMenusEnabled    = false;
-            core.Settings.AreBrowserAcceleratorKeysEnabled = false;
-            core.Settings.IsStatusBarEnabled               = false;
-            core.Settings.IsZoomControlEnabled             = false;
-
-            core.NavigationCompleted += (_, args) =>
-            {
-                // Queued rather than run here, so the browser is not closed from inside its own event.
-                if (args.IsSuccess) return;
-                var status = args.WebErrorStatus;
-                DispatcherQueue.TryEnqueue(() => FallBackToCountdown(view, $"navigation failed: {status}"));
-            };
-            view.Source = new Uri($"https://{PageHost}/{PageFile}");
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error("StatusWindow.StartPage", ex);
-            FallBackToCountdown(view, "the embedded browser did not start");
-        }
-    }
-
-    /// <summary>Returns to the countdown where the page could not be shown, unless the page was
-    /// already left.</summary>
-    private void FallBackToCountdown(WebView2 view, string why)
-    {
-        if (!ReferenceEquals(_page, view)) return;
-        AppLog.Info($"Pop-out: the focus point could not be shown ({why}), so the countdown shows instead.");
-        ShowCountdown();
-    }
 
     /// <summary>Opens the Settings window, and stands down behind it.</summary>
     private void OnSettings(object sender, RoutedEventArgs e)

@@ -9,9 +9,7 @@
     <Grid Background="#FF000000">
 
         <!-- Empty in the ring visual. The focus-point visual puts its browser here, built only when
-             that visual is chosen so no browser process starts for a cover that draws its own ring.
-             Hidden during the opening, so the page loads behind it and shows only once the opening
-             has run. -->
+             that visual is chosen so no browser process starts for a cover that draws its own ring. -->
         <Grid x:Name="FocusPointHost" />
 
         <!-- The panel is sized in device-independent units and scaled as one, so it is the same
@@ -126,72 +124,5 @@
                            Foreground="#8CFFFFFF"/>
             </StackPanel>
         </Viewbox>
-
-        <!-- The opening: the session-start breathing exercise, over the whole display for the
-             session's first minute, then faded away so the chosen visual carries on underneath.
-             Drawn here rather than by a browser, because nothing ever clicks the cover. On the
-             exercise's own blue-grey rather than black, with its vignette leading the eye inward.
-             Colours are set from code: the held-back palette replaces them where the screen is not
-             also being dimmed. -->
-        <Grid x:Name="Opening" Background="#FF0B0E11" Visibility="Collapsed">
-            <Rectangle>
-                <Rectangle.Fill>
-                    <!-- Reaches its darkest at the corners: a radius of the half-diagonal. -->
-                    <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5"
-                                         RadiusX="0.7071" RadiusY="0.7071">
-                        <GradientStop Color="#00000000" Offset="0.0"/>
-                        <GradientStop Color="#00000000" Offset="0.4"/>
-                        <GradientStop Color="#73000000" Offset="1.0"/>
-                    </RadialGradientBrush>
-                </Rectangle.Fill>
-            </Rectangle>
-
-            <!-- Same 220-unit target as the exercise, at its own size rather than scaled. -->
-            <Grid Width="220" Height="220" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Canvas Width="220" Height="220">
-                    <Path x:Name="OpeningTrack" StrokeThickness="1.5" Opacity="0.5">
-                        <Path.Data>
-                            <EllipseGeometry Center="110,110" RadiusX="102" RadiusY="102"/>
-                        </Path.Data>
-                    </Path>
-                    <Path x:Name="OpeningProgress"
-                          StrokeThickness="1.5"
-                          StrokeStartLineCap="Round"
-                          StrokeEndLineCap="Round"/>
-                </Canvas>
-
-                <Ellipse x:Name="OpeningGlow"
-                         Width="54" Height="54"
-                         HorizontalAlignment="Center" VerticalAlignment="Center"
-                         RenderTransformOrigin="0.5,0.5">
-                    <Ellipse.RenderTransform>
-                        <ScaleTransform x:Name="OpeningGlowScale" ScaleX="1" ScaleY="1"/>
-                    </Ellipse.RenderTransform>
-                </Ellipse>
-                <Ellipse x:Name="OpeningDot"
-                         Width="14" Height="14"
-                         HorizontalAlignment="Center" VerticalAlignment="Center"
-                         RenderTransformOrigin="0.5,0.5">
-                    <Ellipse.RenderTransform>
-                        <ScaleTransform x:Name="OpeningDotScale" ScaleX="1" ScaleY="1"/>
-                    </Ellipse.RenderTransform>
-                </Ellipse>
-            </Grid>
-
-            <!-- The quiet line near the foot of the display for the first few seconds, as the
-                 exercise shows it. Its face is the cover's own, inherited like every other line. -->
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="94*"/>
-                    <RowDefinition Height="6*"/>
-                </Grid.RowDefinitions>
-                <TextBlock x:Name="OpeningHint"
-                           FontSize="13"
-                           CharacterSpacing="120"
-                           TextAlignment="Center"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Bottom"/>
-            </Grid>
-        </Grid>
     </Grid>
 </Window>
