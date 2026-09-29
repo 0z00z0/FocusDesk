@@ -6,10 +6,9 @@ using ZeroZero.Mqtt;
 namespace FocusDesk.Tests;
 
 /// <summary>
-/// The certificate-trust field FocusDesk inherited from ZeroZero.Mqtt 0.8.0, through FocusDesk's own
-/// storage wiring — the same <see cref="MqttSettingsFile.In"/> call <c>MqttPublisher</c> makes. The
-/// shared library's own tests already prove the field's behaviour in full; this is a thin
-/// confirmation that FocusDesk's own file carries it correctly, not a re-test of the library.
+/// The certificate-trust field in FocusDesk's own <c>mqtt.json</c>, opened the way
+/// <c>MqttPublisher</c> opens it: <see cref="Services.MqttTrustMigration.Apply"/>, then
+/// <see cref="MqttSettingsFile.In"/>. The shared library's own tests prove the field itself.
 /// </summary>
 public class MqttCertificateTrustSettingsTests : IDisposable
 {
@@ -22,36 +21,64 @@ public class MqttCertificateTrustSettingsTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
-    public void APinnedCertificateTrustSurvivesARoundTripThroughFocusDesksOwnFile()
+    private MqttSettingsFile Open()
     {
-        using (var store = MqttSettingsFile.In(_dir))
-        {
-            store.Update(s => s.CertificateTrust = MqttCertificateTrust.ForThumbprint("AA BB CC"));
-        }
-
-        using var reopened = MqttSettingsFile.In(_dir);
-        var trust = reopened.Read().CertificateTrust;
-
-        Assert.Equal(MqttCertificateTrustMode.Thumbprint, trust.Mode);
-        Assert.Equal("AABBCC", trust.Thumbprint.Replace(" ", "", StringComparison.Ordinal));
+        Services.MqttTrustMigration.Apply(_dir);
+        return MqttSettingsFile.In(_dir);
     }
 
-    /// <summary>A document written before this field existed, or one nobody has ever opened the MQTT
-    /// page on, carries no certificate-trust key. It must read as the platform's own trust, never as
-    /// <see cref="MqttCertificateTrustMode.AcceptAny"/> — an upgrade must not quietly turn off
-    /// certificate verification on an installation that never asked for it.</summary>
+    private void WriteDocument(string json)
+    {
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(Path.Combine(_dir, MqttSettingsFile.DefaultFileName), json);
+    }
+
+    [Fact]
+    public void AcceptingAnyCertificateSurvivesARoundTripThroughFocusDesksOwnFile()
+    {
+        using (var store = Open())
+        {
+            store.Update(s => s.CertificateTrust = MqttCertificateTrust.AcceptAny);
+        }
+
+        using var reopened = Open();
+
+        Assert.Equal(MqttCertificateTrustMode.AcceptAny, reopened.Read().CertificateTrust.Mode);
+    }
+
+    /// <summary>A document written before this field existed carries no certificate-trust key. It
+    /// must read as the platform's own trust, never as accepting any certificate.</summary>
     [Fact]
     public void ADocumentWithNoCertificateTrustKeyReadsAsPlatformTrust()
     {
-        Directory.CreateDirectory(_dir);
-        string path = Path.Combine(_dir, MqttSettingsFile.DefaultFileName);
-        File.WriteAllText(path, "{ \"Enabled\": true, \"Host\": \"broker.invalid\" }");
+        WriteDocument("{ \"Enabled\": true, \"Host\": \"broker.invalid\" }");
 
-        using var store = MqttSettingsFile.In(_dir);
-        var trust = store.Read().CertificateTrust;
+        using var store = Open();
 
-        Assert.Equal(MqttCertificateTrustMode.System, trust.Mode);
-        Assert.NotEqual(MqttCertificateTrustMode.AcceptAny, trust.Mode);
+        Assert.Equal(MqttCertificateTrustMode.System, store.Read().CertificateTrust.Mode);
+    }
+
+    /// <summary>A document holding a pinned mode the module no longer has — by name, as the module
+    /// wrote it, or by its old position — opens on the platform's own trust with every other broker
+    /// setting kept. Never accepting any certificate, and never a file set aside.</summary>
+    [Theory]
+    [InlineData("\"Thumbprint\"")]
+    [InlineData("\"Certificate\"")]
+    [InlineData("1")]
+    [InlineData("2")]
+    public void ARemovedPinnedModeOpensAsPlatformTrustWithTheBrokerKept(string mode)
+    {
+        WriteDocument("{ \"Enabled\": true, \"Host\": \"broker.invalid\", \"Port\": 8883, "
+                    + "\"CertificateTrust\": { \"Mode\": " + mode + ", \"Thumbprint\": \"AABBCC\", "
+                    + "\"Certificate\": \"\" } }");
+
+        using var store = Open();
+        var settings = store.Read();
+
+        Assert.Equal(MqttCertificateTrustMode.System, settings.CertificateTrust.Mode);
+        Assert.Null(store.File.LastQuarantinePath);
+        Assert.True(settings.Enabled);
+        Assert.Equal("broker.invalid", settings.Host);
+        Assert.Equal(8883, settings.Port);
     }
 }

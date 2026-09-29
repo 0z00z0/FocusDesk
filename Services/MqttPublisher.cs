@@ -39,6 +39,9 @@ internal sealed class MqttPublisher : IDisposable
         var log = new AppLogSink();
 
         Directory.CreateDirectory(AppPaths.DataDir);
+        if (MqttTrustMigration.Apply(AppPaths.DataDir))
+            AppLog.Info("MQTT: a certificate-trust mode that no longer exists was set to the platform's "
+                      + "own trust in mqtt.json.");
         _settings = MqttSettingsFile.In(AppPaths.DataDir);
 
         // Read once, as the store opened: a document it could not parse has already been copied aside
