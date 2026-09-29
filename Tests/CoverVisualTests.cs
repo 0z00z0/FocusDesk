@@ -87,6 +87,38 @@ public class CoverVisualTests
         Assert.InRange(appearance.Intensity, 0.2, 0.9);
     }
 
+    // ── The ring: dimmed at rest, brighter on recent input ─────────────────────────────────────────
+
+    [Fact]
+    public void TheRingIsDimmedAtRestAndBrightWhileRevealed()
+    {
+        var heldBack = CoverAppearance.For(CoverVisual.Ring, screenIsDimmed: false);
+
+        Assert.Equal(heldBack.Intensity, heldBack.RingIntensity(revealed: false));
+        Assert.Equal(CoverAppearance.FullIntensity, heldBack.RingIntensity(revealed: true));
+    }
+
+    [Fact]
+    public void ARingOverADimmedScreenIsAlreadyAtFullStrengthEitherWay()
+    {
+        // The screen itself is already at its floor, so there is nothing for the ring to gain by
+        // brightening further on input.
+        var full = CoverAppearance.For(CoverVisual.Ring, screenIsDimmed: true);
+
+        Assert.Equal(CoverAppearance.FullIntensity, full.RingIntensity(revealed: false));
+        Assert.Equal(CoverAppearance.FullIntensity, full.RingIntensity(revealed: true));
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData(0.0, true)]
+    [InlineData(3.9, true)]
+    [InlineData(4.0, false)]
+    [InlineData(9.0, false)]
+    public void InputIsRevealedForFourSecondsThenNotAnyMore(double? sinceSeconds, bool expected) =>
+        Assert.Equal(expected,
+                     ScreenCoverService.Revealed(sinceSeconds is { } s ? TimeSpan.FromSeconds(s) : null));
+
     // ── What the dial reads ─────────────────────────────────────────────────────────────────────
 
     [Theory]

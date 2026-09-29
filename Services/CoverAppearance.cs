@@ -41,6 +41,12 @@ internal readonly record struct CoverAppearance(CoverVisual Visual, double Inten
     /// <summary>Whether the cover is drawing quieter than it can.</summary>
     internal bool IsHeldBack => Intensity < FullIntensity;
 
+    /// <summary>The opacity the ring draws at for one tick: full strength for the few seconds after
+    /// input, this session's own held-back or full-strength level the rest of the time. A session
+    /// that already dims the physical screen has nothing to gain from a brighter ring on input, so
+    /// the two answers are the same there — the ring is already at the panel's floor.</summary>
+    internal double RingIntensity(bool revealed) => revealed ? FullIntensity : Intensity;
+
     /// <summary>The visual a stored name asks for. Anything unrecognised — an empty key, a document
     /// from a build that offered a third visual — reads as the ring, which needs nothing installed to
     /// draw.</summary>

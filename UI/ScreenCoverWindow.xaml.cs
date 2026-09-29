@@ -166,9 +166,9 @@ internal sealed partial class ScreenCoverWindow : Window
         NativeMethods.MakeClickThroughAndUnfocusable(_hwnd);
     }
 
-    /// <summary>Draws the countdown and decides whether the panel is showing.</summary>
-    /// <remarks>The focus point is the whole cover and stands for the session's length, so the reveal
-    /// that governs the dial does not apply to it.</remarks>
+    /// <summary>Draws the countdown and decides how brightly the ring's panel draws.</summary>
+    /// <remarks>The focus point is the whole cover and stands for the session's length, so the ring's
+    /// own panel stays collapsed for it.</remarks>
     internal void Apply(FocusCoverReading? reading, string levers, bool revealed,
                         CoverAppearance appearance)
     {
@@ -182,8 +182,8 @@ internal sealed partial class ScreenCoverWindow : Window
         if (reading is { } r) Draw(r);
 
         LeversText.Text   = levers;
-        Reveal.Opacity    = appearance.Intensity;
-        Reveal.Visibility = revealed ? Visibility.Visible : Visibility.Collapsed;
+        Reveal.Opacity    = appearance.RingIntensity(revealed);
+        Reveal.Visibility = Visibility.Visible;
     }
 
     /// <summary>The dial at one reading: which marks are still lit, the hairline's exact remainder,
