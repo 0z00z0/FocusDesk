@@ -11,17 +11,18 @@ namespace FocusDesk.Services;
 /// </summary>
 /// <remarks>
 /// <para>The tick does four things a second: it puts every cover back at the top of the topmost
-/// band, rebuilds the set when the displays change, draws the countdown, and decides whether the
-/// panel is showing. One timer rather than four, because each is cheap and all four have to answer
+/// band, rebuilds the set when the displays change, draws the countdown, and decides how brightly
+/// the ring draws. One timer rather than four, because each is cheap and all four have to answer
 /// while a session runs.</para>
-/// <para>Input is read, never taken. The reveal follows <see cref="NativeMethods.SinceLastInput"/>,
-/// which reports that somebody touched the machine without reporting what they did and covers touch
-/// as well as keyboard and mouse — so no hook is installed and no keystroke is seen.</para>
+/// <para>Input is read, never taken. The brightening follows
+/// <see cref="NativeMethods.SinceLastInput"/>, which reports that somebody touched the machine
+/// without reporting what they did and covers touch as well as keyboard and mouse — so no hook is
+/// installed and no keystroke is seen.</para>
 /// </remarks>
 internal static class ScreenCoverService
 {
-    /// <summary>How long the panel stays up after the last input. Long enough to read the line and
-    /// the countdown, short enough that the screen is black again before anyone looks away.</summary>
+    /// <summary>How long the ring draws at full strength after the last input, before it returns to
+    /// its dimmed, resting level.</summary>
     private static readonly TimeSpan RevealFor = TimeSpan.FromSeconds(4);
 
     /// <summary>One second: the countdown moves in minutes, and a window created topmost after a
@@ -137,7 +138,7 @@ internal static class ScreenCoverService
 
             var reading = FocusCoverCountdown.For(session, DateTimeOffset.Now);
             string levers = Levers(session);
-            bool revealed = NativeMethods.SinceLastInput() is { } since && since < RevealFor;
+            bool revealed = Revealed(NativeMethods.SinceLastInput());
 
             // The cover holds itself back where the session is not also dimming the display, so it
             // never becomes the brightest thing on a screen nobody asked to have changed.
@@ -180,6 +181,11 @@ internal static class ScreenCoverService
         _covering = displays;
         AppLog.Info($"Focus: the screen cover is over {_windows.Count} display(s).");
     }
+
+    /// <summary>Whether the last input was recent enough for the ring to draw brighter. Pure so the
+    /// 4-second window can be tested against a chosen elapsed time rather than the real input clock.</summary>
+    internal static bool Revealed(TimeSpan? sinceLastInput) =>
+        sinceLastInput is { } since && since < RevealFor;
 
     /// <summary>The visual asked for, or the dial where asking failed. A cover that draws nothing is
     /// a black screen nobody can explain, so nothing about the choice may stop one going up.</summary>
