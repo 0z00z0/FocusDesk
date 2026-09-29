@@ -186,17 +186,18 @@ internal sealed class FocusSessionEngine(
         return outcome;
     }
 
-    /// <summary>Whether the session-start page is still owed to the session now running, answered
-    /// true once per armed session and false from then on.</summary>
+    /// <summary>Whether the pop-out still owes the session now running its session-start page,
+    /// answered true once per armed session and false from then on. Always false for a session whose
+    /// cover opens on the focus point itself, so the pop-out never repeats it.</summary>
     /// <remarks>Asked only by a surface that is about to show the page, so asking is what uses the
     /// offer up.</remarks>
     public bool TakeOpeningPage()
     {
         lock (_gate)
         {
-            if (_session is null || !_openingPageOwed) return false;
+            if (_session is not { } session || !_openingPageOwed) return false;
             _openingPageOwed = false;
-            return true;
+            return !CoverSequence.HasOpening(session.Kind);
         }
     }
 

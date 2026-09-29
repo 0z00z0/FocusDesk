@@ -34,7 +34,7 @@ public class PopOutFocusPointTests
         Assert.Null(session.Attribute("Visibility"));
 
         // Every part of the countdown sits inside the view that stays shown.
-        foreach (string part in new[] { "StartProgramFocusButton", "StartScreenBreakButton", "RingFill",
+        foreach (string part in new[] { "ProgramFocusChoice", "ScreenBreakChoice", "StartButton", "RingFill",
                                         "StatusText", "LeverCard", "HistoryRows" })
             Assert.Contains(Named(markup, part), session.Descendants());
 

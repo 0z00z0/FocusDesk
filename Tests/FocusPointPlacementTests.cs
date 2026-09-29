@@ -7,20 +7,21 @@ using Xunit;
 namespace FocusDesk.Tests;
 
 /// <summary>
-/// The session-start focus point is offered at the start of every session, of either kind, and the
-/// kind has no say in it: the offer is keyed on a session arming and on nothing else.
+/// The session-start focus point is seen in exactly one place per session: on the cover for a screen
+/// break, in the pop-out for a program focus. The offer is owed by every arm alike, and the kind
+/// enters only through the one rule that says whether the cover opens on it.
 /// </summary>
 /// <remarks>Behaviour where the engine can be driven, source text where it cannot: the pop-out is
 /// WinUI code-behind that needs a display, and what must never appear in it is a reference, not a
 /// value.</remarks>
-public class FocusPointKindIndependenceTests
+public class FocusPointPlacementTests
 {
     private static readonly DateTimeOffset Noon = new(2026, 9, 28, 12, 0, 0, TimeSpan.Zero);
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void TheOfferIsMadeAfterASessionOfEitherKindArms(bool programFocus)
+    public void TheFocusPointOpensEitherTheCoverOrThePopOut_NeverBoth(bool programFocus)
     {
         var engine = new FocusSessionEngine(
             new FakeFocusLever(), new FakeFocusLever(), new FakeFocusLever(), new FakeFocusLever(),
@@ -31,7 +32,15 @@ public class FocusPointKindIndependenceTests
                      engine.Arm(25, FocusSessionPlan.For(kind, blocksNetwork: false, dimsScreen: false,
                                                          blocksInput: false), "a test"));
 
-        Assert.True(engine.TakeOpeningPage());
+        bool coverOpens = CoverSequence.SceneAt(FocusCoverCountdown.For(engine.Snapshot(), Noon),
+                                                CoverVisual.Ring, kind) == CoverScene.Opening;
+        bool popOutOpens = engine.TakeOpeningPage();
+
+        // A screen break sits under its own cover, which opens on the exercise; a program focus has
+        // no cover, so the pop-out is the only place it can be offered.
+        Assert.Equal(!programFocus, coverOpens);
+        Assert.Equal(programFocus, popOutOpens);
+        Assert.False(engine.TakeOpeningPage());
     }
 
     /// <summary>A reference to the kind: its type, its word helpers, a snapshot's or a record's
@@ -39,6 +48,9 @@ public class FocusPointKindIndependenceTests
     /// browser's resource access kind, is not one.</summary>
     private static readonly Regex KindReference =
         new(@"\bFocusSessionKinds?\b|\.Kind\b|\bkind\b", RegexOptions.CultureInvariant);
+
+    /// <summary>The one place the kind may enter the offer.</summary>
+    private const string TheRule = "CoverSequence.HasOpening(session.Kind)";
 
     /// <summary>The pop-out's members that decide whether the page appears and that show, run and take
     /// it down. Named, so a rename fails here rather than leaving the guard reading nothing.</summary>
@@ -49,16 +61,19 @@ public class FocusPointKindIndependenceTests
     ];
 
     [Fact]
-    public void NoCodeDecidingOrShowingTheOfferReadsTheKind()
+    public void OnlyTheCoverRuleReadsTheKind_NothingThatOwesOrShowsTheOffer()
     {
         string popOut = RepoFiles.Read(Path.Combine("UI", "StatusWindow.xaml.cs"));
         string engine = RepoFiles.Read(Path.Combine("Services", "FocusSession.cs"));
         string service = RepoFiles.Read(Path.Combine("Services", "FocusSessionService.cs"));
 
         foreach (string member in PopOutFocusPointMembers)
-            AssertNoKind(Member(popOut, member), $"StatusWindow.{member}");
+            AssertNoKind(RepoFiles.Member(popOut, member), $"StatusWindow.{member}");
 
-        AssertNoKind(Member(engine, "TakeOpeningPage"), "FocusSessionEngine.TakeOpeningPage");
+        string take = RepoFiles.Member(engine, "TakeOpeningPage");
+        Assert.Contains(TheRule, take);
+        AssertNoKind(take.Replace(TheRule, "", StringComparison.Ordinal),
+                     "FocusSessionEngine.TakeOpeningPage outside the cover rule");
 
         // Every line that owes the offer, takes it or asks for it, wherever it sits.
         AssertEveryLineFreeOfKind(engine, "_openingPageOwed", minimum: 3);
@@ -80,27 +95,5 @@ public class FocusPointKindIndependenceTests
         }
         // Guards the guard: a marker renamed away would otherwise pass by matching nothing.
         Assert.True(found >= minimum, $"expected at least {minimum} lines naming {marker}, found {found}");
-    }
-
-    /// <summary>One method's whole text, from its return type to its closing brace or, for an
-    /// expression-bodied member, to its semicolon.</summary>
-    private static string Member(string source, string name)
-    {
-        var signature = Regex.Match(source, $@"\b(?:void|bool)\s+{name}\s*\(");
-        Assert.True(signature.Success, $"{name} was not found");
-
-        int close = source.IndexOf(')', signature.Index);
-        int brace = source.IndexOf('{', close);
-        int arrow = source.IndexOf("=>", close, StringComparison.Ordinal);
-        if (arrow >= 0 && (brace < 0 || arrow < brace))
-            return source[signature.Index..(source.IndexOf(';', arrow) + 1)];
-
-        int depth = 0;
-        for (int i = brace; i < source.Length; i++)
-        {
-            if (source[i] == '{') depth++;
-            else if (source[i] == '}' && --depth == 0) return source[signature.Index..(i + 1)];
-        }
-        throw new InvalidOperationException($"{name} has no closing brace");
     }
 }

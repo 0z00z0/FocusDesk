@@ -33,4 +33,27 @@ internal static class RepoFiles
 
     /// <summary>The text of a file inside the source tree.</summary>
     public static string Read(string relativePath) => File.ReadAllText(Find(relativePath));
+
+    /// <summary>One method's whole text out of a source file, from its return type to its closing
+    /// brace or, for an expression-bodied member, to its semicolon. Fails where the method is not
+    /// found, so a rename cannot leave a guard reading nothing.</summary>
+    public static string Member(string source, string name)
+    {
+        var signature = System.Text.RegularExpressions.Regex.Match(source, $@"\b(?:void|bool)\s+{name}\s*\(");
+        Xunit.Assert.True(signature.Success, $"{name} was not found");
+
+        int close = source.IndexOf(')', signature.Index);
+        int brace = source.IndexOf('{', close);
+        int arrow = source.IndexOf("=>", close, StringComparison.Ordinal);
+        if (arrow >= 0 && (brace < 0 || arrow < brace))
+            return source[signature.Index..(source.IndexOf(';', arrow) + 1)];
+
+        int depth = 0;
+        for (int i = brace; i < source.Length; i++)
+        {
+            if (source[i] == '{') depth++;
+            else if (source[i] == '}' && --depth == 0) return source[signature.Index..(i + 1)];
+        }
+        throw new InvalidOperationException($"{name} has no closing brace");
+    }
 }

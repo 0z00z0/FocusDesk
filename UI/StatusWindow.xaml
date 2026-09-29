@@ -91,9 +91,10 @@
                  point is not showing. -->
             <StackPanel x:Name="SessionView" Spacing="8">
 
-                <!-- The session: the ring and the session's own lines, with the length on the heading
-                     row and a start button per kind on a row of its own beneath. No control here ends
-                     a session — that is the feature's central property, not an omission. -->
+                <!-- The session: the ring and the session's own lines, with the length and the one
+                     Start button on the heading row and the two kinds to choose between on a row of
+                     their own beneath. No control here ends a session — that is the feature's central
+                     property, not an omission. -->
                 <Border Style="{StaticResource CardStyle}">
                     <StackPanel Spacing="6">
                         <Grid ColumnSpacing="8">
@@ -104,27 +105,34 @@
                             <TextBlock Grid.Column="0" Text="Focus session"
                                        Style="{StaticResource CardHeadingStyle}"/>
                             <!-- Shown only where the Focus settings page has turned the start box on. -->
-                            <ComboBox Grid.Column="1" x:Name="MinutesCombo" VerticalAlignment="Center"
-                                      AutomationProperties.Name="Session length"/>
+                            <StackPanel Grid.Column="1" x:Name="StartRow"
+                                        Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Name="MinutesCombo" VerticalAlignment="Center"
+                                          AutomationProperties.Name="Session length"/>
+                                <Button x:Name="StartButton" VerticalAlignment="Center" MinWidth="64"
+                                        Click="OnStart"/>
+                            </StackPanel>
                         </Grid>
 
-                        <!-- Both kinds, every time. The stored default carries the accent; starting either
-                             here never changes it. The texts come from the resource files. -->
-                        <Grid x:Name="StartBox" ColumnSpacing="8">
+                        <!-- Both kinds, every time. Pressing one only chooses it, and the chosen kind
+                             carries the accent; the Start button above is what starts a session. Each
+                             showing begins on the stored default, and choosing here never changes it.
+                             The texts come from the resource files. -->
+                        <Grid x:Name="KindChoices" ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <!-- A disabled button shows no hover text of its own, so the reason sits on
                                  a transparent frame around it. -->
-                            <Grid Grid.Column="0" x:Name="StartProgramFocusFrame" Background="Transparent">
-                                <Button x:Name="StartProgramFocusButton" HorizontalAlignment="Stretch"
-                                        Click="OnStartProgramFocus"/>
+                            <Grid Grid.Column="0" x:Name="ProgramFocusFrame" Background="Transparent">
+                                <Button x:Name="ProgramFocusChoice" HorizontalAlignment="Stretch"
+                                        Click="OnChooseProgramFocus"/>
                             </Grid>
-                            <Button Grid.Column="1" x:Name="StartScreenBreakButton"
+                            <Button Grid.Column="1" x:Name="ScreenBreakChoice"
                                     HorizontalAlignment="Stretch"
                                     Style="{StaticResource AccentButtonStyle}"
-                                    Click="OnStartScreenBreak"/>
+                                    Click="OnChooseScreenBreak"/>
                         </Grid>
 
                         <Grid ColumnSpacing="12">
