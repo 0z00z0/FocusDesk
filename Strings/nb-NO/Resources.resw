@@ -283,4 +283,12 @@
     <value>Aldri under en fokusøkt. FocusDesk lukkes under installeringen og starter igjen etterpå.</value>
     <comment>Hover text of the info bubble beside the switch, whole sentences.</comment>
   </data>
+  <data name="TrayMenuExit" xml:space="preserve">
+    <value>Avslutt</value>
+    <comment>Last row of the notification-area menu, closes the application, imperative verb.</comment>
+  </data>
+  <data name="TrayMenuExitRefused" xml:space="preserve">
+    <value>Avslutt – ikke under en fokusøkt</value>
+    <comment>The same row, greyed out while a focus session runs; the menu shows no hover text, so the reason is in the row; no full stop.</comment>
+  </data>
 </root>

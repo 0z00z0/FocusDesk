@@ -117,8 +117,6 @@
                            Text="The mouse and keyboard come back when the session ends. Ctrl+Alt+Delete still reaches Windows' own screen, to sign out or restart."/>
                 <TextBlock TextWrapping="Wrap" FontSize="12"
                            Text="Turn the screen brightness back up by hand."/>
-                <TextBlock TextWrapping="Wrap" FontSize="12"
-                           Text="Exit FocusDesk to take the black cover down and lift the network block. The session keeps running, and both return at the next start."/>
             </StackPanel>
         </controls:SettingsCard>
     </StackPanel>

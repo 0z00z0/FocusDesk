@@ -13,8 +13,8 @@ namespace FocusDesk;
 /// runtime needs to own.
 /// </summary>
 /// <remarks>Nothing on screen but the icon: the status window and the Settings window are opened
-/// from it and closing either leaves the application running. Only the menu's Exit ends the
-/// process.</remarks>
+/// from it and closing either leaves the application running. Only the menu's Exit and the update
+/// flow's hand-over end the process, and neither while a focus session runs.</remarks>
 public partial class App : Application
 {
     /// <summary>The plain file every crash arm appends to, beside the log.</summary>
@@ -30,10 +30,11 @@ public partial class App : Application
 
     public App()
     {
-        // A deliberate Exit outranks the watchdog. Checked ahead of the guard: the hold marker is the
-        // one input that keeps a probe down even when FocusDesk really is gone.
+        // A deliberate Exit outranks the watchdog, but never a session still recorded as running.
+        // Checked ahead of the guard: the hold marker is the one input that keeps a probe down even
+        // when FocusDesk really is gone.
         _watchdogProbe = Environment.GetCommandLineArgs().Contains(TaskDefinitions.WatchdogArg);
-        if (_watchdogProbe && WatchdogTask.HoldMarkerExists)
+        if (_watchdogProbe && WatchdogTask.HoldsProbeOff)
             Environment.Exit(0);
 
         // Before anything else touches the session state or the tray icon: a second instance —
@@ -132,13 +133,21 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Leaving, as chosen from the tray menu. The session itself is untouched — its record stays on
-    /// disk and the next start resumes it — but everything holding a resource is let go in order:
-    /// the icon out of the shell, the session's own timer, cover, input block and firewall block,
-    /// then the process.
+    /// Leaving, as chosen from the tray menu or handed over to an installer. Refused while a focus
+    /// session runs. Otherwise everything holding a resource is let go in order: the icon out of the
+    /// shell, the session's own timer, cover, input block and firewall block, then the process.
     /// </summary>
     private void Shutdown()
     {
+        // First, ahead of the hold marker: leaving mid-session would drop every lever with nothing
+        // to start FocusDesk again. The menu greys Exit out too, but a menu opened before a session
+        // started from Home Assistant still offers it, and the update flow has no menu at all.
+        if (!DeliberateExit.Allows(FocusSessionService.Current))
+        {
+            AppLog.Info("Exit refused: a focus session is running. It ends from Home Assistant or by its own clock.");
+            return;
+        }
+
         // Before any teardown, so the watchdog task stays down whatever fails below. The update
         // flow ends through here too; the installer's relaunch is a deliberate start and clears it.
         WatchdogTask.WriteHoldMarker();

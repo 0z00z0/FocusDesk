@@ -283,4 +283,12 @@
     <value>Never during a focus session. FocusDesk closes for the install and starts again afterwards.</value>
     <comment>Hover text of the info bubble beside the switch, whole sentences.</comment>
   </data>
+  <data name="TrayMenuExit" xml:space="preserve">
+    <value>Exit</value>
+    <comment>Last row of the notification-area menu, closes the application, imperative verb.</comment>
+  </data>
+  <data name="TrayMenuExitRefused" xml:space="preserve">
+    <value>Exit – not during a focus session</value>
+    <comment>The same row, greyed out while a focus session runs; the menu shows no hover text, so the reason is in the row; no full stop.</comment>
+  </data>
 </root>

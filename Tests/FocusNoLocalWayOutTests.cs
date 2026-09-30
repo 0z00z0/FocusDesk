@@ -102,6 +102,86 @@ public class FocusNoLocalWayOutTests
         Assert.Equal(0, screen.Lifts);
     }
 
+    // ── Leaving the application ─────────────────────────────────────────────────────────────────
+    // Leaving puts back every lever the session holds, and the hold marker it writes keeps the
+    // watchdog from starting FocusDesk again. An exit allowed mid-session is a way out nothing undoes.
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ExitIsRefusedWhileASessionRuns_AndAllowedOnceNoneDoes(bool programFocus)
+    {
+        // Either kind, and through the cancel's wait: the session holds its levers until the second
+        // request or the clock ends it.
+        var now = new DateTimeOffset(2026, 9, 20, 12, 0, 0, TimeSpan.Zero);
+        var engine = new FocusSessionEngine(
+            new FakeFocusLever(), new FakeFocusLever(), new FakeFocusLever(), new FakeFocusLever(),
+            new FakeFocusSessionRecord(), () => now, (_, _) => { }, programs: new FakeFocusLever());
+        var kind = programFocus ? FocusSessionKind.ProgramFocus : FocusSessionKind.ScreenBreak;
+
+        Assert.True(DeliberateExit.Allows(engine.Snapshot()));
+
+        Assert.Equal(FocusArmOutcome.Armed, engine.Arm(60, FocusSessionPlan.For(
+            kind, blocksNetwork: false, dimsScreen: false, blocksInput: false), "a test"));
+        Assert.Equal(kind, engine.Snapshot().Kind);
+        Assert.False(DeliberateExit.Allows(engine.Snapshot()));
+
+        engine.RequestCancel("a test");
+        Assert.Equal(FocusSessionStage.Ending, engine.Snapshot().Stage);
+        Assert.False(DeliberateExit.Allows(engine.Snapshot()));
+
+        now = now.AddMinutes(61);
+        engine.Tick();
+        Assert.Equal(FocusSessionStage.Off, engine.Snapshot().Stage);
+        Assert.True(DeliberateExit.Allows(engine.Snapshot()));
+    }
+
+    private static string AppCode => RepoFiles.Read("App.xaml.cs");
+
+    /// <summary>The process's own end, however it is spelled: the application object's exit and the
+    /// runtime's two.</summary>
+    private static readonly Regex EndsTheProcess = new(@"\bExit\s*\(|\bFailFast\s*\(");
+
+    [Fact]
+    public void OnlyTheApplicationObjectEndsTheProcess_AndItsDeliberateExitRefusesASessionFirst()
+    {
+        // Every route that leaves on purpose meets the refusal inside Shutdown: the menu's Exit, the
+        // update flow's hand-over and anything wired to either later. A second file ending the
+        // process would be a route that never meets it, so it fails here rather than shipping.
+        var ending = ShippedSource()
+            .Where(path => EndsTheProcess.IsMatch(File.ReadAllText(path)))
+            .Select(path => Path.GetRelativePath(RepoFiles.Root, path))
+            .ToArray();
+        Assert.Equal(new[] { "App.xaml.cs" }, ending);
+
+        // One deliberate exit, and the refusal is its first statement, ahead of the hold marker.
+        var exits = Regex.Matches(AppCode, @"(?<![\w.])Exit\(\);");
+        Assert.Single(exits);
+        int shutdown = AppCode.IndexOf("private void Shutdown()", StringComparison.Ordinal);
+        Assert.InRange(shutdown, 0, exits[0].Index);
+        Assert.DoesNotMatch(new Regex(@"\n    (private|public|protected|internal) "),
+                            AppCode[(shutdown + 1)..exits[0].Index]);
+        Assert.Matches(new Regex(
+            @"private void Shutdown\(\)\s*\{(\s*//[^\n]*)*\s*if \(!DeliberateExit\.Allows\(FocusSessionService\.Current\)\)\s*\{[^}]*return;\s*\}(\s*//[^\n]*)*\s*WatchdogTask\.WriteHoldMarker\(\);"),
+            AppCode);
+
+        // The runtime's exit only turns away a second instance or a held probe, in the constructor
+        // before this process owns anything a session could hold.
+        int constructor = AppCode.IndexOf("public App()", StringComparison.Ordinal);
+        int owns = AppCode.IndexOf("InitializeComponent();", StringComparison.Ordinal);
+        var early = Regex.Matches(AppCode, @"Environment\.Exit\(");
+        Assert.NotEmpty(early);
+        Assert.All(early, m => Assert.InRange(m.Index, constructor, owns));
+    }
+
+    [Fact]
+    public void TheMenuGreysExitOutWhileASessionRuns() =>
+        // The row decides on the same rule the exit does, and while a session runs it carries no
+        // action to reach at all.
+        Assert.Matches(new Regex(
+            @"DeliberateExit\.Allows\(session\)\s*\?\s*TrayMenuItem\.Command\(AppText\.Get\(""TrayMenuExit""\),[^;]*:\s*TrayMenuItem\.Command\(AppText\.Get\(""TrayMenuExitRefused""\), null, isEnabled: false\);"),
+            RepoFiles.Read(Path.Combine("UI", "TrayIconHost.cs")));
+
     // ── The input block ─────────────────────────────────────────────────────────────────────────
 
     [Fact]

@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using FocusDesk.Helpers;
+using FocusDesk.Services;
 using Xunit;
 
 namespace FocusDesk.Tests;
@@ -24,7 +25,7 @@ public class WatchdogHoldTests
     [Fact]
     public void TrayExitWritesTheHoldMarkerBeforeAnyTeardown()
     {
-        Assert.Matches(@"TrayMenuItem\.Command\(""Exit"",\s*\(\)\s*=>\s*_exit\?\.Invoke\(\)\)",
+        Assert.Matches(@"TrayMenuItem\.Command\(AppText\.Get\(""TrayMenuExit""\),\s*\(\)\s*=>\s*_exit\?\.Invoke\(\)\)",
             RepoFiles.Read(@"UI\TrayIconHost.cs"));
         Assert.Contains("TrayIconHost.Start(Shutdown);", AppCode, StringComparison.Ordinal);
 
@@ -43,12 +44,31 @@ public class WatchdogHoldTests
 
         string constructor = Between("public App()", "protected override void OnLaunched");
         Assert.Contains("TaskDefinitions.WatchdogArg", constructor, StringComparison.Ordinal);
-        int hold = constructor.IndexOf("WatchdogTask.HoldMarkerExists", StringComparison.Ordinal);
+        int hold = constructor.IndexOf("WatchdogTask.HoldsProbeOff", StringComparison.Ordinal);
         int guard = constructor.IndexOf("SingleInstanceGuard.TryAcquire()", StringComparison.Ordinal);
         Assert.InRange(hold, 0, guard);
 
         Assert.Single(Regex.Matches(AppCode, @"WatchdogTask\.TryClearHoldMarker\(\)"));
         Assert.Matches(@"if \(_watchdogProbe\)\s+AppLog\.Info\([^;]*\);\s+else\s+WatchdogTask\.TryClearHoldMarker\(\);",
             AppCode);
+    }
+
+    /// <summary>A marker never keeps a probe down while a session is recorded as running. Exit is
+    /// refused mid-session, but a session Home Assistant arms while an Exit is already under way, or
+    /// a marker written by hand, would otherwise leave that session's levers down with nothing to
+    /// bring them back.</summary>
+    [Fact]
+    public void AMarkerNeverHoldsAProbeOffWhileASessionIsRecorded()
+    {
+        var now = new DateTimeOffset(2026, 9, 30, 12, 0, 0, TimeSpan.Zero);
+        var running = new FocusSessionRecord(now.AddMinutes(-5), now.AddMinutes(55), true, true);
+        var ended = new FocusSessionRecord(now.AddMinutes(-65), now.AddMinutes(-5), true, true);
+
+        Assert.True(WatchdogTask.RecordsARunningSession(running, now));
+        Assert.False(WatchdogTask.RecordsARunningSession(ended, now));
+        Assert.False(WatchdogTask.RecordsARunningSession(null, now));
+
+        Assert.Matches(@"HoldsProbeOff =>\s*HoldMarkerExists && !RecordsARunningSession\(RecordedSession\(\), DateTimeOffset\.Now\);",
+            RepoFiles.Read(@"Helpers\WatchdogTask.cs"));
     }
 }

@@ -21,7 +21,27 @@ internal static class WatchdogTask
 
     internal static bool HoldMarkerExists => File.Exists(HoldMarkerPath);
 
-    /// <summary>Written on tray-menu Exit so watchdog probes leave a deliberate exit alone.</summary>
+    /// <summary>Whether a probe stays down: a hold marker, and no session recorded as running. Exit
+    /// is refused mid-session, but a session Home Assistant arms while Exit is already under way, or
+    /// a marker written by hand, would otherwise keep a running session's levers down for good.</summary>
+    internal static bool HoldsProbeOff =>
+        HoldMarkerExists && !RecordsARunningSession(RecordedSession(), DateTimeOffset.Now);
+
+    /// <summary>A record whose end is still ahead. One already past is ended by the next start, so
+    /// there is nothing a probe needs to bring back for it.</summary>
+    internal static bool RecordsARunningSession(FocusSessionRecord? session, DateTimeOffset now) =>
+        session is { } recorded && recorded.EndsAt > now;
+
+    /// <summary>The record in settings.json. Unreadable counts as none: a start that cannot read it
+    /// could not resume the session either.</summary>
+    private static FocusSessionRecord? RecordedSession()
+    {
+        try { return new SettingsFocusSessionRecord().Read(); }
+        catch (Exception ex) { AppLog.Error("WatchdogTask.RecordedSession", ex); return null; }
+    }
+
+    /// <summary>Written on a deliberate exit so watchdog probes leave it alone. Only ever written
+    /// with no session running: the exit is refused otherwise.</summary>
     internal static void WriteHoldMarker()
     {
         try

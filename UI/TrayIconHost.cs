@@ -19,9 +19,8 @@ namespace FocusDesk.UI;
 /// shell-restart repair, the tooltip's length and the menu's rebuild, which it draws in the taskbar's
 /// light or dark theme. What is FocusDesk's is which file is shown, what the tooltip says, what the
 /// menu holds and what a click does. Setting the menu's theme here as well would fight the host's.</para>
-/// <para>Leaving from the menu is not a way out of a session: the levers a session holds are put
-/// back by the process ending, but the session's record stays on disk and the next start resumes
-/// it. That is the point — nothing on this machine ends a session.</para>
+/// <para>Leaving from the menu is refused while a session runs: the process ending would put back
+/// every lever the session holds. Nothing on this machine ends a session.</para>
 /// </remarks>
 internal static class TrayIconHost
 {
@@ -174,7 +173,13 @@ internal static class TrayIconHost
 
         yield return TrayMenuItem.Command("About…", ShowAbout);
         yield return TrayMenuItem.Separator();
-        yield return TrayMenuItem.Command("Exit", () => _exit?.Invoke());
+
+        // Greyed out with no action while a session runs. The menu cannot show hover text, so the
+        // reason is the row's own text. The exit itself refuses as well: this menu is only as
+        // current as the right click that built it.
+        yield return DeliberateExit.Allows(session)
+            ? TrayMenuItem.Command(AppText.Get("TrayMenuExit"), () => _exit?.Invoke())
+            : TrayMenuItem.Command(AppText.Get("TrayMenuExitRefused"), null, isEnabled: false);
     }
 
     /// <summary>Starts the shared check, or joins the one running, and lets it report in the update
