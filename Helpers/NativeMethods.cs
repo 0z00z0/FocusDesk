@@ -5,8 +5,9 @@ using Windows.Graphics;
 namespace FocusDesk.Helpers;
 
 /// <summary>Thin wrappers around the Win32 calls the screen cover and the pop-out need: every
-/// attached display, the window styles a cover over one carries, a close it refuses, the frame the
-/// pop-out sheds, and how long since anybody touched the machine.</summary>
+/// attached display, the display under the pointer, the window styles a cover over one carries, a
+/// close it refuses, the frame the pop-out sheds, and how long since anybody touched the
+/// machine.</summary>
 internal static class NativeMethods
 {
     // ── How long since somebody was at the machine ───────────────────────────────────────────────
@@ -82,6 +83,57 @@ internal static class NativeMethods
         {
             AppLog.Error("NativeMethods.AllDisplayBounds", ex);
             return [];
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int X, Y;
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out POINT point);
+
+    private const uint MONITOR_DEFAULTTONEAREST = 2;
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromPoint(POINT point, uint flags);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO
+    {
+        public uint cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
+    [DllImport("user32.dll", EntryPoint = "GetMonitorInfoW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
+
+    /// <summary>The whole panel of the display under the pointer, in physical pixels, the taskbar
+    /// strip included — a focus window covers the whole screen, not the work area. Null when the
+    /// query fails, which callers must not read as the primary display.</summary>
+    internal static RectInt32? DisplayBoundsForCursor()
+    {
+        try
+        {
+            if (!GetCursorPos(out var cursor)) return null;
+
+            var monitor = MonitorFromPoint(cursor, MONITOR_DEFAULTTONEAREST);
+            var info = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
+            if (!GetMonitorInfo(monitor, ref info)) return null;
+
+            var r = info.rcMonitor;
+            return new RectInt32(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("NativeMethods.DisplayBoundsForCursor", ex);
+            return null;
         }
     }
 

@@ -2,13 +2,13 @@ using System.Diagnostics;
 using System.Globalization;
 using FocusDesk.Helpers;
 using FocusDesk.Services;
+using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Graphics;
-using ZeroZero.Win32;
 using Point = Windows.Foundation.Point;
 
 namespace FocusDesk.UI;
@@ -16,19 +16,19 @@ namespace FocusDesk.UI;
 /// <summary>
 /// The one-minute breathing exercise shown when the pop-out's Start button is pressed, before any
 /// session exists. The ring fills over the minute, then a button starts the session that was chosen.
+/// Full-screen and frameless on the monitor under the pointer, the same weight as the screen cover
+/// it precedes.
 /// </summary>
 /// <remarks>
-/// <para>Closing it — its close button, Escape, Alt+F4 — at any point cancels: nothing is armed and
-/// nothing on the machine changes. The button is the only way on to a session.</para>
+/// <para>Closing it — Escape, Alt+F4, or a click on the screen away from the ring and the button —
+/// at any point cancels: nothing is armed and nothing on the machine changes. The button is the
+/// only way on to a session.</para>
 /// <para>The same for both kinds of session. What follows the button is the session's own business:
 /// a screen break's cover opens straight on its configured visual, a program focus minimises the
 /// other programs.</para>
 /// </remarks>
 internal sealed partial class FocusPointWindow : Window
 {
-    private const int WidthDip  = 520;
-    private const int HeightDip = 600;
-
     // The exercise's circle, in its 220-unit canvas.
     private const double Cx     = 110;
     private const double Cy     = 110;
@@ -79,8 +79,12 @@ internal sealed partial class FocusPointWindow : Window
         var presenter = OverlappedPresenter.Create();
         presenter.IsResizable   = false;
         presenter.IsMaximizable = false;
+        presenter.IsMinimizable = false;
+        presenter.SetBorderAndTitleBar(hasBorder: false, hasTitleBar: false);
         AppWindow.SetPresenter(presenter);
-        AppTitleBar.Apply(this);
+
+        // The presenter keeps a dialog frame with the border turned off: three pixels on every side.
+        NativeMethods.RemoveFrame(Win32Interop.GetWindowFromWindowId(AppWindow.Id));
 
         _minute.Interval = _start.Remaining;
         _minute.Tick += (_, _) => OnMinuteUp();
@@ -222,6 +226,11 @@ internal sealed partial class FocusPointWindow : Window
         Close();
     }
 
+    /// <summary>The way out with no close button on view: a tap on the screen away from the ring and
+    /// the button cancels, the same as Escape. The ring, the hint and the button are not ancestors of
+    /// the background in the visual tree, so a tap on any of them never reaches here.</summary>
+    private void OnBackgroundTapped(object sender, TappedRoutedEventArgs e) => Close();
+
     /// <summary>However the window closes, the start is settled without arming.</summary>
     private void OnClosed(object sender, WindowEventArgs args)
     {
@@ -231,8 +240,9 @@ internal sealed partial class FocusPointWindow : Window
         StopDrawing();
     }
 
-    /// <summary>Centred on the monitor under the pointer the first time it is shown, which is the
-    /// monitor the pop-out's Start button was pressed on.</summary>
+    /// <summary>Full-screen on the monitor under the pointer the first time it is shown, which is the
+    /// monitor the pop-out's Start button was pressed on — its whole panel, the taskbar strip
+    /// included, the same as the screen cover this window precedes.</summary>
     private void OnActivated(object sender, WindowActivatedEventArgs e)
     {
         if (_placed || e.WindowActivationState == WindowActivationState.Deactivated) return;
@@ -240,13 +250,13 @@ internal sealed partial class FocusPointWindow : Window
 
         try
         {
-            var (work, scale) = MonitorMetrics.ForCursor();
-            int width  = Math.Min((int)Math.Round(WidthDip * scale), work.Right - work.Left);
-            int height = Math.Min((int)Math.Round(HeightDip * scale), work.Bottom - work.Top);
-            AppWindow.MoveAndResize(new RectInt32(
-                work.Left + (work.Right - work.Left - width) / 2,
-                work.Top + (work.Bottom - work.Top - height) / 2,
-                width, height));
+            var bounds = NativeMethods.DisplayBoundsForCursor();
+            if (bounds is null)
+            {
+                var all = NativeMethods.AllDisplayBounds();
+                if (all.Count > 0) bounds = all[0];
+            }
+            if (bounds is { } b) AppWindow.MoveAndResize(b);
         }
         catch (Exception ex) { AppLog.Error("FocusPointWindow.Place", ex); }
     }
