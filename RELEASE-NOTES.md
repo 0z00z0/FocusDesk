@@ -20,6 +20,8 @@ updater reads.
   and a second one inside the short window that follows ends the session. The machine itself offers
   no way to end one; while the mouse and keyboard are blocked, Ctrl+Alt+Delete and signing out remain
   the way out.
+- Exit is greyed out in the menu while a session runs, and an update chosen during a session does
+  not install; it installs when chosen again after the session ends.
 - The session, its levers, its state and its remaining time appear in Home Assistant as one device,
   and a session can be started from there.
 - The pop-out from the notification-area icon shows the running session and the most recent ones,
