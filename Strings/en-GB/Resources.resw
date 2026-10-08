@@ -323,4 +323,37 @@
     <value>Exit – not during a focus session</value>
     <comment>The same row, greyed out while a focus session runs; the menu shows no hover text, so the reason is in the row; no full stop.</comment>
   </data>
+  <!-- Automatic focus session page and the setup guide window. -->
+  <data name="AutomaticSessionSectionLabel" xml:space="preserve">
+    <value>Automatic focus session</value>
+    <comment>Settings navigation entry for the page about starting a focus session from Home Assistant, noun phrase.</comment>
+  </data>
+  <data name="AutomaticSessionHeading" xml:space="preserve">
+    <value>Automatic focus session</value>
+    <comment>Heading of that page, noun phrase.</comment>
+  </data>
+  <data name="AutomaticSessionGuideHeader" xml:space="preserve">
+    <value>Setup guide</value>
+    <comment>Header of the card opening the setup guide, noun phrase.</comment>
+  </data>
+  <data name="AutomaticSessionGuideDescription" xml:space="preserve">
+    <value>Home Assistant can start a focus session at a set time. The guide shows how, step by step, in Home Assistant 2026.10.</value>
+    <comment>Description under the setup guide card, whole sentences.</comment>
+  </data>
+  <data name="AutomaticSessionGuideButton" xml:space="preserve">
+    <value>Open the setup guide</value>
+    <comment>Button that opens the setup guide window, imperative.</comment>
+  </data>
+  <data name="SetupGuideWindowTitle" xml:space="preserve">
+    <value>FocusDesk – automatic focus session</value>
+    <comment>Title bar of the window showing the setup guide, noun phrase.</comment>
+  </data>
+  <data name="SetupGuideLanguage" xml:space="preserve">
+    <value>en</value>
+    <comment>Not shown: the language code the guide page opens in, en or nb; never translated as prose.</comment>
+  </data>
+  <data name="SetupGuideFailed" xml:space="preserve">
+    <value>The setup guide could not be shown.</value>
+    <comment>Line in the guide window when the embedded browser fails, whole sentence.</comment>
+  </data>
 </root>

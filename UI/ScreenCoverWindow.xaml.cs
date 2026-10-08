@@ -52,20 +52,11 @@ internal sealed partial class ScreenCoverWindow : Window
     private static readonly TimeSpan BreathHalf      = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan BreathHalfFinal = TimeSpan.FromSeconds(2);
 
-    /// <summary>The browser's own store, beside the settings rather than beside the executable: the
-    /// program folder is not writable for the user the session runs as.</summary>
-    private const string BrowserDataFolder = "WebView2";
-
     /// <summary>The host name the bundled page is served under. A name in the reserved
     /// <c>.invalid</c> namespace, so it can never resolve to anything on the network.</summary>
     private const string PageHost = "focus-point.focusdesk.invalid";
 
     private const string PageFile = "focus-point.html";
-
-    /// <summary>One browser environment for the process, however many displays are covered. Two
-    /// environments over one store are only allowed where every option matches, which is a
-    /// constraint worth not having.</summary>
-    private static Task<CoreWebView2Environment>? _browser;
 
     private readonly SolidColorBrush _fill = new();
 
@@ -294,13 +285,8 @@ internal sealed partial class ScreenCoverWindow : Window
             FocusPointHost.Children.Add(view);
             _page = view;
 
-            // An explicit store. The default for an unpackaged application sits beside the
-            // executable, in a program folder the session's user cannot write to.
-            _browser ??= CoreWebView2Environment.CreateWithOptionsAsync(
-                "", AppPaths.DataFile(BrowserDataFolder), new CoreWebView2EnvironmentOptions())
-                .AsTask();
-
-            await view.EnsureCoreWebView2Async(await _browser);
+            // One environment for the process, however many displays are covered.
+            await view.EnsureCoreWebView2Async(await EmbeddedBrowser.Environment);
 
             var core = view.CoreWebView2;
             core.SetVirtualHostNameToFolderMapping(

@@ -158,6 +158,12 @@
     <Content Update="Assets\FocusPoint\focus-point.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+
+    <!-- The setup guide for an automatic focus session, opened from the Settings page of that name
+         in the embedded browser. A plain file beside the executable for the same reason. -->
+    <Content Update="Assets\Guide\automatic-focus-session.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <!-- Authenticode-signs the Release bin\ output via scripts\sign.ps1. ContinueOnError keeps the
