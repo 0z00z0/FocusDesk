@@ -7,16 +7,18 @@
     <!-- The session-start breathing exercise, full-screen on the monitor under the pointer, the same
          weight as the screen cover it precedes. Dark whatever the system theme, so the button's hover
          and pressed states are the dark ones on this ground. Every text is set from the resource
-         files in the constructor. -->
-    <Grid Background="#FF0B0E11" RequestedTheme="Dark" KeyboardAcceleratorPlacementMode="Hidden">
+         files in the constructor. A click anywhere does nothing; Escape and Alt+F4 cancel. The root
+         takes keyboard focus itself, because nothing inside it can until the button appears, and the
+         keys reach the accelerators only with focus inside the content. -->
+    <Grid x:Name="Root" Background="#FF0B0E11" RequestedTheme="Dark" KeyboardAcceleratorPlacementMode="Hidden"
+          IsTabStop="True" UseSystemFocusVisuals="False">
         <Grid.KeyboardAccelerators>
-            <KeyboardAccelerator Key="Escape" Invoked="OnEscapeInvoked"/>
+            <KeyboardAccelerator Key="Escape" Invoked="OnCloseKeyInvoked"/>
+            <KeyboardAccelerator Key="F4" Modifiers="Menu" Invoked="OnCloseKeyInvoked"/>
         </Grid.KeyboardAccelerators>
 
-        <!-- Reaches its darkest at the corners of the screen: a radius of the half-diagonal. Covers
-             the whole window and is the one way out with no chrome on view: a tap here, away from the
-             panel below, cancels like Escape does. -->
-        <Rectangle Tapped="OnBackgroundTapped">
+        <!-- Reaches its darkest at the corners of the screen: a radius of the half-diagonal. -->
+        <Rectangle>
             <Rectangle.Fill>
                 <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5"
                                      RadiusX="0.7071" RadiusY="0.7071">

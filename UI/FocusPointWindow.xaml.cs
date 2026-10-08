@@ -21,9 +21,9 @@ namespace FocusDesk.UI;
 /// it precedes.
 /// </summary>
 /// <remarks>
-/// <para>Closing it — Escape, Alt+F4, or a click on the screen away from the ring and the button —
-/// before the session starts cancels: nothing is armed and nothing on the machine changes. The button,
-/// or the end of the time where the window starts the session itself, is the only way on to one.</para>
+/// <para>Closing it with Escape or Alt+F4 before the session starts cancels: nothing is armed and
+/// nothing on the machine changes. A click anywhere does nothing. The button, or the end of the time
+/// where the window starts the session itself, is the only way on to one.</para>
 /// <para>The same for both kinds of session. What follows the button is the session's own business:
 /// a screen break's cover opens straight on its configured visual, a program focus minimises the
 /// other programs.</para>
@@ -100,8 +100,9 @@ internal sealed partial class FocusPointWindow : Window
         FadeHint();
         _minute.Start();
 
-        Activated += OnActivated;
-        Closed    += OnClosed;
+        Root.Loaded += (_, _) => TakeKeyboardFocus();
+        Activated   += OnActivated;
+        Closed      += OnClosed;
     }
 
     /// <summary>Sets the dot breathing and the arc drawing every frame. Where the machine asks for no
@@ -239,16 +240,19 @@ internal sealed partial class FocusPointWindow : Window
         return FocusSessionService.Arm(ActionCause.FocusPointWindow(), minutes, kind, _goal);
     }
 
-    private void OnEscapeInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    // Alt+F4 too, so it does not depend on the frameless window passing the key to the system close.
+    private void OnCloseKeyInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
         Close();
     }
 
-    /// <summary>The way out with no close button on view: a tap on the screen away from the ring and
-    /// the button cancels, the same as Escape. The ring, the hint and the button are not ancestors of
-    /// the background in the visual tree, so a tap on any of them never reaches here.</summary>
-    private void OnBackgroundTapped(object sender, TappedRoutedEventArgs e) => Close();
+    // The accelerators fire only with focus inside the content, and nothing else can take it early.
+    private void TakeKeyboardFocus()
+    {
+        if (Root.XamlRoot is { } root && FocusManager.GetFocusedElement(root) is null)
+            Root.Focus(FocusState.Programmatic);
+    }
 
     /// <summary>However the window closes, the start is settled without arming.</summary>
     private void OnClosed(object sender, WindowEventArgs args)
@@ -264,7 +268,9 @@ internal sealed partial class FocusPointWindow : Window
     /// included, the same as the screen cover this window precedes.</summary>
     private void OnActivated(object sender, WindowActivatedEventArgs e)
     {
-        if (_placed || e.WindowActivationState == WindowActivationState.Deactivated) return;
+        if (e.WindowActivationState == WindowActivationState.Deactivated) return;
+        TakeKeyboardFocus();
+        if (_placed) return;
         _placed = true;
 
         try
