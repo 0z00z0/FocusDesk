@@ -97,7 +97,7 @@
     <comment>Status shown under a row whose program is not installed here; the list roams between machines.</comment>
   </data>
   <data name="FocusProgramStoreNetworkInfo" xml:space="preserve">
-    <value>A firewall rule cannot name a Store app yet.</value>
+    <value>A firewall rule cannot name a Store application yet.</value>
     <comment>Hover text on the disabled network checkbox of a Store app row, whole sentence.</comment>
   </data>
   <data name="FocusProgramWebAppNetworkInfo" xml:space="preserve">

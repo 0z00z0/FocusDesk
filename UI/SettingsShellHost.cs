@@ -109,7 +109,7 @@ internal static class SettingsShellHost
                 },
                 new SettingsSection
                 {
-                    Tag = DiagnosticsTag, Label = "App diagnostics",
+                    Tag = DiagnosticsTag, Label = "Diagnostics",
                     Icon = NavIcon("diagnostics"),
                     Build = () => diagnostics = new DiagnosticsSettingsPanel(),
                     // The log folder gains files while the window is open.

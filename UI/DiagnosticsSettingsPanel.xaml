@@ -7,7 +7,7 @@
     xmlns:controls="using:CommunityToolkit.WinUI.Controls">
 
     <StackPanel Spacing="4">
-        <TextBlock Text="App diagnostics" Style="{StaticResource SectionHeaderStyle}"/>
+        <TextBlock Text="Application diagnostics" Style="{StaticResource SectionHeaderStyle}"/>
 
         <!-- Vertical: beside a row of three buttons the description is squeezed into a narrow
              column. -->
