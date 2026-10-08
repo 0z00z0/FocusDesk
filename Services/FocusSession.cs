@@ -17,10 +17,12 @@ namespace FocusDesk.Services;
 /// <param name="Kind">The kind the session was started as. Never changes while it runs; the lever
 /// fields beside it say what is actually held. A record written before kinds existed reads as a
 /// screen break.</param>
+/// <param name="Goal">The goal typed for the session, empty where none was. Never logged; a record
+/// written before goals existed reads as empty.</param>
 internal readonly record struct FocusSessionRecord(
     DateTimeOffset StartedAt, DateTimeOffset EndsAt, bool DimsScreen, bool CoversScreen,
     bool BlocksInput = false, bool BlocksNetwork = false, bool LimitsPrograms = false,
-    FocusSessionKind Kind = FocusSessionKind.ScreenBreak);
+    FocusSessionKind Kind = FocusSessionKind.ScreenBreak, string Goal = "");
 
 /// <summary>Where a running session is kept so nothing but the clock can end it.</summary>
 internal interface IFocusSessionRecord
@@ -166,7 +168,8 @@ internal sealed class FocusSessionEngine(
 
     /// <summary>Starts a session for <paramref name="minutes"/> holding the levers the plan names.
     /// Nothing is armed unless the lever the plan's kind always holds can be.</summary>
-    public FocusArmOutcome Arm(int minutes, FocusSessionPlan plan, ActionCause cause)
+    /// <param name="goal">The goal typed for the session, kept with it and never logged.</param>
+    public FocusArmOutcome Arm(int minutes, FocusSessionPlan plan, ActionCause cause, string? goal = null)
     {
         ArgumentNullException.ThrowIfNull(plan);
         FocusArmOutcome outcome;
@@ -174,7 +177,7 @@ internal sealed class FocusSessionEngine(
 
         lock (_gate)
         {
-            outcome = ArmLocked(minutes, plan, cause);
+            outcome = ArmLocked(minutes, plan, cause, FocusSessionGoal.Clean(goal));
             changed = Sync();
         }
 
@@ -266,7 +269,7 @@ internal sealed class FocusSessionEngine(
         }
     }
 
-    private FocusArmOutcome ArmLocked(int minutes, FocusSessionPlan plan, ActionCause cause)
+    private FocusArmOutcome ArmLocked(int minutes, FocusSessionPlan plan, ActionCause cause, string goal)
     {
         if (_session is not null) return FocusArmOutcome.AlreadyRunning;
 
@@ -303,7 +306,7 @@ internal sealed class FocusSessionEngine(
         var started = now();
         var session = new FocusSessionRecord(
             started, started.AddMinutes(Math.Clamp(minutes, MinMinutes, MaxMinutes)),
-            dimsScreen, plan.CoversScreen, blocksInput, blocksNetwork, plan.LimitsPrograms, plan.Kind);
+            dimsScreen, plan.CoversScreen, blocksInput, blocksNetwork, plan.LimitsPrograms, plan.Kind, goal);
 
         // The record reaches disk before a lever moves: a crash between the two has to leave a
         // session the next start can end, never a lever nothing owns.
@@ -330,8 +333,10 @@ internal sealed class FocusSessionEngine(
         if (blocksInput && !input.Engage(cause))
             DropInput("Windows refused to block the mouse and keyboard", cause);
 
+        // Whether a goal was set, never what it says: the goal is the person's own words.
         log($"Focus session started as {FocusSessionKinds.Word(plan.Kind)}, running until "
-          + $"{session.EndsAt.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)}", cause);
+          + $"{session.EndsAt.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)}"
+          + (goal.Length > 0 ? ", with a goal set" : ""), cause);
         return FocusArmOutcome.Armed;
     }
 
@@ -464,7 +469,7 @@ internal sealed class FocusSessionEngine(
 
         return new FocusSnapshot(stage, session.StartedAt, session.EndsAt,
                                  session.DimsScreen, session.CoversScreen, session.BlocksInput,
-                                 session.BlocksNetwork, session.LimitsPrograms, session.Kind);
+                                 session.BlocksNetwork, session.LimitsPrograms, session.Kind, session.Goal);
     }
 
     /// <summary>Brings the stage last reported into line with the stage now, and says whether it

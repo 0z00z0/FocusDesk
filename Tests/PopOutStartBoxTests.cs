@@ -67,7 +67,7 @@ public class PopOutStartBoxTests
         Assert.DoesNotMatch(new Regex(@"\.FocusSessionKind\s*="), popOut);
         Assert.DoesNotMatch(new Regex(@"\.FocusSessionKind\s*="), focusPoint);
         // The chosen kind goes to the focus-point window as an argument, for that one start.
-        Assert.Matches(new Regex(@"FocusPointWindow\.Open\(_chosenKind, minutes, seconds, startsItself\)"), popOut);
-        Assert.Matches(new Regex(@"FocusSessionService\.Arm\(ActionCause\.StatusWindow\(""Start button""\), minutes, _chosenKind\)"), popOut);
+        Assert.Matches(new Regex(@"FocusPointWindow\.Open\(_chosenKind, minutes, seconds, startsItself, goal\)"), popOut);
+        Assert.Matches(new Regex(@"FocusSessionService\.Arm\(ActionCause\.StatusWindow\(""Start button""\), minutes, _chosenKind, goal\)"), popOut);
     }
 }

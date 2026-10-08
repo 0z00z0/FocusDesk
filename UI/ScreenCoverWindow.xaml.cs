@@ -80,6 +80,9 @@ internal sealed partial class ScreenCoverWindow : Window
     private Storyboard? _breath;
     private bool _pacedForFinalStretch;
 
+    /// <summary>The dial's headline as the markup sets it, put back where no goal was set.</summary>
+    private readonly string _headline;
+
     private WebView2? _page;
     private bool _pageIsReady;
     private string? _unsent;
@@ -88,6 +91,7 @@ internal sealed partial class ScreenCoverWindow : Window
     {
         InitializeComponent();
         Title = "FocusDesk focus session";
+        _headline = HeadlineText.Text;
 
         _visual  = visual;
         _animate = MotionPreference.AnimationsAllowed();
@@ -168,19 +172,21 @@ internal sealed partial class ScreenCoverWindow : Window
 
     /// <summary>Draws the countdown and decides how brightly the ring's panel draws.</summary>
     /// <remarks>The focus point is the whole cover and stands for the session's length, so the ring's
-    /// own panel stays collapsed for it.</remarks>
+    /// own panel stays collapsed for it. A goal set for the session stands in for the dial's headline,
+    /// or for the focus point's quiet line.</remarks>
     internal void Apply(FocusCoverReading? reading, string levers, bool revealed,
-                        CoverAppearance appearance)
+                        CoverAppearance appearance, string goal)
     {
         if (_visual == CoverVisual.FocusPoint)
         {
-            if (reading is { } session) Send(session, appearance);
+            if (reading is { } session) Send(session, appearance, goal);
             Reveal.Visibility = Visibility.Collapsed;
             return;
         }
 
         if (reading is { } r) Draw(r);
 
+        HeadlineText.Text = FocusSessionGoal.Or(goal, _headline);
         LeversText.Text   = levers;
         Reveal.Opacity    = appearance.RingIntensity(revealed);
         Reveal.Visibility = Visibility.Visible;
@@ -349,10 +355,10 @@ internal sealed partial class ScreenCoverWindow : Window
 
     /// <summary>Hands the page the session. The latest message is kept, so a reading that arrives
     /// before the page has loaded is sent the moment it has rather than dropped.</summary>
-    private void Send(FocusCoverReading reading, CoverAppearance appearance)
+    private void Send(FocusCoverReading reading, CoverAppearance appearance, string goal)
     {
         _unsent = CoverSessionMessage.Compose(reading, appearance,
-                                              AppText.Get("CoverFocusPointHint"),
+                                              FocusSessionGoal.Or(goal, AppText.Get("CoverFocusPointHint")),
                                               AppText.Get("CoverFocusPointDone"));
         Flush();
     }

@@ -107,6 +107,9 @@ internal sealed partial class StatusWindow : Window
         ProgramFocusChoice.Content = AppText.Get("PopOutStartProgramFocus");
         ScreenBreakChoice.Content  = AppText.Get("PopOutStartScreenBreak");
         StartButton.Content        = AppText.Get("PopOutStart");
+        GoalBox.PlaceholderText    = AppText.Get("PopOutGoalPlaceholder");
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(GoalBox, GoalBox.PlaceholderText);
+        GoalBox.MaxLength          = FocusSessionGoal.MaxLength;
 
         // The session moves on its own clock and from Home Assistant, so the window follows both:
         // the engine's event for a stage moving, and a tick for the minutes running down.
@@ -152,6 +155,7 @@ internal sealed partial class StatusWindow : Window
     {
         _idleClose.Stop();
         _chosenKind = SettingsService.Read(s => s.FocusSessionKind);
+        GoalBox.Text = "";
         RefusalText.Visibility = Visibility.Collapsed;
         Reload();
         Place();
@@ -235,6 +239,7 @@ internal sealed partial class StatusWindow : Window
         ScreenBreakChoice.IsEnabled  = !session.IsRunning;
         StartButton.IsEnabled        = !session.IsRunning;
         MinutesCombo.IsEnabled       = !session.IsRunning;
+        GoalBox.IsEnabled            = !session.IsRunning;
         if (session.IsRunning) RefusalText.Visibility = Visibility.Collapsed;
     }
 
@@ -253,6 +258,7 @@ internal sealed partial class StatusWindow : Window
         var shown = offered ? Visibility.Visible : Visibility.Collapsed;
         KindChoices.Visibility = shown;
         StartRow.Visibility = shown;
+        GoalBox.Visibility = shown;
         if (!offered) return;
 
         FocusLengthChoices.Fill(MinutesCombo, minutes);
@@ -361,20 +367,22 @@ internal sealed partial class StatusWindow : Window
         if (FocusLengthChoices.Selected(MinutesCombo) is not { } minutes) return;
 
         RefusalText.Visibility = Visibility.Collapsed;
+        string goal = FocusSessionGoal.Clean(GoalBox.Text);
         var (shown, startsItself, seconds) = SettingsService.Read(
             s => (s.FocusPointShown, s.FocusPointStartsSession, s.FocusPointSeconds));
         if (shown)
         {
-            FocusPointWindow.Open(_chosenKind, minutes, seconds, startsItself);
+            FocusPointWindow.Open(_chosenKind, minutes, seconds, startsItself, goal);
             return;
         }
 
         // The chosen length is what the next session runs for from wherever it is started, so it is
         // stored rather than held for this one start.
         SettingsService.Update(s => s.FocusSessionMinutes = minutes);
-        var outcome = FocusSessionService.Arm(ActionCause.StatusWindow("Start button"), minutes, _chosenKind);
+        var outcome = FocusSessionService.Arm(ActionCause.StatusWindow("Start button"), minutes, _chosenKind, goal);
         if (outcome == FocusArmOutcome.Armed)
         {
+            GoalBox.Text = "";
             Reload();
             return;
         }

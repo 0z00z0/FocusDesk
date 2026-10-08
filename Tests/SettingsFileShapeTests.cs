@@ -58,6 +58,7 @@ public class SettingsFileShapeTests : IDisposable
         "Focus.FocusSessionCoveredScreen",
         "Focus.FocusSessionBlockedInput",
         "Focus.FocusSessionLimitedPrograms",
+        "Focus.FocusSessionGoal",
         "Focus.FocusSavedFirewall",
         "Screen",
         "Screen.ScreenSavedBrightness",
@@ -184,6 +185,7 @@ public class SettingsFileShapeTests : IDisposable
             FocusSessionKind          = FocusSessionKind.ProgramFocus,
             FocusSessionRunningKind   = FocusSessionKind.ProgramFocus,
             FocusSessionLimitedPrograms = true,
+            FocusSessionGoal          = "Write the report",
             InstallUpdatesUnattended  = true,
             FocusPointShown           = false,
             FocusPointStartsSession   = true,
@@ -264,7 +266,8 @@ public class SettingsFileShapeTests : IDisposable
         s.FocusSessionLimitedPrograms,
         s.FocusBlocksInput, s.FocusStartFromDashboard, s.FocusSessionStartedAt, s.FocusSessionEndsAt,
         s.FocusSessionDimmedScreen, s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput,
-        s.InstallUpdatesUnattended, s.FocusPointShown, s.FocusPointStartsSession, s.FocusPointSeconds);
+        s.InstallUpdatesUnattended, s.FocusPointShown, s.FocusPointStartsSession, s.FocusPointSeconds,
+        s.FocusSessionGoal);
 
     /// <summary>An empty document reads as this application's defaults, not the section types'. The
     /// two differ: a section type declares no session length and no lever, so binding an empty
