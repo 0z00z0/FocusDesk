@@ -325,7 +325,7 @@
   </data>
   <!-- Automatic focus session page and the setup guide window. -->
   <data name="AutomaticSessionSectionLabel" xml:space="preserve">
-    <value>Automatic focus session</value>
+    <value>Automatic session</value>
     <comment>Settings navigation entry for the page about starting a focus session from Home Assistant, noun phrase.</comment>
   </data>
   <data name="AutomaticSessionHeading" xml:space="preserve">
