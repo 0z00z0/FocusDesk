@@ -247,6 +247,14 @@
     <value>Keep the eyes on the point · blinking is fine</value>
     <comment>Quiet line under the breathing point on the focus-point window, shown in capitals, no full stop.</comment>
   </data>
+  <data name="FocusPointWindowQuote" xml:space="preserve">
+    <value>“Your visual focus drives your cognitive focus.”</value>
+    <comment>Verbatim quotation shown under the point on the focus-point window, from the Huberman Lab episode Focus Toolkit (hubermanlab.com transcript); never reworded, at most 15 words.</comment>
+  </data>
+  <data name="FocusPointWindowQuoteAttribution" xml:space="preserve">
+    <value>— Andrew Huberman</value>
+    <comment>Attribution line under the quotation on the focus-point window, a name.</comment>
+  </data>
   <data name="PopOutStartProgramFocus" xml:space="preserve">
     <value>Program focus</value>
     <comment>Button on the tray pop-out that chooses program focus as the kind Start arms, glossary term, capitalised.</comment>
