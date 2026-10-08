@@ -9,6 +9,15 @@ in the code. Newest version first; the heading is the version alone, exactly as 
 `FocusDesk.csproj`. A section never carries an installer hash: the workflow adds the one hash the
 updater reads.
 
+## 0.5.1
+
+- A click anywhere on the full-screen focus point no longer cancels the session about to start, so a
+  stray click cannot undo it; Escape or Alt+F4 cancels it.
+- A quotation from Andrew Huberman, in English in every language, stands under the focus point for the
+  whole breathing exercise.
+- On a computer with no display whose brightness Windows can set, the log no longer records an error
+  about screen brightness; it notes once, as information, that no such display is present.
+
 ## 0.5.0
 
 - FocusDesk holds the computer in a chosen state for a chosen length of time, in one of two kinds of
