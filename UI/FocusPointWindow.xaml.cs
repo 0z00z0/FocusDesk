@@ -50,6 +50,7 @@ internal sealed partial class FocusPointWindow : Window
     private readonly FocusPointStart _start;
     private readonly DispatcherTimer _minute = new();
     private readonly bool _animate = MotionPreference.AnimationsAllowed();
+    private readonly string _goal;
 
     private Storyboard? _breath;
     private bool _drawsEveryFrame;
@@ -58,27 +59,29 @@ internal sealed partial class FocusPointWindow : Window
     /// <summary>Opens the exercise for a session of <paramref name="kind"/> lasting
     /// <paramref name="minutes"/>, running for <paramref name="seconds"/> and then either showing its
     /// button or, where <paramref name="startsItself"/>, arming the session itself. One already open
-    /// is closed first, which cancels it.</summary>
-    internal static void Open(FocusSessionKind kind, int minutes, int seconds, bool startsItself)
+    /// is closed first, which cancels it. A <paramref name="goal"/> stands in for the quiet line and
+    /// goes with the session.</summary>
+    internal static void Open(FocusSessionKind kind, int minutes, int seconds, bool startsItself, string goal)
     {
         _open?.Close();
 
-        var window = new FocusPointWindow(kind, minutes, seconds, startsItself);
+        var window = new FocusPointWindow(kind, minutes, seconds, startsItself, goal);
         _open = window;
         window.Closed += (_, _) => { if (ReferenceEquals(_open, window)) _open = null; };
         window.Activate();
     }
 
-    private FocusPointWindow(FocusSessionKind kind, int minutes, int seconds, bool startsItself)
+    private FocusPointWindow(FocusSessionKind kind, int minutes, int seconds, bool startsItself, string goal)
     {
         InitializeComponent();
         _start = new FocusPointStart(kind, minutes, TimeSpan.FromSeconds(FocusPointStart.SecondsOrDefault(seconds)),
                                      startsItself, () => _clock.Elapsed);
+        _goal = FocusSessionGoal.Clean(goal);
 
         Title = AppText.Get("FocusPointWindowTitle");
         StartSessionButton.Content = AppText.Get("FocusPointWindowStart");
-        // The exercise sets its line in capitals; the text itself is the interface language's.
-        Hint.Text = AppText.Get("FocusPointWindowHint").ToUpper(CultureInfo.CurrentCulture);
+        // The exercise sets its line in capitals; the text itself is the interface language's, or the goal.
+        Hint.Text = FocusSessionGoal.Or(_goal, AppText.Get("FocusPointWindowHint")).ToUpper(CultureInfo.CurrentCulture);
 
         var presenter = OverlappedPresenter.Create();
         presenter.IsResizable   = false;
@@ -228,11 +231,12 @@ internal sealed partial class FocusPointWindow : Window
 
     /// <summary>The arm the pop-out's Start button made before this window stood in front of it. The
     /// length is stored for the next session from wherever it is started; the kind is not, so the
-    /// stored default — what Home Assistant starts — stays as it was.</summary>
-    private static FocusArmOutcome Arm(int minutes, FocusSessionKind kind)
+    /// stored default — what Home Assistant starts — stays as it was. The goal goes with this session
+    /// only.</summary>
+    private FocusArmOutcome Arm(int minutes, FocusSessionKind kind)
     {
         SettingsService.Update(s => s.FocusSessionMinutes = minutes);
-        return FocusSessionService.Arm(ActionCause.FocusPointWindow(), minutes, kind);
+        return FocusSessionService.Arm(ActionCause.FocusPointWindow(), minutes, kind, _goal);
     }
 
     private void OnEscapeInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)

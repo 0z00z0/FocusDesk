@@ -147,7 +147,7 @@ internal static class ScreenCoverService
             foreach (var window in _windows)
             {
                 window.KeepOnTop();
-                window.Apply(reading, levers, revealed, appearance);
+                window.Apply(reading, levers, revealed, appearance, session.Goal);
             }
         }
         catch (Exception ex) { AppLog.Error("ScreenCoverService.OnTick", ex); }

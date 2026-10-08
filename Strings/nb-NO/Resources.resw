@@ -259,6 +259,10 @@
     <value>Start</value>
     <comment>Button on the tray pop-out that starts a session of the chosen kind, imperative verb.</comment>
   </data>
+  <data name="PopOutGoalPlaceholder" xml:space="preserve">
+    <value>Mål for økten</value>
+    <comment>Placeholder and screen-reader name of the one-line goal field in the pop-out's start box, noun phrase.</comment>
+  </data>
   <data name="PopOutStartProgramFocusInfo" xml:space="preserve">
     <value>Merk minst ett program som Kan kjøre på Fokus-siden</value>
     <comment>Hover text on the disabled program-focus button, imperative; Can run names the checkbox; no full stop.</comment>

@@ -101,7 +101,9 @@
                 <!-- Pure white on pure black: the highest contrast the surface can carry, which is
                      what keeps this readable when the brightness lever has taken the panel to its
                      floor. Nothing here writes a brightness. -->
-                <TextBlock Text="Focus session in progress"
+                <!-- A goal set for the session replaces this line. -->
+                <TextBlock x:Name="HeadlineText"
+                           Text="Focus session in progress"
                            FontSize="34"
                            FontWeight="Bold"
                            TextWrapping="Wrap"

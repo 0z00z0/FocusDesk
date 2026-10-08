@@ -83,13 +83,15 @@ internal static class FocusSessionService
     /// sets the duration through its own number instead.</param>
     /// <param name="kind">The kind chosen in the start box. Null from Home Assistant, which sets the
     /// kind through its own select instead. A kind chosen here is never stored.</param>
-    public static FocusArmOutcome Arm(ActionCause cause, int? minutes = null, FocusSessionKind? kind = null)
+    /// <param name="goal">The goal typed in the start box. Null from Home Assistant, which has none.</param>
+    public static FocusArmOutcome Arm(ActionCause cause, int? minutes = null, FocusSessionKind? kind = null,
+                                      string? goal = null)
     {
         var (stored, storedKind, screen, input, network) = SettingsService.Read(
             s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusDimsScreen, s.FocusBlocksInput,
                   s.FocusBlocksNetwork));
         var plan = FocusSessionPlan.For(kind ?? storedKind, network, screen, input);
-        return _engine.Arm(FocusStartRequest.Minutes(minutes, stored), plan, cause);
+        return _engine.Arm(FocusStartRequest.Minutes(minutes, stored), plan, cause, goal);
     }
 
     /// <summary>What the focus-app lever decides against, read when a session arms or resumes: the
@@ -173,16 +175,17 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
 {
     public FocusSessionRecord? Read()
     {
-        var (startedAt, endsAt, screen, cover, input, network, programs, kind) = SettingsService.Read(
+        var (startedAt, endsAt, screen, cover, input, network, programs, kind, goal) = SettingsService.Read(
             s => (s.FocusSessionStartedAt, s.FocusSessionEndsAt, s.FocusSessionDimmedScreen,
                   s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput,
                   s.FocusSessionBlockedNetwork, s.FocusSessionLimitedPrograms,
-                  s.FocusSessionRunningKind));
+                  s.FocusSessionRunningKind, s.FocusSessionGoal));
         // A document written before the start time was recorded falls back to the end time, which
         // reads as a session with no length. Only the cover's ring uses it, and such a document
         // carries no cover lever, so nothing draws from the fallback.
         return endsAt is { } ends
-            ? new FocusSessionRecord(startedAt ?? ends, ends, screen, cover, input, network, programs, kind)
+            ? new FocusSessionRecord(startedAt ?? ends, ends, screen, cover, input, network, programs, kind,
+                                     FocusSessionGoal.Clean(goal))
             : null;
     }
 
@@ -196,6 +199,7 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
         s.FocusSessionBlockedNetwork = session.BlocksNetwork;
         s.FocusSessionLimitedPrograms = session.LimitsPrograms;
         s.FocusSessionRunningKind = session.Kind;
+        s.FocusSessionGoal = session.Goal.Length > 0 ? session.Goal : null;
     });
 
     public void Clear() => SettingsService.Update(s =>
@@ -203,6 +207,7 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
         s.FocusSessionStartedAt = null;
         s.FocusSessionEndsAt = null;
         s.FocusSessionRunningKind = FocusSessionKind.ScreenBreak;
+        s.FocusSessionGoal = null;
         s.FocusSessionDimmedScreen = false;
         s.FocusSessionCoveredScreen = false;
         s.FocusSessionBlockedInput = false;

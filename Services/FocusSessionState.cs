@@ -94,10 +94,12 @@ internal static class FocusSessionStages
 /// <param name="LimitsPrograms">Whether only the chosen programs can be used, on the same terms.</param>
 /// <param name="Kind">The kind the running session was started as. Meaningless when none is
 /// running.</param>
+/// <param name="Goal">The goal typed for the session, empty where none was. For the cover only:
+/// nothing published, logged or shown on the tray reads it.</param>
 internal readonly record struct FocusSnapshot(
     FocusSessionStage Stage, DateTimeOffset? StartedAt, DateTimeOffset? EndsAt,
     bool DimsScreen, bool CoversScreen, bool BlocksInput = false, bool BlocksNetwork = false,
-    bool LimitsPrograms = false, FocusSessionKind Kind = FocusSessionKind.ScreenBreak)
+    bool LimitsPrograms = false, FocusSessionKind Kind = FocusSessionKind.ScreenBreak, string Goal = "")
 {
     public static readonly FocusSnapshot None =
         new(FocusSessionStage.Off, null, null, false, false);

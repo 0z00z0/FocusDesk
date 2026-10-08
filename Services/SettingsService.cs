@@ -93,6 +93,10 @@ internal sealed class AppSettings
     /// <inheritdoc cref="FocusSessionDimmedScreen"/>
     public bool FocusSessionLimitedPrograms { get; set; }
 
+    /// <summary>The goal typed for the running session, so a session resumed after a restart keeps
+    /// it. Null where none was set or none is running.</summary>
+    public string? FocusSessionGoal { get; set; }
+
     /// <summary>The firewall profile settings displaced by a network block, saved before anything
     /// changes so a crash cannot lose them. Null means nothing is displaced.</summary>
     public List<FirewallProfileSetting>? FocusSavedFirewall { get; set; }

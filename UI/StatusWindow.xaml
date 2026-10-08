@@ -107,6 +107,10 @@
                                 Click="OnChooseScreenBreak"/>
                     </Grid>
 
+                    <!-- The goal for this one session, shown on the cover and the focus point in place
+                         of their own line. Empty at every showing and never stored as a default. -->
+                    <TextBox x:Name="GoalBox" AcceptsReturn="False"/>
+
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>

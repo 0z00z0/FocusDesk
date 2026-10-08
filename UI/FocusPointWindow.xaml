@@ -95,8 +95,10 @@
                         Foreground="#FFC9C5BC"
                         Click="OnStartSession"/>
 
-                <!-- The quiet line near the foot for the first few seconds, as the exercise shows it. -->
+                <!-- The quiet line near the foot for the first few seconds, as the exercise shows it.
+                     A goal set for the session takes its place, on two lines where it is long. -->
                 <TextBlock Grid.Row="2" x:Name="Hint"
+                           MaxWidth="480" TextWrapping="Wrap" MaxLines="2"
                            FontSize="13"
                            CharacterSpacing="120"
                            Foreground="#FF4A5560"

@@ -92,11 +92,12 @@ internal sealed class SettingsFile
         [JsonPropertyOrder(18)] public bool FocusSessionCoveredScreen  { get; set; }
         [JsonPropertyOrder(19)] public bool FocusSessionBlockedInput   { get; set; }
         [JsonPropertyOrder(20)] public bool FocusSessionLimitedPrograms { get; set; }
-        [JsonPropertyOrder(21)] public List<FirewallProfileSetting>? FocusSavedFirewall { get; set; }
+        [JsonPropertyOrder(21)] public string? FocusSessionGoal { get; set; }
+        [JsonPropertyOrder(22)] public List<FirewallProfileSetting>? FocusSavedFirewall { get; set; }
 
         // An earlier document's path list, read to migrate and never written: null on every write,
         // and a null key is left out. The store keeps the earlier bytes where they stand.
-        [JsonPropertyOrder(22), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyOrder(23), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<string>? FocusAllowedPrograms { get; set; }
     }
 
@@ -172,6 +173,7 @@ internal sealed class SettingsFile
                 FocusSessionBlockedInput  = s.FocusSessionBlockedInput,
                 FocusSessionBlockedNetwork = s.FocusSessionBlockedNetwork,
                 FocusSessionLimitedPrograms = s.FocusSessionLimitedPrograms,
+                FocusSessionGoal          = s.FocusSessionGoal,
                 FocusSavedFirewall        = s.FocusSavedFirewall,
             },
         };
@@ -205,6 +207,7 @@ internal sealed class SettingsFile
         FocusSessionBlockedInput  = Focus.FocusSessionBlockedInput,
         FocusSessionBlockedNetwork = Focus.FocusSessionBlockedNetwork,
         FocusSessionLimitedPrograms = Focus.FocusSessionLimitedPrograms,
+        FocusSessionGoal          = Focus.FocusSessionGoal,
         FocusSavedFirewall        = Focus.FocusSavedFirewall,
 
         PromoteTrayIcon               = Appearance.PromoteTrayIcon ?? false,
