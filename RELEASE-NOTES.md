@@ -26,7 +26,7 @@ updater reads.
   and a session can be started from there.
 - The pop-out from the notification-area icon shows the running session and the most recent ones,
   and every finished session is kept in a history file.
-- Settings has six pages: Focus, Screen, MQTT, Appearance, About and App diagnostics.
+- Settings has six pages: Focus, Screen, MQTT, Appearance, About and Diagnostics.
 - An update is checked for on request, from the menu or the About page, and only a release signed by
   ZeroZero Software is installed.
 - A switch on the About page, off until turned on, lets updates install by themselves: checked once a

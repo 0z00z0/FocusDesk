@@ -7,7 +7,7 @@ using ZeroZero.Win32;
 namespace FocusDesk.UI;
 
 /// <summary>
-/// The App diagnostics page: the settings document, and the files a run leaves behind.
+/// The Diagnostics page: the settings document, and the files a run leaves behind.
 /// </summary>
 /// <remarks>The log list is read from the folder rather than declared, so a rolled archive and the
 /// installer's own log from an unattended update both appear without anything here naming them.</remarks>
