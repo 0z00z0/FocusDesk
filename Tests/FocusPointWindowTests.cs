@@ -65,6 +65,29 @@ public class FocusPointWindowTests
         Assert.Contains("StartSession(_start.Finish)", RepoFiles.Member(window, "OnMinuteUp"));
     }
 
+    /// <summary>A click anywhere neither closes nor settles the window; Escape and Alt+F4 are the only
+    /// ways out, wired on the root that holds keyboard focus.</summary>
+    [Fact]
+    public void AClick_NeverClosesTheWindow_OnlyEscapeAndAltF4Do()
+    {
+        string[] pointerEvents = ["Tapped", "DoubleTapped", "RightTapped", "Holding", "PointerPressed", "PointerReleased"];
+        var markup = XDocument.Parse(RepoFiles.Read(Path.Combine("UI", "FocusPointWindow.xaml")));
+        Assert.Empty(markup.Descendants().Attributes().Where(a => pointerEvents.Contains(a.Name.LocalName)));
+
+        string window = Window;
+        Assert.DoesNotMatch(new Regex(@"\b(" + string.Join("|", pointerEvents) + @")\s*\+="), window);
+        Assert.Equal(2, Regex.Matches(window, @"(?<![\w.?])Close\(\)").Count);
+        Assert.Contains("Close();", RepoFiles.Member(window, "OnCloseKeyInvoked"));
+        Assert.Contains("Close();", RepoFiles.Member(window, "StartSession"));
+        Assert.Single(Regex.Matches(window, @"_start\.Cancel\b"));
+
+        var root = markup.Root!.Elements().Single();
+        Assert.Equal("True", (string?)root.Attribute("IsTabStop"));
+        var keys = root.Descendants().Where(e => e.Name.LocalName == "KeyboardAccelerator")
+            .Select(e => ((string?)e.Attribute("Modifiers"), (string?)e.Attribute("Key"), (string?)e.Attribute("Invoked")));
+        Assert.Equal(new (string?, string?, string?)[] { (null, "Escape", "OnCloseKeyInvoked"), ("Menu", "F4", "OnCloseKeyInvoked") }, keys);
+    }
+
     [Theory]
     [InlineData(true, 25)]
     [InlineData(false, 90)]
