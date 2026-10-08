@@ -34,11 +34,12 @@
              grows past its own size on a larger one. -->
         <Viewbox Stretch="Uniform" StretchDirection="DownOnly"
                  HorizontalAlignment="Center" VerticalAlignment="Center">
-            <Grid Width="520" Height="600">
+            <Grid Width="520" Height="680">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="104"/>
                     <RowDefinition Height="44"/>
+                    <RowDefinition Height="80"/>
                 </Grid.RowDefinitions>
 
                 <!-- The exercise's 220-unit target: a faint circle, the arc filling it clockwise from
@@ -107,6 +108,23 @@
                            TextAlignment="Center"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Top"/>
+
+                <!-- A quotation on the same practice, in its own row so it never meets the hint or the
+                     button, and held for the whole exercise. Smaller than the hint; its grey keeps
+                     4.5:1 on the ground. -->
+                <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Top" Spacing="6">
+                    <TextBlock x:Name="Quote"
+                               MaxWidth="420" TextWrapping="Wrap" MaxLines="3"
+                               FontSize="11"
+                               Foreground="#FF7A848E"
+                               TextAlignment="Center"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="QuoteAttribution"
+                               FontSize="11"
+                               Foreground="#FF7A848E"
+                               TextAlignment="Center"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
             </Grid>
         </Viewbox>
     </Grid>

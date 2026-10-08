@@ -82,6 +82,8 @@ internal sealed partial class FocusPointWindow : Window
         StartSessionButton.Content = AppText.Get("FocusPointWindowStart");
         // The exercise sets its line in capitals; the text itself is the interface language's, or the goal.
         Hint.Text = FocusSessionGoal.Or(_goal, AppText.Get("FocusPointWindowHint")).ToUpper(CultureInfo.CurrentCulture);
+        Quote.Text = AppText.Get("FocusPointWindowQuote");
+        QuoteAttribution.Text = AppText.Get("FocusPointWindowQuoteAttribution");
 
         var presenter = OverlappedPresenter.Create();
         presenter.IsResizable   = false;

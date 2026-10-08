@@ -247,6 +247,14 @@
     <value>Hold blikket på punktet · blunking er greit</value>
     <comment>Quiet line under the breathing point on the focus-point window, shown in capitals, no full stop.</comment>
   </data>
+  <data name="FocusPointWindowQuote" xml:space="preserve">
+    <value>“Your visual focus drives your cognitive focus.”</value>
+    <comment>Kept in English: a quotation is shown in the words it was said in and is not translated. Verbatim from the Huberman Lab episode Focus Toolkit; at most 15 words.</comment>
+  </data>
+  <data name="FocusPointWindowQuoteAttribution" xml:space="preserve">
+    <value>— Andrew Huberman</value>
+    <comment>Attribution line under the quotation on the focus-point window, a name, the same in every language.</comment>
+  </data>
   <data name="PopOutStartProgramFocus" xml:space="preserve">
     <value>Programfokus</value>
     <comment>Button on the tray pop-out that chooses program focus as the kind Start arms, glossary term, capitalised.</comment>

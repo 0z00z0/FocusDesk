@@ -92,6 +92,18 @@ public class ResourceFileTests
         }
     }
 
+    /// <summary>The quotation under the focus point is someone else's words, shown under a limit of
+    /// fifteen words in every language.</summary>
+    [Fact]
+    public void TheFocusPointQuotationIsAtMostFifteenWordsInEveryLanguage()
+    {
+        foreach (string language in Languages)
+        {
+            string quote = Read(language)["FocusPointWindowQuote"].Value;
+            Assert.InRange(quote.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length, 1, 15);
+        }
+    }
+
     /// <summary>Both files are what the build indexes. A language folder the project does not list
     /// builds and never resolves.</summary>
     [Fact]
