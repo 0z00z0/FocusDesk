@@ -173,6 +173,9 @@ internal sealed class WindowsScreenBrightness : IScreenBrightnessSetting
     private static readonly TimeSpan SupportMaxAge = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ReadingMaxAge = TimeSpan.FromSeconds(1);
 
+    private static readonly WmiFailureLog Failures =
+        new(message => AppLog.Info(message), (source, ex) => AppLog.Error(source, ex));
+
     private readonly Lock _gate = new();
     private bool _canSet;
     private DateTimeOffset _canSetTaken = DateTimeOffset.MinValue;
@@ -219,7 +222,7 @@ internal sealed class WindowsScreenBrightness : IScreenBrightnessSetting
         }
         catch (Exception ex)
         {
-            AppLog.Error("WindowsScreenBrightness.Write", ex);
+            Failures.Report("WindowsScreenBrightness.Write", ex);
             return false;
         }
 
@@ -241,7 +244,7 @@ internal sealed class WindowsScreenBrightness : IScreenBrightnessSetting
                     return levels.OrderBy(level => Math.Abs(level - percent)).First();
                 }
         }
-        catch (Exception ex) { AppLog.Error("WindowsScreenBrightness.Nearest", ex); }
+        catch (Exception ex) { Failures.Report("WindowsScreenBrightness.Nearest", ex); }
 
         return percent;
     }
@@ -265,7 +268,7 @@ internal sealed class WindowsScreenBrightness : IScreenBrightnessSetting
         }
         catch (Exception ex)
         {
-            AppLog.Error("WindowsScreenBrightness.Read", ex);
+            Failures.Report("WindowsScreenBrightness.Read", ex);
             return null;
         }
     }
@@ -282,9 +285,28 @@ internal sealed class WindowsScreenBrightness : IScreenBrightnessSetting
         }
         catch (Exception ex)
         {
-            AppLog.Error($"WindowsScreenBrightness.Count({className})", ex);
+            Failures.Report($"WindowsScreenBrightness.Count({className})", ex);
             return 0;
         }
+    }
+}
+
+/// <summary>Reports a failed brightness query: "not supported" means no display takes a brightness
+/// from Windows, noted once per process as information; any other failure is an error.</summary>
+internal sealed class WmiFailureLog(Action<string> info, Action<string, Exception> error)
+{
+    private int _noted;
+
+    public void Report(string source, Exception ex)
+    {
+        if (ex is ManagementException { ErrorCode: ManagementStatus.NotSupported })
+        {
+            if (Interlocked.Exchange(ref _noted, 1) == 0)
+                info("Screen: Windows reports no display with brightness control on this machine.");
+            return;
+        }
+
+        error(source, ex);
     }
 }
 
