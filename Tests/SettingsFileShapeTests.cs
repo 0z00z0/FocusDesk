@@ -40,6 +40,9 @@ public class SettingsFileShapeTests : IDisposable
         "Focus",
         "Focus.FocusSessionMinutes",
         "Focus.FocusStartFromDashboard",
+        "Focus.FocusPointShown",
+        "Focus.FocusPointStartsSession",
+        "Focus.FocusPointSeconds",
         "Focus.FocusSessionKind",
         "Focus.FocusBlocksNetwork",
         "Focus.FocusPrograms",
@@ -182,6 +185,9 @@ public class SettingsFileShapeTests : IDisposable
             FocusSessionRunningKind   = FocusSessionKind.ProgramFocus,
             FocusSessionLimitedPrograms = true,
             InstallUpdatesUnattended  = true,
+            FocusPointShown           = false,
+            FocusPointStartsSession   = true,
+            FocusPointSeconds         = 120,
         };
         Assert.True(SettingsService.WriteTo(before, File_));
 
@@ -258,7 +264,7 @@ public class SettingsFileShapeTests : IDisposable
         s.FocusSessionLimitedPrograms,
         s.FocusBlocksInput, s.FocusStartFromDashboard, s.FocusSessionStartedAt, s.FocusSessionEndsAt,
         s.FocusSessionDimmedScreen, s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput,
-        s.InstallUpdatesUnattended);
+        s.InstallUpdatesUnattended, s.FocusPointShown, s.FocusPointStartsSession, s.FocusPointSeconds);
 
     /// <summary>An empty document reads as this application's defaults, not the section types'. The
     /// two differ: a section type declares no session length and no lever, so binding an empty
@@ -275,6 +281,25 @@ public class SettingsFileShapeTests : IDisposable
         Assert.NotNull(loaded);
         Assert.Equal(Describe(new AppSettings()), Describe(loaded!));
         Assert.Empty(Directory.GetFiles(_dir, "settings.*.bad.json"));
+
+        // The focus point shows, waits for its button, and runs a minute, as it did before the rows
+        // existed.
+        Assert.Equal((true, false, 60), (loaded!.FocusPointShown, loaded.FocusPointStartsSession, loaded.FocusPointSeconds));
+    }
+
+    /// <summary>A stored focus-point duration outside 10 to 300 seconds reads as the minute, never as
+    /// a window that ends at once or runs for an hour.</summary>
+    [Theory]
+    [InlineData(9, 60)]
+    [InlineData(10, 10)]
+    [InlineData(300, 300)]
+    [InlineData(301, 60)]
+    public void AFocusPointDurationOutOfBoundsReadsAsTheDefault(int stored, int read)
+    {
+        Directory.CreateDirectory(_dir);
+        System.IO.File.WriteAllText(File_, $"{{ \"ConfigVersion\": 1, \"Focus\": {{ \"FocusPointSeconds\": {stored} }} }}");
+
+        Assert.Equal(read, SettingsService.ReadFrom(File_)!.FocusPointSeconds);
     }
 
     /// <summary>Genuinely broken JSON is set aside and yields nothing. Nothing is returned rather

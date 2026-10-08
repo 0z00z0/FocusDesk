@@ -24,8 +24,8 @@ namespace FocusDesk.UI;
 /// the next click re-shows the same window; a long idle spell destroys it and the click after that
 /// builds it again.</para>
 /// <para>Nothing here ends a session. The start box starts one: the two kind buttons only choose,
-/// and the Start button opens the focus-point window with the chosen kind and length, whose own
-/// button arms the session after its minute. The way out is Home Assistant's staged cancel and the
+/// and the Start button opens the focus-point window with the chosen kind and length, which arms the
+/// session after its time, or arms it at once where the Focus page turns the focus point off. The way out is Home Assistant's staged cancel and the
 /// session's own clock, and the window says so while one runs.</para>
 /// </remarks>
 internal sealed partial class StatusWindow : Window
@@ -353,14 +353,34 @@ internal sealed partial class StatusWindow : Window
         ShowChosenKind();
     }
 
-    /// <summary>Opens the focus-point window for the chosen kind and length. Nothing is armed and
-    /// nothing is stored here: the session starts from that window's own button, after its minute.</summary>
+    /// <summary>Opens the focus-point window for the chosen kind and length, which starts the session
+    /// after its time. Where the Focus page turns the focus point off, arms the session here at once.
+    /// The focus-point rows are read now, so a window already open keeps what it opened with.</summary>
     private void OnStart(object sender, RoutedEventArgs e)
     {
         if (FocusLengthChoices.Selected(MinutesCombo) is not { } minutes) return;
 
         RefusalText.Visibility = Visibility.Collapsed;
-        FocusPointWindow.Open(_chosenKind, minutes);
+        var (shown, startsItself, seconds) = SettingsService.Read(
+            s => (s.FocusPointShown, s.FocusPointStartsSession, s.FocusPointSeconds));
+        if (shown)
+        {
+            FocusPointWindow.Open(_chosenKind, minutes, seconds, startsItself);
+            return;
+        }
+
+        // The chosen length is what the next session runs for from wherever it is started, so it is
+        // stored rather than held for this one start.
+        SettingsService.Update(s => s.FocusSessionMinutes = minutes);
+        var outcome = FocusSessionService.Arm(ActionCause.StatusWindow("Start button"), minutes, _chosenKind);
+        if (outcome == FocusArmOutcome.Armed)
+        {
+            Reload();
+            return;
+        }
+
+        RefusalText.Text = Refusal(outcome);
+        RefusalText.Visibility = Visibility.Visible;
     }
 
     /// <summary>Why nothing started, in the words of whoever pressed the button. Every one of these

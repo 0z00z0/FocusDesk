@@ -31,6 +31,15 @@ public sealed partial class FocusSettingsPanel : UserControl
         FocusKindScreenBreakRadio.Content  = AppText.Get("FocusKindScreenBreakOption");
         FocusProgramFocusHeader.Heading = AppText.Get("FocusProgramFocusHeading");
         FocusScreenBreakHeader.Heading  = AppText.Get("FocusScreenBreakHeading");
+        FocusPointHeader.Heading = AppText.Get("FocusPointHeading");
+        FocusPointShownCard.Header      = AppText.Get("FocusPointShownHeader");
+        FocusPointShownCard.Description = AppText.Get("FocusPointShownDescription");
+        FocusPointStartsSessionCard.Header      = AppText.Get("FocusPointStartsSessionHeader");
+        FocusPointStartsSessionCard.Description = AppText.Get("FocusPointStartsSessionDescription");
+        FocusPointSecondsCard.Header      = AppText.Get("FocusPointSecondsHeader");
+        FocusPointSecondsCard.Description = AppText.Get("FocusPointSecondsDescription");
+        FocusPointSecondsBox.Minimum = FocusPointStart.MinSeconds;
+        FocusPointSecondsBox.Maximum = FocusPointStart.MaxSeconds;
         Loaded += (_, _) => Reload();
     }
 
@@ -91,6 +100,15 @@ public sealed partial class FocusSettingsPanel : UserControl
             FocusBlocksInputToggle.IsEnabled  = !locked;
 
             FocusStartFromStatusToggle.IsOn = startFromStatus;
+
+            var (pointShown, pointStarts, pointSeconds) = SettingsService.Read(
+                s => (s.FocusPointShown, s.FocusPointStartsSession, s.FocusPointSeconds));
+            FocusPointShownToggle.IsOn         = pointShown;
+            FocusPointStartsSessionToggle.IsOn = pointStarts;
+            FocusPointSecondsBox.Value         = pointSeconds;
+            // Both describe a focus point that is not shown otherwise.
+            FocusPointStartsSessionToggle.IsEnabled = pointShown;
+            FocusPointSecondsBox.IsEnabled          = pointShown;
 
             ShowAllowedPrograms(locked);
         }
@@ -256,5 +274,29 @@ public sealed partial class FocusSettingsPanel : UserControl
     {
         if (_updating) return;
         SettingsService.Update(s => s.FocusStartFromDashboard = FocusStartFromStatusToggle.IsOn);
+    }
+
+    private void OnFocusPointShownToggled(object sender, RoutedEventArgs e)
+    {
+        if (_updating) return;
+        SettingsService.Update(s => s.FocusPointShown = FocusPointShownToggle.IsOn);
+        Reload();
+    }
+
+    private void OnFocusPointStartsSessionToggled(object sender, RoutedEventArgs e)
+    {
+        if (_updating) return;
+        SettingsService.Update(s => s.FocusPointStartsSession = FocusPointStartsSessionToggle.IsOn);
+    }
+
+    /// <summary>Stores a whole number of seconds within the bounds. A cleared box puts the stored value
+    /// back rather than storing nothing.</summary>
+    private void OnFocusPointSecondsChanged(NumberBox sender, NumberBoxValueChangedEventArgs args)
+    {
+        if (_updating) return;
+        if (double.IsNaN(args.NewValue)) { Reload(); return; }
+
+        int seconds = (int)Math.Round(Math.Clamp(args.NewValue, FocusPointStart.MinSeconds, FocusPointStart.MaxSeconds));
+        SettingsService.Update(s => s.FocusPointSeconds = seconds);
     }
 }

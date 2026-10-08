@@ -51,6 +51,18 @@ internal sealed class AppSettings
     /// that ends a session, whatever this holds: nothing on the machine ends one.</summary>
     public bool FocusStartFromDashboard { get; set; } = true;
 
+    /// <summary>Whether the status window's Start button opens the focus-point window first. Off, it
+    /// arms the chosen session at once. Read when Start is pressed.</summary>
+    public bool FocusPointShown { get; set; } = true;
+
+    /// <summary>Whether the focus-point window arms the session itself when its time runs out,
+    /// rather than showing a button. Closing the window before then still arms nothing.</summary>
+    public bool FocusPointStartsSession { get; set; }
+
+    /// <summary>How long the focus-point window runs, in seconds. A stored value outside the bounds in
+    /// <see cref="FocusPointStart"/> reads as the default.</summary>
+    public int FocusPointSeconds { get; set; } = FocusPointStart.DefaultSeconds;
+
     /// <summary>When the running focus session was armed. Only the cover's countdown ring reads it,
     /// to know what a full ring means; nothing about ending a session depends on it.</summary>
     public DateTimeOffset? FocusSessionStartedAt { get; set; }
