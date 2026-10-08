@@ -31,6 +31,28 @@
                           MinWidth="0" Toggled="OnFocusStartFromStatusToggled"/>
         </controls:SettingsCard>
 
+        <!-- The breathing exercise the status window's Start button opens. Read when Start is pressed,
+             so a window already open keeps what it opened with. The texts come from the resource
+             files. -->
+        <zz:SettingsSectionHeader x:Name="FocusPointHeader"/>
+
+        <controls:SettingsCard x:Name="FocusPointShownCard">
+            <ToggleSwitch x:Name="FocusPointShownToggle" OnContent="" OffContent=""
+                          MinWidth="0" Toggled="OnFocusPointShownToggled"/>
+        </controls:SettingsCard>
+
+        <controls:SettingsCard x:Name="FocusPointStartsSessionCard">
+            <ToggleSwitch x:Name="FocusPointStartsSessionToggle" OnContent="" OffContent=""
+                          MinWidth="0" Toggled="OnFocusPointStartsSessionToggled"/>
+        </controls:SettingsCard>
+
+        <controls:SettingsCard x:Name="FocusPointSecondsCard">
+            <NumberBox x:Name="FocusPointSecondsBox" MinWidth="110"
+                       SmallChange="5" LargeChange="30"
+                       SpinButtonPlacementMode="Compact" ValidationMode="InvalidInputOverwritten"
+                       ValueChanged="OnFocusPointSecondsChanged"/>
+        </controls:SettingsCard>
+
         <zz:SettingsSectionHeader Heading="What a session holds"/>
 
         <!-- The kind the session switch in Home Assistant starts. Locked for the length of a session

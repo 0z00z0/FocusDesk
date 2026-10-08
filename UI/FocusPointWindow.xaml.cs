@@ -14,15 +14,16 @@ using Point = Windows.Foundation.Point;
 namespace FocusDesk.UI;
 
 /// <summary>
-/// The one-minute breathing exercise shown when the pop-out's Start button is pressed, before any
-/// session exists. The ring fills over the minute, then a button starts the session that was chosen.
+/// The breathing exercise shown when the pop-out's Start button is pressed, before any session exists.
+/// The ring fills over the time the Focus page sets, then a button starts the session that was chosen,
+/// or the window starts it itself where the Focus page says so.
 /// Full-screen and frameless on the monitor under the pointer, the same weight as the screen cover
 /// it precedes.
 /// </summary>
 /// <remarks>
 /// <para>Closing it — Escape, Alt+F4, or a click on the screen away from the ring and the button —
-/// at any point cancels: nothing is armed and nothing on the machine changes. The button is the
-/// only way on to a session.</para>
+/// before the session starts cancels: nothing is armed and nothing on the machine changes. The button,
+/// or the end of the time where the window starts the session itself, is the only way on to one.</para>
 /// <para>The same for both kinds of session. What follows the button is the session's own business:
 /// a screen break's cover opens straight on its configured visual, a program focus minimises the
 /// other programs.</para>
@@ -55,21 +56,24 @@ internal sealed partial class FocusPointWindow : Window
     private bool _placed;
 
     /// <summary>Opens the exercise for a session of <paramref name="kind"/> lasting
-    /// <paramref name="minutes"/>. One already open is closed first, which cancels it.</summary>
-    internal static void Open(FocusSessionKind kind, int minutes)
+    /// <paramref name="minutes"/>, running for <paramref name="seconds"/> and then either showing its
+    /// button or, where <paramref name="startsItself"/>, arming the session itself. One already open
+    /// is closed first, which cancels it.</summary>
+    internal static void Open(FocusSessionKind kind, int minutes, int seconds, bool startsItself)
     {
         _open?.Close();
 
-        var window = new FocusPointWindow(kind, minutes);
+        var window = new FocusPointWindow(kind, minutes, seconds, startsItself);
         _open = window;
         window.Closed += (_, _) => { if (ReferenceEquals(_open, window)) _open = null; };
         window.Activate();
     }
 
-    private FocusPointWindow(FocusSessionKind kind, int minutes)
+    private FocusPointWindow(FocusSessionKind kind, int minutes, int seconds, bool startsItself)
     {
         InitializeComponent();
-        _start = new FocusPointStart(kind, minutes, () => _clock.Elapsed);
+        _start = new FocusPointStart(kind, minutes, TimeSpan.FromSeconds(FocusPointStart.SecondsOrDefault(seconds)),
+                                     startsItself, () => _clock.Elapsed);
 
         Title = AppText.Get("FocusPointWindowTitle");
         StartSessionButton.Content = AppText.Get("FocusPointWindowStart");
@@ -145,10 +149,10 @@ internal sealed partial class FocusPointWindow : Window
 
     private void OnFrame(object? sender, object e) => DrawArc();
 
-    /// <summary>The arc fills clockwise from twelve o'clock over the minute, whole at its end.</summary>
+    /// <summary>The arc fills clockwise from twelve o'clock over the exercise's time, whole at its end.</summary>
     private void DrawArc()
     {
-        double done = Math.Clamp(1 - _start.Remaining / FocusPointStart.Length, 0, 1);
+        double done = Math.Clamp(1 - _start.Remaining / _start.Length, 0, 1);
         Progress.Data = RingGeometry.Arc(Cx, Cy, Radius, 0, 360 * done);
     }
 
@@ -160,8 +164,8 @@ internal sealed partial class FocusPointWindow : Window
 
     private void FadeHint() => Fade(Hint, 1, 0, HintStays, HintFade);
 
-    /// <summary>Checks the minute against the start's own clock rather than trusting the timer, and
-    /// reveals the button only once the start says it may be pressed.</summary>
+    /// <summary>Checks the time against the start's own clock rather than trusting the timer. Once the
+    /// start says the session may begin, it either arms the session itself or reveals the button.</summary>
     private void OnMinuteUp()
     {
         DrawArc();
@@ -174,6 +178,12 @@ internal sealed partial class FocusPointWindow : Window
 
         _minute.Stop();
         StopDrawing();
+        if (_start.StartsItself)
+        {
+            StartSession(_start.Finish);
+            return;
+        }
+
         StartSessionButton.Visibility = Visibility.Visible;
         Fade(StartSessionButton, 0, 1, TimeSpan.Zero, ButtonFade);
     }
@@ -197,14 +207,19 @@ internal sealed partial class FocusPointWindow : Window
         board.Begin();
     }
 
-    /// <summary>Starts the session that was chosen. The window leaves the screen first, so a screen
-    /// break's cover goes up over the desktop rather than over this window.</summary>
     private void OnStartSession(object sender, RoutedEventArgs e)
     {
         if (!_start.CanBegin) return;
+        StartSession(_start.Begin);
+    }
 
+    /// <summary>Starts the session that was chosen, through the start's button or its own end. The
+    /// window leaves the screen first, so a screen break's cover goes up over the desktop rather than
+    /// over this window.</summary>
+    private void StartSession(Func<Func<int, FocusSessionKind, FocusArmOutcome>, FocusArmOutcome?> begin)
+    {
         AppWindow.Hide();
-        var outcome = _start.Begin(Arm);
+        var outcome = begin(Arm);
         Close();
 
         // The window that would have shown why is gone, so the pop-out says it instead.

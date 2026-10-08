@@ -38,6 +38,34 @@
     <value>Screen break</value>
     <comment>Section heading over the dim and input switches on the Focus page, glossary term, capitalised.</comment>
   </data>
+  <data name="FocusPointHeading" xml:space="preserve">
+    <value>Focus point</value>
+    <comment>Section heading over the three focus-point rows on the Focus page, noun phrase, capitalised.</comment>
+  </data>
+  <data name="FocusPointShownHeader" xml:space="preserve">
+    <value>Show the focus point when a session starts</value>
+    <comment>Header of the switch on the Focus page, imperative phrase.</comment>
+  </data>
+  <data name="FocusPointShownDescription" xml:space="preserve">
+    <value>The Start button in the status window opens the breathing exercise first. Off, the session starts at once.</value>
+    <comment>Description under the switch, whole sentences; the status window is the tray pop-out.</comment>
+  </data>
+  <data name="FocusPointStartsSessionHeader" xml:space="preserve">
+    <value>Start the session automatically when the focus point finishes</value>
+    <comment>Header of the switch on the Focus page, imperative phrase.</comment>
+  </data>
+  <data name="FocusPointStartsSessionDescription" xml:space="preserve">
+    <value>No button to press at the end. Closing the focus point before then still starts nothing.</value>
+    <comment>Description under the switch, whole sentences.</comment>
+  </data>
+  <data name="FocusPointSecondsHeader" xml:space="preserve">
+    <value>Focus point duration</value>
+    <comment>Header of the number box on the Focus page, noun phrase.</comment>
+  </data>
+  <data name="FocusPointSecondsDescription" xml:space="preserve">
+    <value>How many seconds the breathing exercise runs, from 10 to 300.</value>
+    <comment>Description under the number box, whole sentence.</comment>
+  </data>
 
   <!-- Focus page: the Programs section. -->
   <data name="FocusProgramsHeader" xml:space="preserve">
