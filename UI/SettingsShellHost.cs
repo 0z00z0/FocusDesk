@@ -16,6 +16,7 @@ namespace FocusDesk.UI;
 internal static class SettingsShellHost
 {
     public const string FocusTag  = "focus";
+    public const string AutomaticSessionTag = "automatic";
     public const string ScreenTag = "screen";
     public const string MqttTag       = "mqtt";
     public const string AppearanceTag = "appearance";
@@ -60,6 +61,12 @@ internal static class SettingsShellHost
                     // the one on screen.
                     Enter = () => focus?.Watch(),
                     Leave = () => focus?.Unwatch(),
+                },
+                new SettingsSection
+                {
+                    Tag = AutomaticSessionTag, Label = AppText.Get("AutomaticSessionSectionLabel"),
+                    Icon = NavIcon("automatic"),
+                    Build = () => new AutomaticSessionSettingsPanel(),
                 },
                 new SettingsSection
                 {

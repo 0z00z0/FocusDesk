@@ -323,4 +323,37 @@
     <value>Avslutt – ikke under en fokusøkt</value>
     <comment>The same row, greyed out while a focus session runs; the menu shows no hover text, so the reason is in the row; no full stop.</comment>
   </data>
+  <!-- Automatic focus session page and the setup guide window. -->
+  <data name="AutomaticSessionSectionLabel" xml:space="preserve">
+    <value>Automatisk fokusøkt</value>
+    <comment>Settings navigation entry for the page about starting a focus session from Home Assistant, noun phrase.</comment>
+  </data>
+  <data name="AutomaticSessionHeading" xml:space="preserve">
+    <value>Automatisk fokusøkt</value>
+    <comment>Heading of that page, noun phrase.</comment>
+  </data>
+  <data name="AutomaticSessionGuideHeader" xml:space="preserve">
+    <value>Oppsettsveiledning</value>
+    <comment>Header of the card opening the setup guide, noun phrase.</comment>
+  </data>
+  <data name="AutomaticSessionGuideDescription" xml:space="preserve">
+    <value>Home Assistant kan starte en fokusøkt til et fast klokkeslett. Veiledningen viser hvordan, steg for steg, i Home Assistant 2026.10.</value>
+    <comment>Description under the setup guide card, whole sentences.</comment>
+  </data>
+  <data name="AutomaticSessionGuideButton" xml:space="preserve">
+    <value>Åpne oppsettsveiledningen</value>
+    <comment>Button that opens the setup guide window, imperative.</comment>
+  </data>
+  <data name="SetupGuideWindowTitle" xml:space="preserve">
+    <value>FocusDesk – automatisk fokusøkt</value>
+    <comment>Title bar of the window showing the setup guide, noun phrase.</comment>
+  </data>
+  <data name="SetupGuideLanguage" xml:space="preserve">
+    <value>nb</value>
+    <comment>Not shown: the language code the guide page opens in, en or nb; never translated as prose.</comment>
+  </data>
+  <data name="SetupGuideFailed" xml:space="preserve">
+    <value>Oppsettsveiledningen kunne ikke vises.</value>
+    <comment>Line in the guide window when the embedded browser fails, whole sentence.</comment>
+  </data>
 </root>

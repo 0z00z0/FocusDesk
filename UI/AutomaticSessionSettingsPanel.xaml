@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="FocusDesk.UI.AutomaticSessionSettingsPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls">
+
+    <!-- Every text on this page is set from the resource files in the constructor. -->
+    <StackPanel Spacing="4">
+        <TextBlock x:Name="HeadingText" Style="{StaticResource SectionHeaderStyle}"/>
+
+        <controls:SettingsCard x:Name="GuideCard">
+            <Button x:Name="OpenGuideButton" Style="{StaticResource AccentButtonStyle}"
+                    Click="OnOpenGuideClick"/>
+        </controls:SettingsCard>
+    </StackPanel>
+</UserControl>
