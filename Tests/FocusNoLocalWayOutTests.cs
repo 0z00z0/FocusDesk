@@ -165,13 +165,18 @@ public class FocusNoLocalWayOutTests
             @"private void Shutdown\(\)\s*\{(\s*//[^\n]*)*\s*if \(!DeliberateExit\.Allows\(FocusSessionService\.Current\)\)\s*\{[^}]*return;\s*\}(\s*//[^\n]*)*\s*WatchdogTask\.WriteHoldMarker\(\);"),
             AppCode);
 
-        // The runtime's exit only turns away a second instance or a held probe, in the constructor
-        // before this process owns anything a session could hold.
+        // The runtime's exit only turns away a second instance or a held probe in the constructor, or
+        // a refused tray icon before the broker connection or the session engine can arm a session.
         int constructor = AppCode.IndexOf("public App()", StringComparison.Ordinal);
         int owns = AppCode.IndexOf("InitializeComponent();", StringComparison.Ordinal);
+        int tray = AppCode.IndexOf("await TrayIconHost.StartAsync(Shutdown);", StringComparison.Ordinal);
+        int armable = AppCode.IndexOf("MqttService.Start();", StringComparison.Ordinal);
         var early = Regex.Matches(AppCode, @"Environment\.Exit\(");
         Assert.NotEmpty(early);
-        Assert.All(early, m => Assert.InRange(m.Index, constructor, owns));
+        Assert.InRange(tray, owns, armable);
+        Assert.InRange(AppCode.IndexOf("FocusSessionService.Start();", StringComparison.Ordinal), armable, int.MaxValue);
+        Assert.Single(early, m => m.Index > owns);
+        Assert.All(early, m => Assert.True((m.Index > constructor && m.Index < owns) ||(m.Index > tray && m.Index < armable)));
     }
 
     [Fact]

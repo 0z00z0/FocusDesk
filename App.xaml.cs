@@ -70,7 +70,7 @@ public partial class App : Application
         };
     }
 
-    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         try
         {
@@ -100,6 +100,15 @@ public partial class App : Application
                                      () => FocusSessionService.Current,
                                      () => SettingsService.Read(s => s.FocusCoverVisual));
 
+            // No window before the shell holds the icon; failing, end without a hold marker so the watchdog probe retries.
+            var started = await TrayIconHost.StartAsync(Shutdown);
+            if (!started.IsCreated)
+            {
+                AppLog.Info($"Tray icon not created: {started.Outcome}, {started.Attempts} attempts in {started.Elapsed}. The process ends.");
+                if (started.LastError is { } refusal) AppLog.Error("OnLaunched.TrayStartup", refusal);
+                Environment.Exit(1);
+            }
+
             // Before the session engine, whose network block is written against the broker this
             // connection is configured with. Its first announcement follows the engine's start
             // through the engine's own change event. Home Assistant is the only way a session is
@@ -113,12 +122,12 @@ public partial class App : Application
             // at. The icon is what a person sees.
             _hostWindow = new MainWindow();
 
-            // Before the icon, which offers the check from its menu. The sweep of leftover downloads
+            TrayIconHost.Follow();
+
+            // After the session engine, whose snapshot refuses an unattended install. The sweep of leftover downloads
             // runs here, while no install can be in flight.
             AppUpdates.Start(Shutdown);
             AppUpdates.ReportLastUpdate();
-
-            TrayIconHost.Start(Shutdown);
 
             // After the icon is registered: the shell's entry for it is what gets written.
             // A preference about where the icon sits is not worth a failed start.

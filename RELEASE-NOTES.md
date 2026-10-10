@@ -9,6 +9,11 @@ in the code. Newest version first; the heading is the version alone, exactly as 
 `FocusDesk.csproj`. A section never carries an installer hash: the workflow adds the one hash the
 updater reads.
 
+## 0.5.2
+
+- Started at sign-in, FocusDesk waits for the taskbar before putting its icon in the notification
+  area, and closes if the icon still cannot be placed, so a later start works.
+
 ## 0.5.1
 
 - A click anywhere on the full-screen focus point no longer cancels the session about to start, so a

@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+using FocusDesk.Services;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 
@@ -17,7 +19,10 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
 
-        AppWindow.IsShownInSwitchers = false;
+        // Has thrown at sign-in before the shell was ready; a host window in the switcher costs nothing.
+        try { AppWindow.IsShownInSwitchers = false; }
+        catch (Exception ex) when (ex is NotImplementedException or COMException)
+        { AppLog.Error("MainWindow.IsShownInSwitchers", ex); }
 
         // Chrome removed as well as the window moved away, so nothing is visible even in the moment
         // between creation and the move.

@@ -40,8 +40,8 @@
     <PackageVersion Include="ZeroZero.Mqtt.WinUI" Version="0.11.0" />
     <PackageVersion Include="ZeroZero.SettingsShell.WinUI" Version="0.8.1" />
     <PackageVersion Include="ZeroZero.Startup" Version="0.8.2" />
-    <PackageVersion Include="ZeroZero.Tray" Version="0.9.1" />
-    <PackageVersion Include="ZeroZero.Tray.WinUI" Version="0.9.1" />
+    <PackageVersion Include="ZeroZero.Tray" Version="0.10.0" />
+    <PackageVersion Include="ZeroZero.Tray.WinUI" Version="0.10.0" />
     <PackageVersion Include="ZeroZero.Update" Version="0.13.1" />
     <PackageVersion Include="ZeroZero.Update.Win32" Version="0.13.1" />
     <PackageVersion Include="ZeroZero.Update.WinUI" Version="0.13.1" />
