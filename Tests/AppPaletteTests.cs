@@ -22,7 +22,7 @@ public class AppPaletteTests
         get
         {
             int start = AppCode.IndexOf("public App()", StringComparison.Ordinal);
-            int end = AppCode.IndexOf("protected override void OnLaunched", StringComparison.Ordinal);
+            int end = AppCode.IndexOf("protected override async void OnLaunched", StringComparison.Ordinal);
             Assert.InRange(start, 0, end);
             return AppCode[start..end];
         }

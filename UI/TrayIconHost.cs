@@ -35,10 +35,11 @@ internal static class TrayIconHost
     private static Action? _exit;
 
     /// <summary>
-    /// Puts the icon in the notification area. On the UI thread, once, after the XAML runtime is up.
+    /// Puts the icon in the notification area once the taskbar exists. On the UI thread, once, after
+    /// the XAML runtime is up. Ending the process where the shell refused the icon is the caller's.
     /// </summary>
     /// <param name="exit">What leaving from the menu does. Called on the UI thread.</param>
-    public static void Start(Action exit)
+    public static async Task<TrayStartupResult> StartAsync(Action exit)
     {
         ArgumentNullException.ThrowIfNull(exit);
 
@@ -60,9 +61,14 @@ internal static class TrayIconHost
         });
 
         host.Failed += (_, ex) => AppLog.Error("TrayIconHost", ex);
-        host.Start();
-        _host = host;
+        var started = await TrayStartup.StartAsync(host);
+        if (started.IsCreated) _host = host;
+        return started;
+    }
 
+    /// <summary>Keeps the tooltip current. After the session engine and the broker connection start.</summary>
+    public static void Follow()
+    {
         // The session moves on its own clock and from Home Assistant, and the broker link comes and
         // goes on its own. The menu is rebuilt by the host on every right click, so only the tooltip
         // needs following.
@@ -73,6 +79,7 @@ internal static class TrayIconHost
         _tooltipTimer = new DispatcherTimer { Interval = TooltipInterval };
         _tooltipTimer.Tick += (_, _) => RefreshTooltip();
         _tooltipTimer.Start();
+        RefreshTooltip();
     }
 
     /// <summary>Takes the icon out of the notification area. Nothing else here holds a shell

@@ -27,7 +27,7 @@ public class WatchdogHoldTests
     {
         Assert.Matches(@"TrayMenuItem\.Command\(AppText\.Get\(""TrayMenuExit""\),\s*\(\)\s*=>\s*_exit\?\.Invoke\(\)\)",
             RepoFiles.Read(@"UI\TrayIconHost.cs"));
-        Assert.Contains("TrayIconHost.Start(Shutdown);", AppCode, StringComparison.Ordinal);
+        Assert.Contains("await TrayIconHost.StartAsync(Shutdown);", AppCode, StringComparison.Ordinal);
 
         string shutdown = Between("private void Shutdown()", "Exit();");
         int marker = shutdown.IndexOf("WatchdogTask.WriteHoldMarker();", StringComparison.Ordinal);
@@ -42,7 +42,7 @@ public class WatchdogHoldTests
     {
         Assert.Equal("--watchdog-relaunch", TaskDefinitions.WatchdogArg);
 
-        string constructor = Between("public App()", "protected override void OnLaunched");
+        string constructor = Between("public App()", "protected override async void OnLaunched");
         Assert.Contains("TaskDefinitions.WatchdogArg", constructor, StringComparison.Ordinal);
         int hold = constructor.IndexOf("WatchdogTask.HoldsProbeOff", StringComparison.Ordinal);
         int guard = constructor.IndexOf("SingleInstanceGuard.TryAcquire()", StringComparison.Ordinal);
