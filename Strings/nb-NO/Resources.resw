@@ -19,7 +19,7 @@
     <comment>Header of the card choosing the kind on the Focus page, noun phrase.</comment>
   </data>
   <data name="FocusKindCardDescription" xml:space="preserve">
-    <value>Det en økt startet fra Home Assistant gjør. Statusvinduet tilbyr begge.</value>
+    <value>Det en økt startet over MQTT gjør. Statusvinduet tilbyr begge.</value>
     <comment>Description under the kind card, whole sentences; the status window is the tray pop-out.</comment>
   </data>
   <data name="FocusKindProgramFocusOption" xml:space="preserve">

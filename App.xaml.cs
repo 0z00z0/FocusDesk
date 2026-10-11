@@ -155,7 +155,7 @@ public partial class App : Application
         // started from Home Assistant still offers it, and the update flow has no menu at all.
         if (!DeliberateExit.Allows(FocusSessionService.Current))
         {
-            AppLog.Info("Exit refused: a focus session is running. It ends from Home Assistant or by its own clock.");
+            AppLog.Info("Exit refused: a focus session is running. It ends by an MQTT command or by its own clock.");
             return;
         }
 

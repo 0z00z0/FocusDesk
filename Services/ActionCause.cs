@@ -38,7 +38,7 @@ internal readonly record struct ActionCause
 
     /// <summary>A command from Home Assistant, naming the entity it arrived on.</summary>
     public static ActionCause HomeAssistant(string entityId) =>
-        new($"Home Assistant, on the '{entityId}' entity");
+        new($"MQTT, on the '{entityId}' entity");
 
     /// <summary>A control on the Settings window, naming its page.</summary>
     public static ActionCause SettingsPage(string page) =>

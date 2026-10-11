@@ -26,7 +26,7 @@
         </controls:SettingsCard>
 
         <controls:SettingsCard Header="Start a session from the status window"
-                               Description="Adds a Start button to the status window. It starts a session; ending one still needs Home Assistant.">
+                               Description="Adds a Start button to the status window. It starts a session; ending one still needs an MQTT command.">
             <ToggleSwitch x:Name="FocusStartFromStatusToggle" OnContent="" OffContent=""
                           MinWidth="0" Toggled="OnFocusStartFromStatusToggled"/>
         </controls:SettingsCard>
@@ -130,7 +130,7 @@
                                HorizontalContentAlignment="Stretch">
             <StackPanel Spacing="6">
                 <TextBlock TextWrapping="Wrap" FontSize="12"
-                           Text="End it early from Home Assistant: send the request, wait five minutes, send it again within ten seconds."/>
+                           Text="End it early with an MQTT command: send the request, wait five minutes, send it again within ten seconds."/>
                 <TextBlock TextWrapping="Wrap" FontSize="12"
                            Text="Lift the network block by hand: in Windows Defender Firewall with Advanced Security, set Outbound connections back to Allow on every profile."/>
                 <TextBlock TextWrapping="Wrap" FontSize="12"

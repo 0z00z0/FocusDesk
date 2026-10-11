@@ -15,7 +15,7 @@ namespace FocusDesk.UI;
 /// order is the priority. The longest case — a screen break with a cancel waiting for its second
 /// request, three digits of minutes and every lever it can hold — does not fit: the connectivity
 /// line, being last, is the one the shared host shortens. Its status word is carried as a protected
-/// suffix, so a shortened line loses characters from the "Home Assistant" label first and drops whole
+/// suffix, so a shortened line loses characters from the "MQTT" label first and drops whole
 /// only once there is no room left even for the status word. A realistic tooltip (a shorter session,
 /// fewer levers) stays under the limit and shows every line whole.</remarks>
 internal static class TrayTooltipText
@@ -38,7 +38,7 @@ internal static class TrayTooltipText
         // The status word is the suffix, kept whole by the shared host even where the label ahead of
         // it must be shortened: the one fact this line exists for — whether Home Assistant can end
         // the session — must never be shown as a cut fragment.
-        yield return new TrayTooltipLine("Home Assistant", $": {Broker(broker)}");
+        yield return new TrayTooltipLine("MQTT", $": {Broker(broker)}");
     }
 
     private static string Broker(MqttConnectionState? state) => state switch
