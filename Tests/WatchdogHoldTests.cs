@@ -53,6 +53,34 @@ public class WatchdogHoldTests
             AppCode);
     }
 
+    /// <summary>A start at sign-in can lose the race with the taskbar. It must end without the hold
+    /// marker, with the watchdog task already armed, so the probe brings it back; and no window may
+    /// open before the icon, or the process ends holding nothing on screen.</summary>
+    [Fact]
+    public void AFailedStartLeavesTheProbeArmedAndNoWindowPrecedesTheIcon()
+    {
+        string constructor = Between("public App()", "protected override async void OnLaunched");
+        int guard = constructor.IndexOf("SingleInstanceGuard.TryAcquire()", StringComparison.Ordinal);
+        int armed = constructor.IndexOf("WatchdogTask.TryEnsureTask();", StringComparison.Ordinal);
+        int register = constructor.IndexOf("CrashHandlers.Register(", StringComparison.Ordinal);
+        Assert.InRange(guard, 0, armed);
+        Assert.InRange(armed, 0, register);
+        string options = constructor[register..constructor.IndexOf("});", register, StringComparison.Ordinal)];
+        Assert.Contains("OnStartupFailure", options, StringComparison.Ordinal);
+        Assert.DoesNotContain("HoldMarker", options, StringComparison.Ordinal);
+
+        string launched = Between("protected override async void OnLaunched", "private void Shutdown()");
+        int tray = launched.IndexOf("await TrayIconHost.StartAsync(Shutdown);", StringComparison.Ordinal);
+        int failed = launched.IndexOf("_crashHandlers.Report(\"tray\", started.LastError);", StringComparison.Ordinal);
+        int window = launched.IndexOf("new MainWindow()", StringComparison.Ordinal);
+        int complete = launched.IndexOf("_crashHandlers.MarkStartupComplete();", StringComparison.Ordinal);
+        Assert.InRange(tray, 0, failed);
+        Assert.InRange(failed, 0, window);
+        Assert.InRange(window, 0, complete);
+        Assert.Single(Regex.Matches(AppCode, @"MarkStartupComplete\("));
+        Assert.DoesNotMatch(@"new \w*Window\(|\.Activate\(", launched[..tray]);
+    }
+
     /// <summary>A marker never keeps a probe down while a session is recorded as running. Exit is
     /// refused mid-session, but a session Home Assistant arms while an Exit is already under way, or
     /// a marker written by hand, would otherwise leave that session's levers down with nothing to

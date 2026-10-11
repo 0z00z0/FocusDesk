@@ -165,8 +165,9 @@ public class FocusNoLocalWayOutTests
             @"private void Shutdown\(\)\s*\{(\s*//[^\n]*)*\s*if \(!DeliberateExit\.Allows\(FocusSessionService\.Current\)\)\s*\{[^}]*return;\s*\}(\s*//[^\n]*)*\s*WatchdogTask\.WriteHoldMarker\(\);"),
             AppCode);
 
-        // The runtime's exit only turns away a second instance or a held probe in the constructor, or
-        // a refused tray icon before the broker connection or the session engine can arm a session.
+        // The runtime's exit only turns away a second instance or a held probe in the constructor. A
+        // refused tray icon ends through the crash handlers' report, before the broker connection or
+        // the session engine can arm a session; the only other report is the UI arm's.
         int constructor = AppCode.IndexOf("public App()", StringComparison.Ordinal);
         int owns = AppCode.IndexOf("InitializeComponent();", StringComparison.Ordinal);
         int tray = AppCode.IndexOf("await TrayIconHost.StartAsync(Shutdown);", StringComparison.Ordinal);
@@ -175,8 +176,11 @@ public class FocusNoLocalWayOutTests
         Assert.NotEmpty(early);
         Assert.InRange(tray, owns, armable);
         Assert.InRange(AppCode.IndexOf("FocusSessionService.Start();", StringComparison.Ordinal), armable, int.MaxValue);
-        Assert.Single(early, m => m.Index > owns);
-        Assert.All(early, m => Assert.True((m.Index > constructor && m.Index < owns) ||(m.Index > tray && m.Index < armable)));
+        Assert.All(early, m => Assert.InRange(m.Index, constructor, owns));
+        var reports = Regex.Matches(AppCode, @"_crashHandlers\.Report\(");
+        Assert.Equal(2, reports.Count);
+        Assert.Contains(reports, m => AppCode[m.Index..].StartsWith("_crashHandlers.Report(\"Application.UnhandledException\", e.Exception);", StringComparison.Ordinal));
+        Assert.Contains(reports, m => m.Index > tray && m.Index < armable);
     }
 
     [Fact]

@@ -13,38 +13,37 @@
        declared as a PackageReference — the MQTT discovery layer and client, the primitives and the
        dump registration — because declaring one resolves the same assembly twice.
 
-       ZeroZero.Startup, ZeroZero.SettingsShell.WinUI and ZeroZero.Tray.WinUI are genuine direct
-       references — the watchdog task, wired in App.xaml.cs, the settings window shell, and the
-       notification-area icon's host — and each carries a PackageReference below. ZeroZero.Tray, the
+       ZeroZero.Startup, ZeroZero.SettingsShell.WinUI, ZeroZero.Tray.WinUI and
+       ZeroZero.Controls.WinUI are genuine direct references — the watchdog task, wired in
+       App.xaml.cs, the settings window shell, the notification-area icon's host, and the host
+       window's switcher visibility — and each carries a PackageReference in FocusDesk.csproj. ZeroZero.Tray, the
        plain half of the tray component, arrives with the host and keeps its pin here because the
        host's own floor must not decide it. ZeroZero.Update.Win32, which holds the update flow and
        the unattended policy, arrives with ZeroZero.Update.WinUI and keeps its pin here for the same
-       reason. ZeroZero.Win32 and ZeroZero.Controls.WinUI are pinned here without
-       one: both already arrive transitively (Win32 through Mqtt.WinUI, Brand.WinUI and
-       SettingsShell.WinUI, Controls.WinUI through Mqtt.WinUI and SettingsShell.WinUI), FocusDesk
-       has no direct caller of either yet, and the family's own pin file declares no version for
-       either — so without CentralPackageTransitivePinningEnabled the whole graph would keep
-       resolving whatever floor Mqtt.WinUI 0.8.0 happens to specify, never the newer releases
-       pinned here. -->
+       reason. ZeroZero.Win32 is pinned here without one: it already arrives transitively (through
+       Mqtt.WinUI, Brand.WinUI and SettingsShell.WinUI), FocusDesk has no direct caller of it yet,
+       and the family's own pin file declares no version for it — so without
+       CentralPackageTransitivePinningEnabled the whole graph would keep resolving whatever floor a
+       referencing package happens to specify, never the newer release pinned here. -->
   <PropertyGroup>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
   <ItemGroup Label="ZeroZero shared library">
-    <PackageVersion Include="ZeroZero.Brand.WinUI" Version="0.11.1" />
+    <PackageVersion Include="ZeroZero.Brand.WinUI" Version="0.12.0" />
     <PackageVersion Include="ZeroZero.Config.Sections" Version="0.8.1" />
     <PackageVersion Include="ZeroZero.Config.Watch" Version="0.8.1" />
-    <PackageVersion Include="ZeroZero.Controls.WinUI" Version="0.8.1" />
-    <PackageVersion Include="ZeroZero.Diagnostics" Version="0.7.1" />
+    <PackageVersion Include="ZeroZero.Controls.WinUI" Version="0.9.0" />
+    <PackageVersion Include="ZeroZero.Diagnostics" Version="0.8.0" />
     <PackageVersion Include="ZeroZero.Lifecycle" Version="0.7.1" />
     <PackageVersion Include="ZeroZero.Mqtt.WinUI" Version="0.11.0" />
     <PackageVersion Include="ZeroZero.SettingsShell.WinUI" Version="0.8.1" />
     <PackageVersion Include="ZeroZero.Startup" Version="0.8.2" />
-    <PackageVersion Include="ZeroZero.Tray" Version="0.10.0" />
-    <PackageVersion Include="ZeroZero.Tray.WinUI" Version="0.10.0" />
-    <PackageVersion Include="ZeroZero.Update" Version="0.13.1" />
-    <PackageVersion Include="ZeroZero.Update.Win32" Version="0.13.1" />
-    <PackageVersion Include="ZeroZero.Update.WinUI" Version="0.13.1" />
+    <PackageVersion Include="ZeroZero.Tray" Version="0.11.0" />
+    <PackageVersion Include="ZeroZero.Tray.WinUI" Version="0.11.0" />
+    <PackageVersion Include="ZeroZero.Update" Version="0.14.0" />
+    <PackageVersion Include="ZeroZero.Update.Win32" Version="0.14.0" />
+    <PackageVersion Include="ZeroZero.Update.WinUI" Version="0.14.0" />
     <PackageVersion Include="ZeroZero.Win32" Version="0.9.1" />
   </ItemGroup>
 

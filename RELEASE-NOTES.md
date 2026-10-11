@@ -12,7 +12,8 @@ updater reads.
 ## 0.5.2
 
 - Started at sign-in, FocusDesk waits for the taskbar before putting its icon in the notification
-  area, and closes if the icon still cannot be placed, so a later start works.
+  area. If the icon still cannot be placed, or the start fails in any other way, FocusDesk closes
+  so a later start works.
 
 ## 0.5.1
 
