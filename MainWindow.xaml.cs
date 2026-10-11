@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using FocusDesk.Services;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using ZeroZero.Controls.WinUI;
 
 namespace FocusDesk;
 
@@ -19,10 +20,9 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
 
-        // Has thrown at sign-in before the shell was ready; a host window in the switcher costs nothing.
-        try { AppWindow.IsShownInSwitchers = false; }
-        catch (Exception ex) when (ex is NotImplementedException or COMException)
-        { AppLog.Error("MainWindow.IsShownInSwitchers", ex); }
+        // A host window in the switcher costs nothing, so a refusal from Windows is logged, not thrown.
+        try { SwitcherVisibility.TrySet(AppWindow, shown: false, new AppLogSink()); }
+        catch (COMException ex) { AppLog.Error("MainWindow.IsShownInSwitchers", ex); }
 
         // Chrome removed as well as the window moved away, so nothing is visible even in the moment
         // between creation and the move.

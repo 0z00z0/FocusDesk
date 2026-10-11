@@ -54,14 +54,23 @@ public partial class App : Application
         // Leaving is the tray menu's Exit and nothing else.
         DispatcherShutdownMode = DispatcherShutdownMode.OnExplicitShutdown;
 
+        // Before the crash arms, so the watchdog task brings back a start that fails.
+        if (_watchdogProbe)
+            AppLog.Info("Watchdog relaunch: no live instance found — restoring the tray app.");
+        else
+            WatchdogTask.TryClearHoldMarker();
+        WatchdogTask.TryEnsureTask();
+
         // AppDomain and unobserved-task arms come from the shared library; the WinUI arm is the
         // application's own and reports through the same sink.
         // The crash line is a plain file beside the log, written with a flush to disk: the logging
         // framework's own buffers are not what a process falling over should depend on.
+        // Empty cleanup: never the hold marker, which would keep the watchdog task from a restart.
         _crashHandlers = CrashHandlers.Register(new CrashHandlerOptions
         {
-            Sink      = new AppLogSink(),
-            CrashLine = new CrashLineAppender(AppPaths.LogFile(CrashLineFileName)),
+            Sink             = new AppLogSink(),
+            CrashLine        = new CrashLineAppender(AppPaths.LogFile(CrashLineFileName)),
+            OnStartupFailure = () => { },
         });
         UnhandledException += (_, e) =>
         {
@@ -81,15 +90,6 @@ public partial class App : Application
             // can report it.
             AppPalette.Apply(Resources);
 
-            // General crash-resilience infrastructure, independent of any focus-session lever: a
-            // deliberate start re-arms resurrection, and the watchdog task itself is (re)registered
-            // unconditionally on every start, whether or not a session is running.
-            if (_watchdogProbe)
-                AppLog.Info("Watchdog relaunch: no live instance found — restoring the tray app.");
-            else
-                WatchdogTask.TryClearHoldMarker();
-            WatchdogTask.TryEnsureTask();
-
             // First of the session services: Windows keeps a brightness across a restart, so a
             // level a run that died left displaced stays displaced until this puts it back. A
             // session that is resuming then dims it again and parks the level it found.
@@ -100,13 +100,12 @@ public partial class App : Application
                                      () => FocusSessionService.Current,
                                      () => SettingsService.Read(s => s.FocusCoverVisual));
 
-            // No window before the shell holds the icon; failing, end without a hold marker so the watchdog probe retries.
+            // No window before the shell holds the icon; failing, the report ends without a hold marker so the watchdog probe retries.
             var started = await TrayIconHost.StartAsync(Shutdown);
             if (!started.IsCreated)
             {
                 AppLog.Info($"Tray icon not created: {started.Outcome}, {started.Attempts} attempts in {started.Elapsed}. The process ends.");
-                if (started.LastError is { } refusal) AppLog.Error("OnLaunched.TrayStartup", refusal);
-                Environment.Exit(1);
+                _crashHandlers.Report("tray", started.LastError);
             }
 
             // Before the session engine, whose network block is written against the broker this
@@ -133,6 +132,9 @@ public partial class App : Application
             // A preference about where the icon sits is not worth a failed start.
             try { AppearanceSettingsPanel.ApplyAtStartup(TrayIconHost.Placement); }
             catch (Exception ex) { AppLog.Error("OnLaunched.TrayIconPlacement", ex); }
+
+            // Last: the icon exists and the host window is created. From here on a report only logs.
+            _crashHandlers.MarkStartupComplete();
         }
         catch (Exception ex)
         {
