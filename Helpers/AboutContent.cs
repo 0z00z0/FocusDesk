@@ -37,7 +37,7 @@ internal static class AboutContent
             new ExternalLibrary("H.NotifyIcon.WinUI", "HavenDV", "The notification-area icon and its native menu", "MIT", "https://github.com/HavenDV/H.NotifyIcon"),
             new ExternalLibrary("TaskScheduler", "David Hall", "Reads and writes the logon and watchdog scheduled tasks", "MIT", "https://github.com/dahall/TaskScheduler"),
             new ExternalLibrary("CommunityToolkit.WinUI.Controls.SettingsControls", ".NET Foundation", "The settings rows the pages are built from", "MIT", "https://github.com/CommunityToolkit/Windows"),
-            new ExternalLibrary("MQTTnet", "The MQTTnet Project", "The client behind the Home Assistant integration", "MIT", "https://github.com/dotnet/MQTTnet"),
+            new ExternalLibrary("MQTTnet", "The MQTTnet Project", "The MQTT client", "MIT", "https://github.com/dotnet/MQTTnet"),
             new ExternalLibrary("NLog", "Jarek Kowalski, Kim Christensen, Julian Verdurmen", "The event log, rolled daily with a size cap", "BSD-3-Clause", "https://github.com/NLog/NLog"),
             new ExternalLibrary("System.Management", "Microsoft", "Reads and writes the built-in screen's brightness", "MIT", "https://github.com/dotnet/runtime"),
         ],

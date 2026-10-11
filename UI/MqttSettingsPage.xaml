@@ -9,7 +9,7 @@
         <TextBlock Text="MQTT" Style="{StaticResource SectionHeaderStyle}"/>
 
         <!-- Said once, above everything: it is why the page matters rather than what a control does. -->
-        <TextBlock Text="Home Assistant is the only place a running focus session can be ended early. Switch publishing off and a session runs to its own clock."
+        <TextBlock Text="An MQTT command is the only way a running focus session can be ended early. Switch publishing off and a session runs to its own clock."
                    TextWrapping="Wrap" Margin="0,0,0,12"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 

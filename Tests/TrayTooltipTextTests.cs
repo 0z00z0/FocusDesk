@@ -8,7 +8,7 @@ namespace FocusDesk.Tests;
 
 /// <summary>
 /// The hover text. The shell shows 127 units and the shared host cuts whatever does not fit from the
-/// end, so a line that grows silently could take the Home Assistant line — the one that says whether
+/// end, so a line that grows silently could take the MQTT line — the one that says whether
 /// the session can be ended at all — down to an unreadable fragment or off the tooltip entirely.
 /// </summary>
 public class TrayTooltipTextTests
@@ -20,13 +20,13 @@ public class TrayTooltipTextTests
 
     /// <summary>The longest session there can be, in every running stage and every broker state:
     /// three digits of minutes and every lever held. The whole never exceeds the shell's budget, and
-    /// wherever the Home Assistant line still appears its status word is whole, never a cut
+    /// wherever the MQTT line still appears its status word is whole, never a cut
     /// fragment — the label ahead of it is what the shared host shortens first, since the status is
     /// carried as the line's protected suffix.</summary>
     [Theory]
     [InlineData("en-GB")]
     [InlineData("nb-NO")]
-    public void TheLongestTooltipNeverGarblesHomeAssistantStatus(string language)
+    public void TheLongestTooltipNeverGarblesMqttStatus(string language)
     {
         MqttConnectionState?[] brokers = [null, .. Enum.GetValues<MqttConnectionState>().Cast<MqttConnectionState?>()];
         var text = ShippedStrings.For(language);
@@ -44,18 +44,18 @@ public class TrayTooltipTextTests
                 $"tooltip is {composed.Length} units, over the shell's {TrayTooltip.MaxUnits}-unit budget");
 
             string? homeLine = composed.Split('\n')
-                .FirstOrDefault(l => l.StartsWith("Home Assistant", StringComparison.Ordinal));
+                .FirstOrDefault(l => l.StartsWith("MQTT", StringComparison.Ordinal));
             if (homeLine is not null)
             {
                 Assert.True(BrokerStatusWords.Any(w => homeLine.EndsWith(w, StringComparison.Ordinal)),
-                    $"Home Assistant line lost its status word: '{homeLine}'");
+                    $"MQTT line lost its status word: '{homeLine}'");
             }
         }
     }
 
     /// <summary>An ordinary screen break — covered with the mouse and keyboard blocked, the switch's
     /// default — shows every line whole in both languages: the product line, the session line led by
-    /// its kind, and the Home Assistant status.</summary>
+    /// its kind, and the MQTT status.</summary>
     [Theory]
     [InlineData("en-GB", "Screen break: 25 min left")]
     [InlineData("nb-NO", "Skjermpause: 25 min igjen")]
@@ -70,6 +70,6 @@ public class TrayTooltipTextTests
 
         Assert.Equal(string.Join('\n', lines.Select(l => (l.Text ?? "") + (l.Suffix ?? ""))), composed);
         Assert.Contains(lead, composed, StringComparison.Ordinal);
-        Assert.EndsWith("Home Assistant: connected", composed, StringComparison.Ordinal);
+        Assert.EndsWith("MQTT: connected", composed, StringComparison.Ordinal);
     }
 }

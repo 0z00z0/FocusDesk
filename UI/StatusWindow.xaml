@@ -133,7 +133,7 @@
                                        FontSize="13" TextWrapping="Wrap"
                                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                             <TextBlock x:Name="WayOutText"
-                                       Text="Nothing on this computer ends a session. Home Assistant ends one early, after a five-minute wait and a second request."
+                                       Text="Nothing on this computer ends a session. An MQTT command ends one early, after a five-minute wait and a second request."
                                        FontSize="11" TextWrapping="Wrap"
                                        Visibility="Collapsed"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
