@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.InteropServices;
 using FocusDesk.Helpers;
 using FocusDesk.Services;
 using Microsoft.UI;
@@ -10,6 +11,7 @@ using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 using Windows.Graphics;
 using ZeroZero.Brand.Core;
+using ZeroZero.Controls.WinUI;
 using ZeroZero.Win32;
 
 namespace FocusDesk.UI;
@@ -147,7 +149,8 @@ internal sealed partial class StatusWindow : Window
         NativeMethods.RemoveFrame(Win32Interop.GetWindowFromWindowId(AppWindow.Id));
 
         // Off the taskbar and out of Alt-Tab: a pop-out is not a window to switch to.
-        AppWindow.IsShownInSwitchers = false;
+        try { SwitcherVisibility.TrySet(AppWindow, shown: false, new AppLogSink()); }
+        catch (COMException ex) { AppLog.Error("StatusWindow.IsShownInSwitchers", ex); }
     }
 
     /// <summary>Reads everything the window shows, places it, and brings it forward.</summary>
