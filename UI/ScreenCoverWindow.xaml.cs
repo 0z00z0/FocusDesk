@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.InteropServices;
 using FocusDesk.Helpers;
 using FocusDesk.Services;
 using Microsoft.UI;
@@ -9,6 +10,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.Web.WebView2.Core;
 using Windows.Graphics;
+using ZeroZero.Controls.WinUI;
 
 namespace FocusDesk.UI;
 
@@ -101,7 +103,10 @@ internal sealed partial class ScreenCoverWindow : Window
         if (_animate) Pace(finalStretch: false);
         else          SweepArc.Visibility = Visibility.Collapsed;
 
-        AppWindow.IsShownInSwitchers = false;
+        // Off the taskbar and out of Alt-Tab. Without a taskbar the shared setter logs and leaves the
+        // window in the switcher; a refusal from Windows is logged too, so the cover still goes up.
+        try { SwitcherVisibility.TrySet(AppWindow, shown: false, new AppLogSink()); }
+        catch (COMException ex) { AppLog.Error("ScreenCoverWindow.IsShownInSwitchers", ex); }
 
         var presenter = OverlappedPresenter.Create();
         presenter.SetBorderAndTitleBar(hasBorder: false, hasTitleBar: false);

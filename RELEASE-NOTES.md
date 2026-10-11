@@ -14,6 +14,8 @@ updater reads.
 - Started at sign-in, FocusDesk waits for the taskbar before putting its icon in the notification
   area. If the icon still cannot be placed, or the start fails in any other way, FocusDesk closes
   so a later start works.
+- The screen cover and the pop-out window still open after Explorer has restarted and no taskbar
+  exists; the log notes it once instead of the cover failing to appear.
 
 ## 0.5.1
 
