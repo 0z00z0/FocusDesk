@@ -17,10 +17,20 @@ public sealed partial class DiagnosticsSettingsPanel : UserControl
     {
         InitializeComponent();
         Loaded += (_, _) => Reload();
+        ApplySessionLock();
     }
 
     /// <summary>Rebuilds the log list. The folder gains files while the window is open.</summary>
     public void Reload() => FillLogMenu();
+
+    /// <summary>Greys the two buttons that put settings.json in reach of an edit or a re-read for
+    /// the length of a session: the file holds the running session's record.</summary>
+    public void ApplySessionLock()
+    {
+        bool unlocked = !FocusSessionService.LeversAreLocked;
+        OpenSettingsFileButton.IsEnabled = unlocked;
+        ReloadSettingsButton.IsEnabled = unlocked;
+    }
 
     private void OnOpenSettingsFolder(object sender, RoutedEventArgs e) =>
         ExplorerLauncher.Reveal(SettingsService.FilePath);

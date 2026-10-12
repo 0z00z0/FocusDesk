@@ -47,6 +47,7 @@ public sealed partial class AboutSettingsPanel : UserControl
         Loaded += (_, _) => ReloadUnattended();
 
         Show(UpdateButtonPolicy.Rest);
+        ApplySessionLock();
         CheckForUpdatesButton.Click += (_, _) => OnClick();
 
         // The control returns from Success to Rest by itself and leaves the last label in place.
@@ -115,8 +116,16 @@ public sealed partial class AboutSettingsPanel : UserControl
         catch (Exception ex) { AppLog.Error("AboutSettingsPanel.OnUnattendedUpdatesToggled", ex); }
     }
 
+    /// <summary>Greys the update button for the length of a session: an accepted update closes
+    /// FocusDesk for the install.</summary>
+    public void ApplySessionLock() =>
+        CheckForUpdatesButton.IsEnabled = !FocusSessionService.LeversAreLocked;
+
     private void OnClick()
     {
+        // A session that began after the button last drew.
+        if (FocusSessionService.LeversAreLocked) return;
+
         try
         {
             switch (CheckForUpdatesButton.State)
