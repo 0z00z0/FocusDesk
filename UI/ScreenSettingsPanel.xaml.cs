@@ -48,9 +48,18 @@ public sealed partial class ScreenSettingsPanel : UserControl
                 ScreenBrightnessValue.Text   = $"{percent} %";
             }
 
-            ScreenRestoreBtn.IsEnabled = ScreenBrightnessService.Holding;
+            ApplySessionLock();
         }
         finally { _updating = false; }
+    }
+
+    /// <summary>Greys the slider and Restore for the length of a session: both write the brightness
+    /// record the session's dim holds, so either would lift the dim.</summary>
+    public void ApplySessionLock()
+    {
+        bool locked = FocusSessionService.LeversAreLocked;
+        ScreenBrightnessSlider.IsEnabled = !locked;
+        ScreenRestoreBtn.IsEnabled = !locked && ScreenBrightnessService.Holding;
     }
 
     /// <summary>Writes a position the debounce is still holding. Called before the page goes away,
@@ -74,8 +83,10 @@ public sealed partial class ScreenSettingsPanel : UserControl
     private void Apply()
     {
         _debounce.Stop();
+        // A drag that ended just before a session started must not lift its dim.
+        if (FocusSessionService.LeversAreLocked) return;
         ScreenBrightnessService.Set(_wanted, ActionCause.SettingsPage("Screen"));
-        ScreenRestoreBtn.IsEnabled = ScreenBrightnessService.Holding;
+        ApplySessionLock();
     }
 
     private void OnScreenRestore(object sender, RoutedEventArgs e)

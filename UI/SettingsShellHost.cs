@@ -1,5 +1,6 @@
 using FocusDesk.Helpers;
 using FocusDesk.Services;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -130,10 +131,23 @@ internal static class SettingsShellHost
         });
         AppTitleBar.Apply(window);
 
+        // A session starts and ends on its own clock and from Home Assistant, so the controls it
+        // greys follow it for as long as the window is open. Pages not built yet read the lock as
+        // they are built.
+        var dispatcher = DispatcherQueue.GetForCurrentThread();
+        void FollowSession() => dispatcher.TryEnqueue(() =>
+        {
+            screen?.ApplySessionLock();
+            about?.ApplySessionLock();
+            diagnostics?.ApplySessionLock();
+        });
+        FocusSessionService.Changed += FollowSession;
+
         _window = window;
         window.Closed += (_, _) =>
         {
             _window = null;
+            FocusSessionService.Changed -= FollowSession;
             // A probe started from the MQTT page outlives the window, and the panel must not be
             // touched again once this has run.
             mqtt?.Cancel();

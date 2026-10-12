@@ -17,8 +17,8 @@
                                HorizontalContentAlignment="Stretch">
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Content="Open settings folder" Click="OnOpenSettingsFolder"/>
-                <Button Content="Open settings file" Click="OnOpenSettingsFile"/>
-                <Button Content="Reload settings from file" Click="OnReloadSettings"/>
+                <Button x:Name="OpenSettingsFileButton" Content="Open settings file" Click="OnOpenSettingsFile"/>
+                <Button x:Name="ReloadSettingsButton" Content="Reload settings from file" Click="OnReloadSettings"/>
                 <zz:InfoIcon Subject="the settings file"
                              Info="Reload reads settings.json again, picking up a manual edit or a file synced from another machine."/>
             </StackPanel>

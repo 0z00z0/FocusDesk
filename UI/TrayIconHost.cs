@@ -148,6 +148,10 @@ internal static class TrayIconHost
     {
         var session = FocusSessionService.Current;
 
+        // Every row below is greyed for the length of a session: a session is only as firm as the
+        // ways around it, and the update flow can close the application for an install.
+        bool unlocked = !FocusSessionService.LeversAreLocked;
+
         // A line of text and never a control. A person at the keyboard cannot end a session, and
         // nothing may put a way to here because the line looked incomplete without one. It sits
         // directly above Settings…, where the eye lands first.
@@ -163,22 +167,23 @@ internal static class TrayIconHost
         if (AppUpdates.Available is { VersionText.Length: > 0 } release)
         {
             yield return TrayMenuItem.Command($"⬆  Update available: v{release.VersionText}",
-                                              CheckForUpdates);
+                                              CheckForUpdates, isEnabled: unlocked);
             yield return TrayMenuItem.Separator();
         }
 
-        yield return TrayMenuItem.Command("Settings…", () => SettingsShellHost.Open());
+        yield return TrayMenuItem.Command("Settings…", () => SettingsShellHost.Open(), isEnabled: unlocked);
         yield return TrayMenuItem.Separator();
 
         bool startsAtLogon = LaunchAtStartup.IsOn;
         // The state the click is moving to, not a fresh read of the scheduler: a read and a write
         // cannot then disagree about what was asked for.
         yield return TrayMenuItem.Toggle(
-            "Launch at startup", startsAtLogon, () => LaunchAtStartup.TrySet(!startsAtLogon));
+            "Launch at startup", startsAtLogon, () => LaunchAtStartup.TrySet(!startsAtLogon),
+            isEnabled: unlocked);
 
-        yield return TrayMenuItem.Command("Check for updates", CheckForUpdates);
+        yield return TrayMenuItem.Command("Check for updates", CheckForUpdates, isEnabled: unlocked);
 
-        yield return TrayMenuItem.Command("About…", ShowAbout);
+        yield return TrayMenuItem.Command("About…", ShowAbout, isEnabled: unlocked);
         yield return TrayMenuItem.Separator();
 
         // Greyed out with no action while a session runs. The menu cannot show hover text, so the

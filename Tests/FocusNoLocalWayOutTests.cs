@@ -191,6 +191,45 @@ public class FocusNoLocalWayOutTests
             @"DeliberateExit\.Allows\(session\)\s*\?\s*TrayMenuItem\.Command\(AppText\.Get\(""TrayMenuExit""\),[^;]*:\s*TrayMenuItem\.Command\(AppText\.Get\(""TrayMenuExitRefused""\), null, isEnabled: false\);"),
             RepoFiles.Read(Path.Combine("UI", "TrayIconHost.cs")));
 
+    [Fact]
+    public void EveryOtherMenuRowIsGreyedWhileASessionRuns()
+    {
+        // A row added later has to carry the same flag or this fails.
+        string source = RepoFiles.Read(Path.Combine("UI", "TrayIconHost.cs"));
+        string menu = source[source.IndexOf("IEnumerable<TrayMenuItem> Menu()", StringComparison.Ordinal)..
+                             source.IndexOf("private static void CheckForUpdates", StringComparison.Ordinal)];
+
+        Assert.Contains("bool unlocked = !FocusSessionService.LeversAreLocked;", menu, StringComparison.Ordinal);
+
+        var rows = Regex.Matches(menu, @"TrayMenuItem\.(?:Command|Toggle)\((?:(?!TrayMenuItem\.)[^;])*")
+                        .Select(m => m.Value).ToArray();
+        Assert.Equal(8, rows.Length);
+
+        // The live Exit row is only reached when the session rule allows it, in the guard above.
+        var unguarded = rows.Where(r => !r.Contains("isEnabled: unlocked", StringComparison.Ordinal)
+                                     && !r.Contains("isEnabled: false", StringComparison.Ordinal)
+                                     && !r.Contains("AppText.Get(\"TrayMenuExit\"),", StringComparison.Ordinal));
+        Assert.Empty(unguarded);
+    }
+
+    [Fact]
+    public void TheSettingsControlsThatWeakenASessionAreGreyedWhileOneRuns()
+    {
+        string screen = RepoFiles.Read(Path.Combine("UI", "ScreenSettingsPanel.xaml.cs"));
+        string about = RepoFiles.Read(Path.Combine("UI", "AboutSettingsPanel.xaml.cs"));
+        string diagnostics = RepoFiles.Read(Path.Combine("UI", "DiagnosticsSettingsPanel.xaml.cs"));
+
+        Assert.Contains("ScreenBrightnessSlider.IsEnabled = !locked;", screen, StringComparison.Ordinal);
+        Assert.Contains("ScreenRestoreBtn.IsEnabled = !locked &&", screen, StringComparison.Ordinal);
+        Assert.Contains("CheckForUpdatesButton.IsEnabled = !FocusSessionService.LeversAreLocked;", about, StringComparison.Ordinal);
+        Assert.Contains("OpenSettingsFileButton.IsEnabled = unlocked;", diagnostics, StringComparison.Ordinal);
+        Assert.Contains("ReloadSettingsButton.IsEnabled = unlocked;", diagnostics, StringComparison.Ordinal);
+
+        // A session starting while the window is open has to reach all three pages.
+        Assert.Matches(@"screen\?\.ApplySessionLock\(\);\s*about\?\.ApplySessionLock\(\);\s*diagnostics\?\.ApplySessionLock\(\);",
+                       RepoFiles.Read(Path.Combine("UI", "SettingsShellHost.cs")));
+    }
+
     // ── The input block ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
