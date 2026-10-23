@@ -20,11 +20,6 @@ namespace FocusDesk.Services;
 /// </remarks>
 internal static class UnattendedInstalls
 {
-    /// <summary>Why a moment is refused while a session runs. One fixed wording: the component logs a
-    /// refusal once per distinct reason, so a reason carrying the minutes left would write a line on
-    /// every tick.</summary>
-    internal const string SessionRunningReason = "a focus session is running";
-
     private static readonly Lock _lock = new();
     private static Func<UnattendedUpdatePolicy>? _build;
     private static UnattendedUpdatePolicy? _policy;
@@ -33,21 +28,24 @@ internal static class UnattendedInstalls
     /// <summary>Starts the policy where the setting is on, and follows the setting from then on.
     /// Once, at startup, after the update service exists.</summary>
     /// <param name="service">The one update service the manual flow uses too.</param>
+    /// <param name="holds">The holds the manual flow asks too.</param>
     /// <param name="installing">Told the release's version immediately before its installer starts,
     /// so the handover the next start reports on is recorded.</param>
     /// <param name="shutdown">Mark the exit deliberate and end the process. Called from the policy's
     /// own thread once the installer is running.</param>
-    public static void Start(IUpdateService service, Action<string> installing, Action shutdown)
+    public static void Start(IUpdateService service, InstallHolds holds, Action<string> installing,
+                             Action shutdown)
     {
         ArgumentNullException.ThrowIfNull(service);
+        ArgumentNullException.ThrowIfNull(holds);
         ArgumentNullException.ThrowIfNull(installing);
         ArgumentNullException.ThrowIfNull(shutdown);
 
         lock (_lock)
         {
             if (_build is not null) return;
-            _build = () => new UnattendedUpdatePolicy(service, Options(
-                enabled: true, () => FocusSessionService.Current, installing, shutdown, new AppLogSink()));
+            _build = () => new UnattendedUpdatePolicy(Recording(service, installing), Options(
+                enabled: true, holds, shutdown, new AppLogSink()));
         }
 
         SettingsService.Changed  += Follow;
@@ -55,28 +53,44 @@ internal static class UnattendedInstalls
         Follow();
     }
 
-    /// <summary>Whether a moment suits an installer, as far as FocusDesk is concerned. Any session
-    /// stage but off refuses, a cancel in progress included: the session still holds its levers.</summary>
-    internal static InstallMoment MomentFor(FocusSnapshot session) =>
-        session.IsRunning ? InstallMoment.NotNow(SessionRunningReason) : InstallMoment.Now;
-
     /// <summary>The options the policy runs on. Separated so a test drives the component's real
     /// policy through exactly what FocusDesk hands it. The cadence is the component's own: a check a
     /// day, a retry tick every ten minutes.</summary>
-    internal static UnattendedUpdateOptions Options(bool enabled, Func<FocusSnapshot> session,
-                                                    Action<string> installing, Action shutdown,
+    internal static UnattendedUpdateOptions Options(bool enabled, InstallHolds holds, Action shutdown,
                                                     ILogSink log) => new()
     {
-        Enabled       = enabled,
-        MayInstallNow = release =>
-        {
-            var moment = MomentFor(session());
-            if (moment.Accepted) installing(release.VersionText);
-            return moment;
-        },
-        Shutdown      = shutdown,
-        Log           = log,
+        Enabled  = enabled,
+        Holds    = holds,
+        Shutdown = shutdown,
+        Log      = log,
     };
+
+    /// <summary>Records the release at its launch, the only point after the holds that knows it.</summary>
+    internal static IUpdateService Recording(IUpdateService service, Action<string> installing) =>
+        new RecordingService(service, installing);
+
+    private sealed class RecordingService(IUpdateService inner, Action<string> installing) : IUpdateService
+    {
+        public Version RunningVersion => inner.RunningVersion;
+
+        public Task<UpdateCheckResult> CheckAsync(CancellationToken cancellationToken = default) =>
+            inner.CheckAsync(cancellationToken);
+
+        public Task<PreparedUpdate> PrepareAsync(ReleaseInfo release, IProgress<DownloadProgress>? progress = null,
+                                                 CancellationToken cancellationToken = default) =>
+            inner.PrepareAsync(release, progress, cancellationToken);
+
+        public LaunchResult Launch(PreparedUpdate update)
+        {
+            installing(update.Release.VersionText);
+            return inner.Launch(update);
+        }
+
+        public int SweepStaleDownloads(TimeSpan olderThan) => inner.SweepStaleDownloads(olderThan);
+
+        // Forwarded explicitly: the interface's default removes nothing.
+        public void Discard(PreparedUpdate update) => inner.Discard(update);
+    }
 
     /// <summary>Brings the running policy into line with the setting. The policy reads the switch
     /// once, when it is built, so a change replaces it rather than telling it.</summary>

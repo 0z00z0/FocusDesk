@@ -73,6 +73,13 @@ public class MqttEntityCatalogTests
         _ => null,
     };
 
+    /// <summary>A dashboard shows the help text under the entity's name; one missing leaves that
+    /// line empty with nothing else to say what the entity does.</summary>
+    [Fact]
+    public void EveryEntity_CarriesAHelpText() =>
+        Assert.All(MqttTestBed.Declared().All,
+                   entity => Assert.False(string.IsNullOrWhiteSpace(entity.Description), entity.EntityId));
+
     [Fact]
     public void TheTable_HoldsExactlyTheTenEntitiesTheAppPublishes() =>
         Assert.Equal(

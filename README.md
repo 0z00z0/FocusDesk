@@ -27,14 +27,17 @@ installer offers.
 Releases are signed by `CN=ZeroZero Software`, and the application installs an update only when it
 carries that signature. Updates are checked for from the menu or the About page. A switch on the
 About page, off until turned on, lets them install by themselves while the screen is locked or the
-machine has been left alone for ten minutes, and never during a focus session.
+machine has been left alone for ten minutes. No update installs during a focus session, whether it
+was started by hand or by itself.
 
 ## Home Assistant
 
 FocusDesk connects to an MQTT broker and appears in Home Assistant as one device carrying the
 session switch, its length, the kind of session it starts, a switch per optional lever, the
 session's state, its remaining time and the screen brightness. The broker is set on the MQTT page in
-Settings.
+Settings. Each entity carries a one-sentence help text, in English, which a dashboard shows under the
+entity's name with `secondary_info: description` on an entities card or `state_content: description`
+on a tile card.
 
 The kind is the select "Focus session type", with the options "Program focus" and "Screen break" in
 English whatever language FocusDesk runs in. Starting a given kind is two calls in order: set the
