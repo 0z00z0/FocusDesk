@@ -323,6 +323,10 @@
     <value>Aldri under en fokusøkt. FocusDesk lukkes under installeringen og starter igjen etterpå.</value>
     <comment>Hover text of the info bubble beside the switch, whole sentences.</comment>
   </data>
+  <data name="UpdateHeldSessionRunning" xml:space="preserve">
+    <value>en fokusøkt kjører</value>
+    <comment>Why an update cannot be installed now, inserted after "fordi" in the update window's sentence and written to the log. Lower case, no full stop, subordinate word order, one fixed wording.</comment>
+  </data>
   <data name="TrayMenuExit" xml:space="preserve">
     <value>Avslutt</value>
     <comment>Last row of the notification-area menu, closes the application, imperative verb.</comment>

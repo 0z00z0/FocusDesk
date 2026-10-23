@@ -23,11 +23,13 @@ internal static class MqttEnumSensor
     /// <param name="include">Capability gating, or null for an entity that is always published.</param>
     public static MqttSensor Of(
         string entityId, string name, string group, MqttEntityCategory category, string icon,
-        IReadOnlyList<string> words, Func<string?> read, Func<bool>? include = null) =>
+        IReadOnlyList<string> words, Func<string?> read, Func<bool>? include = null,
+        string? description = null) =>
         new()
         {
             EntityId = entityId,
             Name = name,
+            Description = description,
             Group = group,
             Category = category,
             Icon = icon,

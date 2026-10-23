@@ -47,6 +47,19 @@ internal static class AppUpdates
     private static UpdateService? _service;
     private static Action? _shutdown;
 
+    // One set for both paths: the component asks it before the question and before every launch.
+    private static readonly InstallHolds _holds = HoldsFor(() => FocusSessionService.Current);
+
+    // Fixed wording: the component logs once per distinct reason.
+    internal static string SessionRunningReason => AppText.Get("UpdateHeldSessionRunning");
+
+    internal static InstallHolds HoldsFor(Func<FocusSnapshot> session)
+    {
+        var holds = new InstallHolds();
+        holds.Hold(() => session().IsRunning ? SessionRunningReason : null);
+        return holds;
+    }
+
     // Told the release before each install, so Setup's start leaves the record the next version reads.
     private static readonly UpdateHandoverLauncher _launcher =
         new(new ShellInstallerLauncher(), UnattendedUpdate.Record);
@@ -80,7 +93,7 @@ internal static class AppUpdates
             _service.SweepStaleDownloads(StaleDownloadAge);
 
             // The background path shares the service, so its installer leaves the same handover.
-            UnattendedInstalls.Start(_service,
+            UnattendedInstalls.Start(_service, _holds,
                                      installing: version => _launcher.TargetVersion = version,
                                      shutdown: OnWindowThread(shutdown));
         }
@@ -203,7 +216,7 @@ internal static class AppUpdates
         if (_service is not { } service || _shutdown is not { } shutdown) return;
 
         _launcher.TargetVersion = release.VersionText;
-        try { await new UpdateFlow(service, Prompts(), FlowOptions(shutdown)).InstallAsync(release); }
+        try { await new UpdateFlow(service, Prompts(), FlowOptions(shutdown, _holds)).InstallAsync(release); }
         catch (Exception ex) { AppLog.Error("AppUpdates.InstallAsync", ex); }
     }
 
@@ -214,7 +227,7 @@ internal static class AppUpdates
         var service  = _service!;
         var shutdown = _shutdown!;
 
-        var run = await new UpdateFlow(service, Prompts(), FlowOptions(shutdown))
+        var run = await new UpdateFlow(service, Prompts(), FlowOptions(shutdown, _holds))
                             .RunAsync(UpdateTrigger.Silent);
 
         // Held so the menu's badge survives being rebuilt on every right click. Cleared on any other
@@ -270,10 +283,11 @@ internal static class AppUpdates
 
     // No Progress: the component's window reports into itself through the download surface it hands
     // the flow, and a second reporter here would have nothing to draw with.
-    private static UpdateFlowOptions FlowOptions(Action shutdown) => new()
+    internal static UpdateFlowOptions FlowOptions(Action shutdown, InstallHolds holds) => new()
     {
         Shutdown        = shutdown,
         OpenReleasePage = OpenInBrowser,
+        Holds           = holds,
         Log             = new AppLogSink(),
     };
 

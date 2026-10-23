@@ -41,9 +41,7 @@ public sealed partial class MqttSettingsPage : UserControl
             DefaultDeviceName  = _mqtt.DefaultDeviceName,
             PublishTitle       = "Publish to MQTT",
             PublishDescription = "Publishes the focus session and the screen to an MQTT broker.",
-            PublishGroupsInfo  =
-                "Each group covers the entities from the Settings page it is named after. Switching "
-              + "one off marks its entities unavailable; switching it back on restores them.",
+            OfferRemoval       = true,
             DeviceIdConsequence =
                 "Every automation and dashboard card pointing at the old entities has to be repointed "
               + "by hand.",

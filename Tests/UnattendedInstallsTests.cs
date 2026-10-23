@@ -38,8 +38,8 @@ public class UnattendedInstallsTests
         var installing = new List<string>();
         int shutdowns = 0;
 
-        using var policy = new UnattendedUpdatePolicy(service,
-            UnattendedInstalls.Options(enabled: true, () => session, installing.Add, () => shutdowns++,
+        using var policy = new UnattendedUpdatePolicy(UnattendedInstalls.Recording(service, installing.Add),
+            UnattendedInstalls.Options(enabled: true, AppUpdates.HoldsFor(() => session), () => shutdowns++,
                                        NullLogSink.Instance),
             new LockedScreen());
 
@@ -49,7 +49,7 @@ public class UnattendedInstallsTests
             UnattendedTick refused = await policy.TickAsync();
 
             Assert.Equal(UnattendedOutcome.Refused, refused.Outcome);
-            Assert.Equal(UnattendedInstalls.SessionRunningReason, refused.Reason);
+            Assert.Equal(AppUpdates.SessionRunningReason, refused.Reason);
         }
 
         Assert.Equal(0, service.Launches);
@@ -64,6 +64,30 @@ public class UnattendedInstallsTests
         Assert.Equal(1, shutdowns);
         // The handover the next start reports on names the release that was started.
         Assert.Equal(["9.9.9"], installing);
+    }
+
+    /// <summary>The guard on an update a person starts: launching Setup mid-session force-ends
+    /// FocusDesk, so the flow FocusDesk builds must stop at the hold until the session ends.</summary>
+    [Fact]
+    public async Task ARunningSessionHoldsAnInstallAPersonStarts_AndTheEndOfTheSessionLetsItThrough()
+    {
+        var service = new FakeUpdateService();
+        var session = Running;
+        int shutdowns = 0;
+        var flow = new UpdateFlow(service, SilentUpdatePrompts.Instance,
+                                  AppUpdates.FlowOptions(() => shutdowns++, AppUpdates.HoldsFor(() => session)));
+
+        UpdateFlowRun held = await flow.InstallAsync(Release);
+
+        Assert.Equal(UpdateFlowResult.Held, held.Result);
+        Assert.Equal(0, service.Launches);
+        Assert.Equal(0, shutdowns);
+
+        session = FocusSnapshot.None;
+        UpdateFlowRun started = await flow.InstallAsync(Release);
+
+        Assert.Equal(UpdateFlowResult.InstallerStarted, started.Result);
+        Assert.Equal(1, service.Launches);
     }
 
     /// <summary>A value that must never move: an installation that has opened nothing, and a document

@@ -88,6 +88,10 @@ FinishedLabel={#AppName} is installed. Look for its icon in the notification are
 ; Quiet studio sign-off, bottom-left of every wizard page.
 BeveledLabel=ZeroZero Software - Small tools. Zero bloat.
 
+[InstallDelete]
+; Before the copy: a stale shared-library resource index left by an earlier version overrides that library's own texts.
+Type: files; Name: "{app}\ZeroZero.*.pri"
+
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 

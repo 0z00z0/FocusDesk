@@ -62,6 +62,9 @@ internal static class MqttEntityCatalog
             new MqttNumber
             {
                 EntityId = ScreenBrightness, Name = "Screen brightness", Group = MqttPublishGroups.Screen,
+                Description = "Sets the brightness of the built-in display from 0 to 100 percent and "
+                            + "remembers the level it had before the first change, so that the Screen "
+                            + "brightness restore button can put it back.",
                 Unit = "%", Icon = "mdi:brightness-6",
                 Min = ScreenBrightnessPark.Minimum, Max = ScreenBrightnessPark.Maximum,
                 Mode = MqttNumberMode.Slider, Debounce = MqttConnection.ReflectDebounce,
@@ -74,6 +77,8 @@ internal static class MqttEntityCatalog
             {
                 EntityId = ScreenBrightnessRestore, Name = "Screen brightness restore",
                 Group = MqttPublishGroups.Screen, Icon = "mdi:brightness-auto",
+                Description = "Puts the display brightness back to the level it had before the first "
+                            + "change, and does nothing when no earlier level is remembered.",
                 Include = () => s.Capabilities().ScreenBrightness,
                 Press = () => MqttCommandVerdict.Accept(
                     () => set.RestoreScreenBrightness(ScreenBrightnessRestore)),
@@ -88,6 +93,12 @@ internal static class MqttEntityCatalog
                 // ending it. The switch therefore stays on through a cancel attempt, and the state
                 // reading below is what says how far that attempt has got.
                 EntityId = FocusSession, Name = "Focus session", Group = MqttPublishGroups.Focus,
+                Description = "Turning on starts a focus session with the type, length and restrictions "
+                            + "currently set in the other Focus session entities, and does nothing if a "
+                            + "session already runs or the session cannot be started. Turning off does "
+                            + "not end the session at once: it starts a five-minute wait, after which "
+                            + "turning off again within ten seconds ends the session, and the switch "
+                            + "stays on until the session is over.",
                 Icon = "mdi:meditation", Debounce = MqttConnection.ReflectDebounce,
                 Read = () => surface() is { } v ? v.FocusStage != FocusSessionStage.Off : (bool?)null,
                 Apply = on => MqttCommandVerdict.Accept(() => set.SetFocusSession(on, FocusSession)),
@@ -96,6 +107,8 @@ internal static class MqttEntityCatalog
             {
                 EntityId = FocusSessionMinutes, Name = "Focus session minutes",
                 Group = MqttPublishGroups.Focus,
+                Description = "Sets how many minutes the next focus session lasts, from 1 to 240; a "
+                            + "change while a session runs applies to the next session only.",
                 Category = MqttEntityCategory.Config, Unit = "min", Icon = "mdi:timer-outline",
                 Min = FocusSessionEngine.MinMinutes, Max = FocusSessionEngine.MaxMinutes,
                 Mode = MqttNumberMode.Box, Debounce = MqttConnection.ReflectDebounce,
@@ -110,6 +123,10 @@ internal static class MqttEntityCatalog
                 // given kind is two calls in order: this select, then the session switch.
                 EntityId = FocusSessionType, Name = "Focus session type",
                 Group = MqttPublishGroups.Focus,
+                Description = "Chooses whether the next focus session is Program focus, which keeps only "
+                            + "the chosen programs usable, or Screen break, which covers every display; "
+                            + "it cannot be changed while a session runs and then shows the type of the "
+                            + "running session.",
                 Category = MqttEntityCategory.Config, Icon = "mdi:shape-outline",
                 Debounce = MqttConnection.ReflectDebounce,
                 Options = () => FocusSessionKinds.Options,
@@ -124,6 +141,9 @@ internal static class MqttEntityCatalog
                 // refused block leaves the session running, and this reads off while it runs.
                 EntityId = FocusSessionBlocksNetwork, Name = "Focus session blocks network",
                 Group = MqttPublishGroups.Focus,
+                Description = "Sets whether a focus session blocks all network traffic except the MQTT "
+                            + "connection and the programs allowed to use the network; while a session "
+                            + "runs, it shows whether the block is held and a change is refused.",
                 Category = MqttEntityCategory.Config, Icon = "mdi:lan-disconnect",
                 Debounce = MqttConnection.ReflectDebounce,
                 Read = () => surface()?.FocusBlocksNetwork,
@@ -137,6 +157,10 @@ internal static class MqttEntityCatalog
                 // while a session runs — the refused value reflects back through the debounce.
                 EntityId = FocusSessionDimsScreen, Name = "Focus session dims screen",
                 Group = MqttPublishGroups.Focus,
+                Description = "Sets whether a screen break also lowers the display brightness to its "
+                            + "minimum behind the black cover, which Program focus never does; while a "
+                            + "session runs, it shows whether the screen is dimmed and a change is "
+                            + "refused.",
                 Category = MqttEntityCategory.Config, Icon = "mdi:brightness-2",
                 Debounce = MqttConnection.ReflectDebounce,
                 Include = () => s.Capabilities().ScreenBrightness,
@@ -151,6 +175,9 @@ internal static class MqttEntityCatalog
                 // it.
                 EntityId = FocusSessionBlocksInput, Name = "Focus session blocks input",
                 Group = MqttPublishGroups.Focus,
+                Description = "Sets whether a screen break blocks the physical mouse and keyboard, which "
+                            + "Program focus never does and which needs administrator rights; while a "
+                            + "session runs, it shows whether the block is held and a change is refused.",
                 Category = MqttEntityCategory.Config, Icon = "mdi:keyboard-off",
                 Debounce = MqttConnection.ReflectDebounce,
                 Read = () => surface()?.FocusBlocksInput,
@@ -160,7 +187,10 @@ internal static class MqttEntityCatalog
                 FocusSessionState, "Focus session state", MqttPublishGroups.Focus,
                 MqttEntityCategory.Diagnostic, "mdi:progress-clock",
                 FocusSessionStages.Words,
-                () => surface() is { } v ? FocusSessionStages.Label(v.FocusStage) : null),
+                () => surface() is { } v ? FocusSessionStages.Label(v.FocusStage) : null,
+                description: "Shows Off when no focus session runs, Active while one runs, Ending during "
+                           + "the five-minute wait after a cancel was asked for, and Confirm during the "
+                           + "following ten seconds in which asking again ends the session."),
             new MqttSensor
             {
                 // The countdown to the original end time, which a cancel attempt never pauses. A
@@ -168,6 +198,9 @@ internal static class MqttEntityCatalog
                 // with the state above.
                 EntityId = FocusSessionRemaining, Name = "Focus session remaining",
                 Group = MqttPublishGroups.Focus,
+                Description = "Shows the minutes left of the running focus session, rounded up to whole "
+                            + "minutes, and keeps counting towards the original end time while a cancel "
+                            + "is waiting; the value is unknown when no session runs.",
                 Category = MqttEntityCategory.Primary, DeviceClass = "duration", Unit = "min",
                 Icon = "mdi:timer-sand",
                 Read = () => MqttPayload.Number((long?)surface()?.FocusRemainingMinutes),
