@@ -14,6 +14,9 @@
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
 
+    <!-- Program.cs is the entry point: a held watchdog check ends there before the UI framework loads. -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+
     <!-- Identity / packaging metadata -->
     <AssemblyTitle>FocusDesk</AssemblyTitle>
     <Product>FocusDesk</Product>

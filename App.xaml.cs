@@ -30,12 +30,8 @@ public partial class App : Application
 
     public App()
     {
-        // A deliberate Exit outranks the watchdog, but never a session still recorded as running.
-        // Checked ahead of the guard: the hold marker is the one input that keeps a probe down even
-        // when FocusDesk really is gone.
+        // A probe the hold marker keeps down has already ended in Program.Main.
         _watchdogProbe = Environment.GetCommandLineArgs().Contains(TaskDefinitions.WatchdogArg);
-        if (_watchdogProbe && WatchdogTask.HoldsProbeOff)
-            Environment.Exit(0);
 
         // Before anything else touches the session state or the tray icon: a second instance —
         // most often the watchdog task's own probe firing while FocusDesk is already running —
