@@ -93,6 +93,9 @@ BeveledLabel=ZeroZero Software - Small tools. Zero bloat.
 Type: files; Name: "{app}\ZeroZero.*.pri"
 
 [Files]
+; No restartreplace: it acts only in an elevated run and leaves old and new files side by side until
+; a restart, while the application is started at once. A file still in use after Setup's own retries
+; ends the run instead, and DeinitializeSetup puts the backup back.
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
@@ -122,6 +125,16 @@ var
   // restart the app it killed: without this, a background upgrade leaves the tray app dead until
   // the next sign-in.
   WasRunning: Boolean;
+
+  // True once PrepareToInstall has paused the watchdog task; DeinitializeSetup enables it again.
+  WatchdogPaused: Boolean;
+
+  // The installation as it stood before any file was replaced, and where it sits. Empty when there
+  // was nothing installed to keep.
+  BackupDir, InstalledDir: string;
+
+  // True once every file is in place. Until then, a run that ends puts the backup back.
+  InstallFinished: Boolean;
 
 // True when the application started this run for its own update. That run is silent like a winget
 // or scheduled one and cannot be told from them by WizardSilent, yet it differs in every way that
@@ -285,15 +298,56 @@ end;
 // beside its own record of the attempt and reports both. The file name must stay equal to the
 // refusal file name the application reads.
 // ASCII only — see the note in [Messages].
-procedure RecordTheRefusal();
+procedure RecordTheRefusal(const Reason: string);
 var
   Dir: string;
 begin
   Dir := ExpandConstant('{userappdata}\{#AppName}');
   if ForceDirectories(Dir) then
-    SaveStringToFile(Dir + '\update-refused.txt',
-                     'Setup installed nothing: {#AppName} was still running when it started.',
-                     False);
+    SaveStringToFile(Dir + '\update-refused.txt', Reason, False);
+end;
+
+// ---------------------------------------------------------------------------
+// The watchdog task and the backup. The task starts FocusDesk.exe from the install folder every five
+// minutes and on unlock and resume, so a check started during the copy holds a file Setup is
+// replacing; a file Setup cannot replace ends the run part-way. Pausing the task removes the first,
+// and the backup turns the second into the previous version put back whole.
+// ---------------------------------------------------------------------------
+
+// Unelevated, so it succeeds without a prompt where Setup inherited the application's elevated
+// token. The task runs elevated, so an ordinary run may be refused and has to elevate.
+function ChangeWatchdog(const Switch: string): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := Exec('schtasks.exe', '/Change /TN "' + WatchdogTaskName + '" ' + Switch, '',
+                 SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
+end;
+
+// robocopy exits below 8 when every file was copied or was already identical. /MIR also removes
+// what the source does not hold.
+function Mirror(const Source, Target: string): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := Exec(ExpandConstant('{sys}\robocopy.exe'),
+                 '"' + Source + '" "' + Target + '" /MIR /R:5 /W:1 /NP /NFL /NDL /NJH /NJS', '',
+                 SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode < 8);
+end;
+
+// Taken once nothing holds the files. A first install has nothing to keep.
+function BackUpTheInstallation(): Boolean;
+begin
+  Result := True;
+  InstalledDir := ExpandConstant('{app}');
+  if not FileExists(InstalledDir + '\{#AppExe}') then exit;
+  BackupDir := InstalledDir + '-previous-version';
+  Result := Mirror(InstalledDir, BackupDir);
+  if not Result then
+  begin
+    DelTree(BackupDir, True, True, True);
+    BackupDir := '';
+  end;
 end;
 
 procedure StopAppAndRemoveStartupTask();
@@ -337,9 +391,60 @@ begin
   ShellExec('runas', ExpandConstant('{app}\{#AppExe}'), '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
 end;
 
+// The branch that follows a finished install, and a run that put the previous version back.
+procedure StartTheApplicationAgain();
+var
+  ResultCode: Integer;
+begin
+  if not WizardSilent() then
+    // Interactive install: launch after task creation so a freshly-created startup task
+    // is used for a prompt-free launch.
+    LaunchApp()
+  else if StartedByTheApplication() then
+    // The application asked for this update and closed itself for it, so it is put back — and
+    // unconditionally, unlike the branch below. WasRunning is False here by design (the exit is
+    // waited for in PrepareToInstall rather than forced), and gating on the AutoStart task would
+    // answer a user's own Update with the application simply gone. LaunchApp prefers that task
+    // where it exists and otherwise starts the application directly, which costs at most the one
+    // consent prompt the application always needs — and none at all when Setup inherited the
+    // elevated token of the application that started it.
+    LaunchApp()
+  else if WasRunning and ScheduledTaskExists() then
+    // Silent upgrade that killed a running instance: restart it via the elevated logon task — no
+    // UI, no UAC. Without this the background upgrade leaves the tray app dead until the next
+    // sign-in. When no task exists we stay silent (a UAC prompt from an unattended install would
+    // be wrong) and accept the gap.
+    Exec('schtasks.exe', '/Run /TN "' + TaskName + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+// A run that ended before every file was in place. Files Setup never reached are identical to the
+// backup and skipped, so the one it could not replace does not stop the restore. The reason goes
+// where the next start reports it; a restore that fails too is the one case shown at once, since
+// nothing that starts afterwards can report it. MsgBox, not SuppressibleMsgBox, so a silent run
+// shows it. ASCII only — see the note in [Messages].
+procedure PutThePreviousVersionBack();
+begin
+  if Mirror(BackupDir, InstalledDir) then
+  begin
+    if StartedByTheApplication() then
+      RecordTheRefusal('Setup could not replace every file, so it put the previous version back.');
+    StartTheApplicationAgain();
+  end
+  else
+  begin
+    if StartedByTheApplication() then
+      RecordTheRefusal('Setup could not replace every file and could not put the previous version back. Run the installer again.');
+    MsgBox('{#AppName} could not be updated, and its previous version could not be put back.'
+           + #13#10#13#10 + 'Run the {#AppName} installer again to repair it.', mbError, MB_OK);
+    // Kept: the only whole copy left.
+    BackupDir := '';
+  end;
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
+  Elevated: string;
 begin
   // Kill any running instance BEFORE files are replaced so nothing is locked. The app is
   // requireAdministrator (elevated), so a non-elevated taskkill is refused with "Access is denied".
@@ -354,11 +459,26 @@ begin
   //
   // The application's own update comes through here with its exit already requested, so that exit
   // is waited for FIRST — before anything reads the process or elevates to end it.
+  //
+  // Ahead of even that, the watchdog task is paused, so no check can start after the wait below. A
+  // check already running is a FocusDesk.exe like the application, so the wait and the termination
+  // end it too. Where pausing needs elevation it shares the termination's single consent prompt.
+  Elevated       := '';
+  WatchdogPaused := WatchdogTaskExists();
+  // Nested, as in ConfirmProcessHasExited: no short-circuit evaluation is relied on.
+  if WatchdogPaused then
+    if not ChangeWatchdog('/DISABLE') then
+      Elevated := 'schtasks /Change /TN "' + WatchdogTaskName + '" /DISABLE';
   WaitForTheStartingApplicationToExit();
   Result     := '';
   WasRunning := AppIsRunning();
   if WasRunning then
-    ShellExec('runas', ExpandConstant('{cmd}'), '/C taskkill /F /IM "{#AppExe}"',
+  begin
+    if Elevated <> '' then Elevated := Elevated + ' & ';
+    Elevated := Elevated + 'taskkill /F /IM "{#AppExe}"';
+  end;
+  if Elevated <> '' then
+    ShellExec('runas', ExpandConstant('{cmd}'), '/C ' + Elevated,
               '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 
   // taskkill returns once termination is requested, and the UAC prompt above can be declined
@@ -368,39 +488,53 @@ begin
   // does the terminal message stop Setup, rather than failing mid-copy on a locked exe.
   Result := ConfirmProcessHasExited('{#AppExe}');
 
-  // Setup stops here on a non-empty result, and in an unattended run it stops showing nothing at
-  // all. Leave the reason on disk where the next start reads it, so the one failure this flow can
-  // have is stated to somebody rather than only counted in an exit code nothing is left to read.
-  if (Result <> '') and StartedByTheApplication() then RecordTheRefusal();
+  // Setup stops on a non-empty result, and in an unattended run it stops showing nothing at all.
+  // Leave the reason on disk where the next start reads it, so a refusal is stated to somebody
+  // rather than only counted in an exit code nothing is left to read.
+  if Result <> '' then
+  begin
+    if StartedByTheApplication() then
+      RecordTheRefusal('Setup installed nothing: {#AppName} was still running when it started.');
+    exit;
+  end;
+
+  // Without a backup a failure part-way through the copy would leave two versions mixed, so no
+  // backup means no install.
+  if not BackUpTheInstallation() then
+  begin
+    Result := 'Setup could not keep a copy of the installed version to fall back on, so it '
+            + 'installed nothing. Check that the disk has free space, then run this installer again.';
+    if StartedByTheApplication() then
+      RecordTheRefusal('Setup installed nothing: it could not keep a copy of the installed version to fall back on.');
+  end;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
-var
-  ResultCode: Integer;
 begin
   if CurStep = ssPostInstall then
   begin
+    InstallFinished := True;
     if WizardIsTaskSelected('runstartup') then RegisterStartupTask();
-    if not WizardSilent() then
-      // Interactive install: launch after task creation so a freshly-created startup task
-      // is used for a prompt-free launch.
-      LaunchApp()
-    else if StartedByTheApplication() then
-      // The application asked for this update and closed itself for it, so it is put back — and
-      // unconditionally, unlike the branch below. WasRunning is False here by design (the exit is
-      // waited for in PrepareToInstall rather than forced), and gating on the AutoStart task would
-      // answer a user's own Update with the application simply gone. LaunchApp prefers that task
-      // where it exists and otherwise starts the application directly, which costs at most the one
-      // consent prompt the application always needs — and none at all when Setup inherited the
-      // elevated token of the application that started it.
-      LaunchApp()
-    else if WasRunning and ScheduledTaskExists() then
-      // Silent upgrade that killed a running instance: restart it via the elevated logon task — no
-      // UI, no UAC. Without this the background upgrade leaves the tray app dead until the next
-      // sign-in. When no task exists we stay silent (a UAC prompt from an unattended install would
-      // be wrong) and accept the gap.
-      Exec('schtasks.exe', '/Run /TN "' + TaskName + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    StartTheApplicationAgain();
   end;
+end;
+
+// Runs however Setup ends: finished, failed part-way, or cancelled.
+procedure DeinitializeSetup();
+var
+  ResultCode: Integer;
+begin
+  if BackupDir <> '' then
+  begin
+    if not InstallFinished then PutThePreviousVersionBack();
+    DelTree(BackupDir, True, True, True);
+  end;
+
+  // Last, so a check cannot start while files are still being put back.
+  if WatchdogPaused then
+    if not ChangeWatchdog('/ENABLE') then
+      ShellExec('runas', 'schtasks.exe', '/Change /TN "' + WatchdogTaskName + '" /ENABLE',
+                '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

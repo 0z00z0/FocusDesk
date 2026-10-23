@@ -96,7 +96,21 @@ public class WatchdogHoldTests
         Assert.False(WatchdogTask.RecordsARunningSession(ended, now));
         Assert.False(WatchdogTask.RecordsARunningSession(null, now));
 
-        Assert.Matches(@"HoldsProbeOff =>\s*HoldMarkerExists && !RecordsARunningSession\(RecordedSession\(\), DateTimeOffset\.Now\);",
+        Assert.Matches(@"HoldsProbeOff =>\s*HoldMarkerExists\s*&& !RecordsARunningSession\(RecordedSession\(\), DateTimeOffset\.Now\)\s*&& !MarksAnUnfinishedUpdate\(",
             RepoFiles.Read(@"Helpers\WatchdogTask.cs"));
+    }
+
+    /// <summary>Honoured after its update failed, the marker kept the installation down for good.</summary>
+    [Fact]
+    public void AnUnfinishedUpdatesMarkerStopsHoldingTheProbe()
+    {
+        var started = new DateTimeOffset(2026, 10, 11, 14, 15, 0, TimeSpan.Zero);
+        var handover = new UnattendedUpdate.Handover { TargetVersion = "0.5.2", StartedUtc = started.ToString("O") };
+        DateTime exitForUpdate = started.AddSeconds(10).UtcDateTime;
+
+        Assert.True(WatchdogTask.MarksAnUnfinishedUpdate(handover, exitForUpdate, started.AddMinutes(11)));
+        Assert.False(WatchdogTask.MarksAnUnfinishedUpdate(handover, exitForUpdate, started.AddMinutes(2)));
+        Assert.False(WatchdogTask.MarksAnUnfinishedUpdate(handover, started.AddHours(1).UtcDateTime, started.AddHours(2)));
+        Assert.False(WatchdogTask.MarksAnUnfinishedUpdate(null, exitForUpdate, started.AddMinutes(11)));
     }
 }

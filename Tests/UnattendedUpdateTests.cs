@@ -33,6 +33,27 @@ public class UnattendedUpdateTests
         Assert.Contains($@"\{UnattendedUpdate.RefusalFileName}'", Installer, StringComparison.Ordinal);
     }
 
+    /// <summary>A watchdog check started during the copy holds a file Setup is replacing.</summary>
+    [Fact]
+    public void TheInstallerPausesTheWatchdogBeforeTheCopyAndEnablesItAfter()
+    {
+        string prepare = Section("function PrepareToInstall", "procedure CurStepChanged");
+        int pause = prepare.IndexOf("ChangeWatchdog('/DISABLE')", StringComparison.Ordinal);
+        int wait = prepare.IndexOf("WaitForTheStartingApplicationToExit();", StringComparison.Ordinal);
+        Assert.InRange(pause, 0, wait);
+
+        Assert.Contains("ChangeWatchdog('/ENABLE')",
+            Section("procedure DeinitializeSetup", "procedure CurUninstallStepChanged"), StringComparison.Ordinal);
+    }
+
+    private static string Section(string from, string to)
+    {
+        int start = Installer.IndexOf(from, StringComparison.Ordinal);
+        int end = Installer.IndexOf(to, start + 1, StringComparison.Ordinal);
+        Assert.InRange(start, 0, end);
+        return Installer[start..end];
+    }
+
     /// <summary>The direction is the whole report, and only a real failed update exercises it:
     /// inverted, every update that landed would announce a failure and every failure would pass
     /// unmentioned.</summary>

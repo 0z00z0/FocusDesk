@@ -90,9 +90,11 @@ internal static class TaskDefinitions
             logonType: TaskLogonType.InteractiveToken);
 
     /// <summary>True when the task already carries this definition for this exe, so there is
-    /// nothing to rewrite.</summary>
+    /// nothing to rewrite. A disabled task is rewritten: the installer pauses it for the copy, and a
+    /// Setup run that ended before enabling it again would otherwise leave the safety net off.</summary>
     internal static bool Matches(TaskDefinition td, string exe) =>
         td.RegistrationInfo.Description?.Contains(DefStamp, StringComparison.Ordinal) == true
+        && td.Settings.Enabled
         && TargetsExe(td, exe);
 
     /// <summary>True when the task's action runs <paramref name="exe"/>.</summary>

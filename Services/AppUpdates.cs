@@ -157,6 +157,7 @@ internal static class AppUpdates
 
             // Once reported, never again: the record is one attempt, not a standing state.
             UnattendedUpdate.Clear();
+            WatchdogTask.TryClearHoldMarker();
         }
         catch (Exception ex)
         {
