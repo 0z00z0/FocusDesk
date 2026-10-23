@@ -9,6 +9,35 @@ in the code. Newest version first; the heading is the version alone, exactly as 
 `FocusDesk.csproj`. A section never carries an installer hash: the workflow adds the one hash the
 updater reads.
 
+## 1.0.0
+
+- FocusDesk is a Windows tray application that holds the computer in a chosen state for a chosen
+  length of time, in one of two kinds of focus session: Program focus, where only the programs ticked
+  Can run can be used and every other window is minimised, and Screen break, where every display is
+  covered.
+- A session has five levers: the program limit, the screen cover, the mouse and keyboard block,
+  dimming of the built-in screen, and a network block that lets through only the MQTT broker and the
+  programs allowed the network. Program focus can add the network block; Screen break can add the
+  input block, the dimming and the network block.
+- Before a session starts from the pop-out, the full-screen focus point window runs a short breathing
+  exercise. The Focus page sets whether it appears, how long it runs and whether the session then
+  starts by itself; closing it early starts nothing.
+- A session ends when its time runs out, or early by an MQTT command after a five-minute wait and a
+  second request. Nothing on the computer ends one.
+- Over MQTT, FocusDesk appears as one device carrying the session switch, its length, its kind, a
+  switch per optional lever, the session's state, its remaining time and the screen brightness. Every
+  entity carries a one-sentence help text, which a Home Assistant dashboard can show under its name.
+- The Automatic session page in Settings opens a step-by-step guide to starting a focus session at a
+  set time from a Home Assistant automation.
+- While a session runs, the tray menu's Update available, Settings, Launch at startup, Check for
+  updates, About and Exit rows are greyed out. So are the Settings controls that could weaken it: the
+  brightness slider and its restore button, the update button and the settings-file actions on the
+  Diagnostics page.
+- No update installs while a session runs, whether it was chosen from the menu or the About page or
+  arrived through automatic updates. Only a release signed by ZeroZero Software is installed.
+- An automation or dashboard built on 0.4.3 or earlier that used the switches Focus session covers
+  screen or Focus session limits programs has to be pointed at the select Focus session type instead.
+
 ## 0.5.2
 
 - Started at sign-in, FocusDesk waits for the taskbar before putting its icon in the notification
