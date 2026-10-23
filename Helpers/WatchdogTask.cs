@@ -1,3 +1,4 @@
+using System.Globalization;
 using FocusDesk.Services;
 using ZeroZero.Startup;
 
@@ -21,16 +22,34 @@ internal static class WatchdogTask
 
     internal static bool HoldMarkerExists => File.Exists(HoldMarkerPath);
 
-    /// <summary>Whether a probe stays down: a hold marker, and no session recorded as running. Exit
-    /// is refused mid-session, but a session Home Assistant arms while Exit is already under way, or
-    /// a marker written by hand, would otherwise keep a running session's levers down for good.</summary>
+    /// <summary>Whether a probe stays down: a hold marker, no session recorded as running, and no
+    /// unfinished update. Exit is refused mid-session, but a session Home Assistant arms while Exit
+    /// is already under way, or a marker written by hand, would otherwise keep a running session's
+    /// levers down for good.</summary>
     internal static bool HoldsProbeOff =>
-        HoldMarkerExists && !RecordsARunningSession(RecordedSession(), DateTimeOffset.Now);
+        HoldMarkerExists
+        && !RecordsARunningSession(RecordedSession(), DateTimeOffset.Now)
+        && !MarksAnUnfinishedUpdate(UnattendedUpdate.Read(), File.GetLastWriteTimeUtc(HoldMarkerPath), DateTimeOffset.UtcNow);
 
     /// <summary>A record whose end is still ahead. One already past is ended by the next start, so
     /// there is nothing a probe needs to bring back for it.</summary>
     internal static bool RecordsARunningSession(FocusSessionRecord? session, DateTimeOffset now) =>
         session is { } recorded && recorded.EndsAt > now;
+
+    private static readonly TimeSpan ExitForUpdate = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan SetupRun = TimeSpan.FromMinutes(10);
+
+    /// <summary>The update's own exit marker, Setup long over, and no start since to report it.</summary>
+    internal static bool MarksAnUnfinishedUpdate(UnattendedUpdate.Handover? handover, DateTime markerWrittenUtc, DateTimeOffset now)
+    {
+        if (handover is null
+            || !DateTimeOffset.TryParse(handover.StartedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var started))
+            return false;
+
+        TimeSpan exitAfterHandover = new DateTimeOffset(markerWrittenUtc, TimeSpan.Zero) - started;
+        return exitAfterHandover >= TimeSpan.Zero && exitAfterHandover <= ExitForUpdate
+            && now - started > SetupRun;
+    }
 
     /// <summary>The record in settings.json. Unreadable counts as none: a start that cannot read it
     /// could not resume the session either.</summary>
@@ -52,8 +71,9 @@ internal static class WatchdogTask
         catch (Exception ex) { AppLog.Error("WatchdogTask.WriteHoldMarker", ex); }
     }
 
-    /// <summary>Cleared on every deliberate start, so resurrection is re-armed. A watchdog probe
-    /// never clears it.</summary>
+    /// <summary>Cleared on every deliberate start, so resurrection is re-armed, and once an update's
+    /// outcome is reported, so a probe that started past an unfinished update's marker does not leave
+    /// it behind. A probe never clears it otherwise.</summary>
     internal static void TryClearHoldMarker()
     {
         try { File.Delete(HoldMarkerPath); }
