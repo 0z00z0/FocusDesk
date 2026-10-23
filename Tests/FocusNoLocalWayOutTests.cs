@@ -165,7 +165,7 @@ public class FocusNoLocalWayOutTests
             @"private void Shutdown\(\)\s*\{(\s*//[^\n]*)*\s*if \(!DeliberateExit\.Allows\(FocusSessionService\.Current\)\)\s*\{[^}]*return;\s*\}(\s*//[^\n]*)*\s*WatchdogTask\.WriteHoldMarker\(\);"),
             AppCode);
 
-        // The runtime's exit only turns away a second instance or a held probe in the constructor. A
+        // The runtime's exit only turns away a second instance in the constructor. A
         // refused tray icon ends through the crash handlers' report, before the broker connection or
         // the session engine can arm a session; the only other report is the UI arm's.
         int constructor = AppCode.IndexOf("public App()", StringComparison.Ordinal);

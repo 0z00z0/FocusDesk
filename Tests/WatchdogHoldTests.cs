@@ -35,18 +35,22 @@ public class WatchdogHoldTests
         Assert.InRange(marker, 0, teardown);
     }
 
-    /// <summary>The marker only holds if a probe reads it before taking the single-instance guard,
-    /// and if a probe that does start never wipes it.</summary>
+    /// <summary>A held probe ends in Main before the UI framework starts, which a broken installation
+    /// crashes every five minutes; a deliberate start never reads the marker; a probe never wipes it.</summary>
     [Fact]
-    public void AProbeHonoursTheHoldMarkerAndNeverClearsIt()
+    public void AHeldProbeEndsBeforeTheUiFrameworkAndNeverClearsTheMarker()
     {
         Assert.Equal("--watchdog-relaunch", TaskDefinitions.WatchdogArg);
 
-        string constructor = Between("public App()", "protected override async void OnLaunched");
-        Assert.Contains("TaskDefinitions.WatchdogArg", constructor, StringComparison.Ordinal);
-        int hold = constructor.IndexOf("WatchdogTask.HoldsProbeOff", StringComparison.Ordinal);
-        int guard = constructor.IndexOf("SingleInstanceGuard.TryAcquire()", StringComparison.Ordinal);
-        Assert.InRange(hold, 0, guard);
+        string program = RepoFiles.Read("Program.cs");
+        Assert.Matches(@"static void Main\(string\[\] args\)\s*\{(\s*//[^\n]*)*\s*if \(args\.Contains\(TaskDefinitions\.WatchdogArg\) && WatchdogTask\.HoldsProbeOff\)\s*return;\s*StartTheApplication\(\);\s*\}",
+            program);
+        Assert.Matches(@"\[MethodImpl\(MethodImplOptions\.NoInlining\)\]\s*private static void StartTheApplication\(\) => XamlGeneratedProgram\.XamlGeneratedMain\(\);",
+            program);
+        Assert.DoesNotContain("Microsoft.UI", program, StringComparison.Ordinal);
+        Assert.Contains("<DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>",
+            RepoFiles.Read("FocusDesk.csproj"), StringComparison.Ordinal);
+        Assert.DoesNotContain("HoldsProbeOff", AppCode, StringComparison.Ordinal);
 
         Assert.Single(Regex.Matches(AppCode, @"WatchdogTask\.TryClearHoldMarker\(\)"));
         Assert.Matches(@"if \(_watchdogProbe\)\s+AppLog\.Info\([^;]*\);\s+else\s+WatchdogTask\.TryClearHoldMarker\(\);",
