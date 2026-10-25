@@ -6,6 +6,7 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
@@ -69,6 +70,19 @@ internal sealed partial class StatusWindow : Window
     /// shown, and changed only by the two kind buttons; never written back to the settings.</summary>
     private FocusSessionKind _chosenKind;
 
+    /// <summary>The named session the Start button hands on for Program focus; each showing begins on
+    /// the session in use, and pressing a button makes that one the session in use.</summary>
+    private string? _chosenSession;
+
+    // The named-session buttons, copied from ChargeKeeper's Smart Charge preset buttons (5727ea5).
+    // Rebuilt only when the set changes, so a tick never replaces a button under the pointer.
+    private IReadOnlyList<string> _sessionButtonsShown = [];
+    private (int Columns, int Rows) _sessionGridShape;
+    private readonly HashSet<string> _runnableSessions = [];
+
+    // The width the row gets before its first arrange: the window less the root's and the card's padding.
+    private const double SessionPanelWidth = PopOutPlacement.WidthInUnits - 32 - 22;
+
     /// <summary>Opens the pop-out, or brings the hidden one back.</summary>
     public static void Open()
     {
@@ -131,6 +145,7 @@ internal sealed partial class StatusWindow : Window
         // A line that appears while the window is open — the way out once a session starts, a
         // refusal — changes the content's height, and the window follows it rather than clipping.
         ContentPanel.SizeChanged += (_, _) => { if (AppWindow.IsVisible) Place(); };
+        NamedSessionChoices.SizeChanged += (_, _) => LayoutSessionButtons();
 
         Activated += OnActivated;
 
@@ -166,7 +181,7 @@ internal sealed partial class StatusWindow : Window
     private void ShowPopOut()
     {
         _idleClose.Stop();
-        _chosenKind = SettingsService.Read(s => s.FocusSessionKind);
+        (_chosenKind, _chosenSession) = SettingsService.Read(s => (s.FocusSessionKind, NamedSessions.InUse(s).Key));
         GoalBox.Text = "";
         RefusalText.Visibility = Visibility.Collapsed;
         Reload();
@@ -252,11 +267,13 @@ internal sealed partial class StatusWindow : Window
         StartButton.IsEnabled        = !session.IsRunning;
         MinutesCombo.IsEnabled       = !session.IsRunning;
         GoalBox.IsEnabled            = !session.IsRunning;
+        foreach (var button in SessionButtons())
+            button.IsEnabled = !session.IsRunning && button.Tag is string key && _runnableSessions.Contains(key);
         if (session.IsRunning) RefusalText.Visibility = Visibility.Collapsed;
     }
 
-    /// <summary>Whether a row ticked "Can run" keeps a program usable, read with the start box. Program
-    /// focus is refused without one, so its button says so before it is pressed.</summary>
+    /// <summary>Whether any named session has a row ticked "Can run" that keeps a program usable, read
+    /// with the start box. Program focus is refused without one, so its button says so beforehand.</summary>
     private bool _programFocusPossible;
 
     /// <summary>The start box: the length, the Start button, and a button per kind with the chosen one
@@ -264,34 +281,171 @@ internal sealed partial class StatusWindow : Window
     /// that is only ever set going from Home Assistant has no use for it.</summary>
     private void ShowStartBox()
     {
-        var (offered, minutes, programs) = SettingsService.Read(
-            s => (s.FocusStartFromDashboard, s.FocusSessionMinutes, NamedSessions.InUse(s).Programs.ToList()));
+        var (offered, minutes, stored) = SettingsService.Read(
+            s => (s.FocusStartFromDashboard, s.FocusSessionMinutes,
+                  s.NamedSessions.Take(NamedSessions.Maximum).Select(n => (n.Key, n.Name, Programs: n.Programs.ToList())).ToList()));
 
         var shown = offered ? Visibility.Visible : Visibility.Collapsed;
         KindChoices.Visibility = shown;
         StartRow.Visibility = shown;
-        GoalBox.Visibility = shown;
-        if (!offered) return;
+        if (!offered)
+        {
+            GoalBox.Visibility = NamedSessionChoices.Visibility = Visibility.Collapsed;
+            return;
+        }
 
         FocusLengthChoices.Fill(MinutesCombo, minutes);
 
-        _programFocusPossible = FocusProgramLever.KeepsAProgramUsable(programs, WindowsPrograms.Folder);
+        var sessions = stored.Select(n => (n.Key, n.Name,
+                                           Runs: FocusProgramLever.KeepsAProgramUsable(n.Programs, WindowsPrograms.Folder)))
+                             .ToList();
+        _runnableSessions.Clear();
+        _runnableSessions.UnionWith(sessions.Where(n => n.Runs).Select(n => n.Key));
+
+        _programFocusPossible = _runnableSessions.Count > 0;
         ToolTipService.SetToolTip(ProgramFocusFrame,
             _programFocusPossible ? null : AppText.Get("PopOutStartProgramFocusInfo"));
         ProgramFocusChoice.IsEnabled = _programFocusPossible && !FocusSessionService.IsRunning;
 
-        // A kind whose button is disabled cannot stay chosen, or Start would arm what the window
-        // says cannot run.
+        // A session or kind whose button is greyed cannot stay chosen, or Start would arm what the
+        // window says cannot run.
+        if (_chosenSession is null || !_runnableSessions.Contains(_chosenSession))
+            _chosenSession = sessions.FirstOrDefault(n => n.Runs).Key;
         if (!_programFocusPossible && _chosenKind == FocusSessionKind.ProgramFocus)
             _chosenKind = FocusSessionKind.ScreenBreak;
+
+        BuildSessionButtons(sessions);
         ShowChosenKind();
     }
 
-    /// <summary>Puts the accent on the chosen kind and takes it off the other.</summary>
+    /// <summary>Puts the accent on the chosen kind, and shows the named sessions for Program focus or
+    /// the goal for a screen break in the space beneath.</summary>
     private void ShowChosenKind()
     {
-        ProgramFocusChoice.Style = _chosenKind == FocusSessionKind.ProgramFocus ? _accentStyle : null;
-        ScreenBreakChoice.Style  = _chosenKind == FocusSessionKind.ScreenBreak  ? _accentStyle : null;
+        bool programFocus = _chosenKind == FocusSessionKind.ProgramFocus;
+        ProgramFocusChoice.Style = programFocus ? _accentStyle : null;
+        ScreenBreakChoice.Style  = programFocus ? null : _accentStyle;
+        NamedSessionChoices.Visibility = programFocus ? Visibility.Visible : Visibility.Collapsed;
+        GoalBox.Visibility             = programFocus ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private IEnumerable<ToggleButton> SessionButtons() =>
+        NamedSessionChoices.Children.OfType<Grid>().SelectMany(f => f.Children.OfType<ToggleButton>());
+
+    /// <summary>One button per named session, up to five, on the quick-button chrome. A session that
+    /// cannot run is greyed with the reason on hover, on a frame since a disabled button shows none.</summary>
+    private void BuildSessionButtons(IReadOnlyList<(string Key, string Name, bool Runs)> sessions)
+    {
+        var wanted = sessions.Select(n => $"{n.Key}|{n.Runs}|{n.Name}").ToList();
+        if (!wanted.SequenceEqual(_sessionButtonsShown))
+        {
+            _sessionButtonsShown = wanted;
+            _sessionGridShape    = default;
+            NamedSessionChoices.Children.Clear();
+            NamedSessionChoices.ColumnSpacing = PresetButtonLayout.Spacing;
+            NamedSessionChoices.RowSpacing    = PresetButtonLayout.Spacing;
+            ApplyCheckedChipResources(NamedSessionChoices);
+
+            foreach (var (key, name, runs) in sessions)
+            {
+                var button = new ToggleButton
+                {
+                    Tag                 = key,
+                    Style               = (Style)Application.Current.Resources["QuickButtonStyle"],
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment   = VerticalAlignment.Stretch,
+                    IsEnabled           = runs && !FocusSessionService.IsRunning,
+                    // Wrapped, never cut short: a long name takes another line.
+                    Content = new TextBlock { Text = name, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center },
+                };
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, name);
+                button.Click += OnNamedSessionClick;
+
+                var frame = new Grid { Background = new SolidColorBrush(Colors.Transparent) };
+                frame.Children.Add(button);
+                if (!runs) ToolTipService.SetToolTip(frame, AppText.Get("PopOutNamedSessionCannotRunInfo"));
+                NamedSessionChoices.Children.Add(frame);
+            }
+            LayoutSessionButtons();
+        }
+        MarkChosenSession();
+    }
+
+    /// <summary>Equal-width columns across the whole row; a short last row spreads its buttons over
+    /// the spare columns, so every row ends flush.</summary>
+    private void LayoutSessionButtons()
+    {
+        var frames = NamedSessionChoices.Children.OfType<Grid>().ToList();
+        if (frames.Count == 0) return;
+
+        double available = NamedSessionChoices.ActualWidth > 0 ? NamedSessionChoices.ActualWidth : SessionPanelWidth;
+        var shape = PresetButtonLayout.Choose(frames.Count, available);
+        if (shape == _sessionGridShape) return;
+        _sessionGridShape = shape;
+
+        NamedSessionChoices.ColumnDefinitions.Clear();
+        NamedSessionChoices.RowDefinitions.Clear();
+        for (int c = 0; c < shape.Columns; c++)
+            NamedSessionChoices.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        for (int r = 0; r < shape.Rows; r++)
+            NamedSessionChoices.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        int index = 0;
+        for (int row = 0; row < shape.Rows; row++)
+        {
+            int inRow    = Math.Min(shape.Columns, frames.Count - index);
+            int baseSpan = shape.Columns / inRow;
+            int extra    = shape.Columns % inRow;
+            int column   = 0;
+            for (int k = 0; k < inRow; k++, index++)
+            {
+                int span = baseSpan + (k < extra ? 1 : 0);
+                Grid.SetRow(frames[index], row);
+                Grid.SetColumn(frames[index], column);
+                Grid.SetColumnSpan(frames[index], span);
+                column += span;
+            }
+        }
+    }
+
+    /// <summary>Checks the chosen session's button, which then stops accepting clicks; weight as well
+    /// as colour marks it.</summary>
+    private void MarkChosenSession()
+    {
+        foreach (var button in SessionButtons())
+        {
+            bool chosen = (string?)button.Tag == _chosenSession;
+            button.IsChecked        = chosen;
+            button.IsHitTestVisible = !chosen;
+            button.FontWeight = chosen ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal;
+        }
+    }
+
+    /// <summary>The chosen look: FocusDesk's accent with black text, legible on both themes. Set before
+    /// the buttons are parented, so their templates resolve these.</summary>
+    private static void ApplyCheckedChipResources(Panel panel)
+    {
+        var accent = new SolidColorBrush(AppColors.FromHex(Brand.ColorAmber));
+        var onAccent = new SolidColorBrush(Colors.Black);
+        foreach (string state in new[] { "", "PointerOver", "Pressed" })
+        {
+            panel.Resources[$"ToggleButtonBackgroundChecked{state}"] = accent;
+            panel.Resources[$"ToggleButtonForegroundChecked{state}"] = onAccent;
+        }
+    }
+
+    /// <summary>Chooses the named session for the next start and makes it the session in use, so the
+    /// dashboard, Settings and the MQTT select agree. Nothing starts.</summary>
+    private void OnNamedSessionClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ButtonBase { Tag: string key }) return;
+
+        // A toggle checks itself before Click is raised, so the pick is marked at once.
+        _chosenSession = key;
+        MarkChosenSession();
+        RefusalText.Visibility = Visibility.Collapsed;
+        if (FocusSessionService.LeversAreLocked) return;
+        SettingsService.Update(s => { if (NamedSessions.Find(s, key) is not null) s.SelectedNamedSession = key; });
     }
 
     /// <summary>The restrictions in force, one short line each. Tinted while any is and in the plain
@@ -388,19 +542,22 @@ internal sealed partial class StatusWindow : Window
         if (FocusLengthChoices.Selected(MinutesCombo) is not { } minutes) return;
 
         RefusalText.Visibility = Visibility.Collapsed;
-        string goal = FocusSessionGoal.Clean(GoalBox.Text);
+        // Program focus starts with no goal; a screen break carries the one typed.
+        bool programFocus = _chosenKind == FocusSessionKind.ProgramFocus;
+        string goal = programFocus ? "" : FocusSessionGoal.Clean(GoalBox.Text);
+        string? named = programFocus ? _chosenSession : null;
         var (shown, startsItself, seconds) = SettingsService.Read(
             s => (s.FocusPointShown, s.FocusPointStartsSession, s.FocusPointSeconds));
         if (shown)
         {
-            FocusPointWindow.Open(_chosenKind, minutes, seconds, startsItself, goal);
+            FocusPointWindow.Open(_chosenKind, named, minutes, seconds, startsItself, goal);
             return;
         }
 
         // The chosen length is what the next session runs for from wherever it is started, so it is
         // stored rather than held for this one start.
         SettingsService.Update(s => s.FocusSessionMinutes = minutes);
-        var outcome = FocusSessionService.Arm(ActionCause.StatusWindow("Start button"), minutes, _chosenKind, goal);
+        var outcome = FocusSessionService.Arm(ActionCause.StatusWindow("Start button"), minutes, _chosenKind, goal, named);
         if (outcome == FocusArmOutcome.Armed)
         {
             GoalBox.Text = "";

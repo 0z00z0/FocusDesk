@@ -382,8 +382,8 @@
     <comment>Placeholder and screen-reader name of the one-line goal field in the pop-out's start box, noun phrase.</comment>
   </data>
   <data name="PopOutStartProgramFocusInfo" xml:space="preserve">
-    <value>Merk minst ett program som Kan kjøre på Fokus-siden</value>
-    <comment>Hover text on the disabled program-focus button, imperative; Can run names the checkbox; no full stop.</comment>
+    <value>Merk minst ett program som Kan kjøre på Programfokus-siden</value>
+    <comment>Hover text on the greyed Program focus button when no named session can run.</comment>
   </data>
   <data name="PopOutRefusalAlreadyRunning" xml:space="preserve">
     <value>En økt kjører allerede.</value>
@@ -677,5 +677,9 @@
   <data name="ScreenRestoreButton" xml:space="preserve">
     <value>Gjenopprett</value>
     <comment>Button that puts the brightness back, verb.</comment>
+  </data>
+  <data name="PopOutNamedSessionCannotRunInfo" xml:space="preserve">
+    <value>Merk minst ett program som Kan kjøre for denne økten på Programfokus-siden</value>
+    <comment>Hover text on a greyed named-session button in the status window.</comment>
   </data>
 </root>
