@@ -6,10 +6,10 @@ A Windows tray application that holds the machine in a chosen state for a chosen
 A focus session runs for one duration and is one of two kinds, chosen when it starts:
 
 - **Program focus.** Runs on one of up to five named sessions. Only the programs the session ticks
-  "Can run" can be worked in; every other program's window is minimised. A named session can also
-  block every network connection except the MQTT broker and the programs it allows the network.
+  "Can run" can be worked in; every other program's window is minimised.
 - **Screen break.** Every display is covered with a black window. The mouse and keyboard can be
-  blocked and the screen dimmed as well.
+  blocked and the screen dimmed as well, and every network connection can be blocked except the MQTT
+  broker and the programs the named session in use allows the network.
 
 A session ends when its time runs out, or early from Home Assistant through a staged cancel. The
 machine itself offers no way to end one. FocusDesk does not defend against a determined

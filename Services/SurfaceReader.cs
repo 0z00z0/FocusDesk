@@ -12,6 +12,7 @@ internal readonly record struct SurfaceState(
     FocusSessionStage FocusStage,
     int? FocusRemainingMinutes,
     int FocusSessionMinutes,
+    bool FocusBlocksNetwork,
     bool FocusDimsScreen,
     bool FocusBlocksInput,
     FocusSessionKind FocusKind = FocusSessionKind.ScreenBreak,
@@ -69,7 +70,8 @@ internal static class SurfaceReader
             FocusSessionMinutes:   s.FocusSessionMinutes,
             // A running session reports the levers it actually holds — a refused block reads off —
             // and with none running these read the defaults the next session starts from.
-            FocusDimsScreen:       focus.IsRunning ? focus.DimsScreen : s.FocusDimsScreen,
+            FocusBlocksNetwork:    focus.IsRunning ? focus.BlocksNetwork : s.FocusBlocksNetwork,
+            FocusDimsScreen:      focus.IsRunning ? focus.DimsScreen : s.FocusDimsScreen,
             FocusBlocksInput:      focus.IsRunning ? focus.BlocksInput : s.FocusBlocksInput,
             // A running session reports the kind it was started as; the stored default is the kind
             // the next session from Home Assistant runs as.

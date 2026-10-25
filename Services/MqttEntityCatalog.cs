@@ -21,7 +21,7 @@ internal sealed record MqttEntitySources
 }
 
 /// <summary>
-/// FocusDesk's published surface: ten entities, their groups, their capability gates and the domain
+/// FocusDesk's published surface: eleven entities, their groups, their capability gates and the domain
 /// seam each inbound command lands on. Pure — nothing here touches a broker or a settings singleton,
 /// so the same table composes in a test.
 /// </summary>
@@ -43,6 +43,7 @@ internal static class MqttEntityCatalog
     public const string FocusSession             = "focus_session";
     public const string FocusSessionMinutes      = "focus_session_minutes";
     public const string FocusSessionType         = "focus_session_type";
+    public const string FocusSessionBlocksNetwork = "focus_session_blocks_network";
     public const string FocusSessionNamedSession = "focus_session_named_session";
     public const string FocusSessionDimsScreen   = "focus_session_dims_screen";
     public const string FocusSessionBlocksInput  = "focus_session_blocks_input";
@@ -135,15 +136,29 @@ internal static class MqttEntityCatalog
                     ? MqttCommandVerdict.Accept(() => set.SetFocusSessionKind(kind))
                     : MqttCommandVerdict.NotAnOption($"'{option}' names no kind of session."),
             },
+            new MqttSwitch
+            {
+                // Not gated: whether the firewall accepts the block is decided at arming time. A
+                // refused block leaves the session running, and this reads off while it runs.
+                EntityId = FocusSessionBlocksNetwork, Name = "Focus session blocks network",
+                Group = MqttPublishGroups.Focus,
+                Description = "Sets whether a focus session blocks all network traffic except the MQTT "
+                            + "connection and the programs allowed to use the network; while a session "
+                            + "runs, it shows whether the block is held and a change is refused.",
+                Category = MqttEntityCategory.Config, Icon = "mdi:lan-disconnect",
+                Debounce = MqttConnection.ReflectDebounce,
+                Read = () => surface()?.FocusBlocksNetwork,
+                Apply = on => MqttCommandVerdict.Accept(() => set.SetFocusBlocksNetwork(on)),
+            },
             new MqttSelect
             {
                 // Options follow the named-session list; a write is refused while a session runs and the
                 // running session's name reflects back. It never changes the kind.
                 EntityId = FocusSessionNamedSession, Name = "Named session",
                 Group = MqttPublishGroups.Focus,
-                Description = "Chooses which named session, with its own programs and network block, the "
-                            + "next Program focus session uses; it cannot be changed while a session runs "
-                            + "and then shows the name of the running session.",
+                Description = "Chooses which named session, with its own programs, the next Program focus "
+                            + "session uses; it cannot be changed while a session runs and then shows the "
+                            + "name of the running session.",
                 Category = MqttEntityCategory.Config, Icon = "mdi:playlist-check",
                 Debounce = MqttConnection.ReflectDebounce,
                 Options = () => surface()?.NamedSessionOptions ?? [],

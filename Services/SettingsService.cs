@@ -18,6 +18,9 @@ internal sealed class AppSettings
     /// that has never chosen.</summary>
     public FocusSessionKind FocusSessionKind { get; set; } = FocusSessionKind.ScreenBreak;
 
+    /// <summary>Whether the next screen break blocks the network; off by default, as it rewrites the firewall.</summary>
+    public bool FocusBlocksNetwork { get; set; }
+
     /// <summary>The named sessions for Program focus, in the order they were created. Never empty.</summary>
     public List<NamedSession> NamedSessions { get; set; } = [NamedSession.Create(Services.NamedSessions.DefaultName())];
 

@@ -483,7 +483,7 @@
     <comment>Section heading on the Program focus page.</comment>
   </data>
   <data name="NamedSessionsDescription" xml:space="preserve">
-    <value>Hver har egne programmer og egen nettverksblokkering. Den som er i bruk, brukes av en programfokusøkt startet over MQTT.</value>
+    <value>Hver har egne programmer. Den som er i bruk, brukes av en programfokusøkt startet over MQTT.</value>
     <comment>Sentence under the Named sessions heading.</comment>
   </data>
   <data name="NamedSessionActivate" xml:space="preserve">
@@ -502,37 +502,17 @@
     <value>En programfokusøkt startet over MQTT bruker denne økten.</value>
     <comment>Hover text on the In use marker.</comment>
   </data>
-  <data name="NamedSessionSummaryBlocked" xml:space="preserve">
-    <value>{0} programmer, nettverket blokkert</value>
+  <data name="NamedSessionSummary" xml:space="preserve">
+    <value>{0} programmer</value>
     <comment>Row summary, {0} is the number of programs.</comment>
   </data>
-  <data name="NamedSessionSummaryOpen" xml:space="preserve">
-    <value>{0} programmer, nettverket åpent</value>
-    <comment>Row summary, {0} is the number of programs.</comment>
-  </data>
-  <data name="NamedSessionSummaryOneBlocked" xml:space="preserve">
-    <value>1 program, nettverket blokkert</value>
-    <comment>Row summary for a session with one program.</comment>
-  </data>
-  <data name="NamedSessionSummaryOneOpen" xml:space="preserve">
-    <value>1 program, nettverket åpent</value>
+  <data name="NamedSessionSummaryOne" xml:space="preserve">
+    <value>1 program</value>
     <comment>Row summary for a session with one program.</comment>
   </data>
   <data name="NamedSessionNameHeader" xml:space="preserve">
     <value>Navn</value>
     <comment>Card heading for the name box in an expanded row, noun.</comment>
-  </data>
-  <data name="NamedSessionBlocksNetworkHeader" xml:space="preserve">
-    <value>Blokkerer nettverket</value>
-    <comment>Card heading for the network switch in an expanded row.</comment>
-  </data>
-  <data name="NamedSessionBlocksNetworkDescription" xml:space="preserve">
-    <value>Blokkerer alle tilkoblinger så lenge økten varer, unntatt til MQTT-megleren og programmene som er tillatt nedenfor.</value>
-    <comment>Description under Blocks the network.</comment>
-  </data>
-  <data name="NamedSessionBlocksNetworkInfo" xml:space="preserve">
-    <value>Krever administratorrettigheter og en megler angitt på MQTT-siden. Avvises den, kjører økten uten.</value>
-    <comment>Hover text on the network switch's info bubble.</comment>
   </data>
   <data name="NamedSessionDelete" xml:space="preserve">
     <value>Slett den navngitte økten</value>
@@ -649,6 +629,18 @@
   <data name="ScreenBlocksInputInfo" xml:space="preserve">
     <value>Krever administratorrettigheter. Avviser Windows det, kjører økten uten, og bryteren viser av.</value>
     <comment>Hover text on the input switch's info bubble.</comment>
+  </data>
+  <data name="ScreenBlocksNetworkHeader" xml:space="preserve">
+    <value>Blokkerer nettverket</value>
+    <comment>Card heading for the screen-break network switch.</comment>
+  </data>
+  <data name="ScreenBlocksNetworkDescription" xml:space="preserve">
+    <value>Blokkerer alle tilkoblinger så lenge økten varer, unntatt til MQTT-megleren og programmene som er merket Kan bruke nettverket i den navngitte økten som er i bruk.</value>
+    <comment>Description under Blocks the network.</comment>
+  </data>
+  <data name="ScreenBlocksNetworkInfo" xml:space="preserve">
+    <value>Krever administratorrettigheter og en megler angitt på MQTT-siden. Avvises den, kjører økten uten.</value>
+    <comment>Hover text on the network switch's info bubble.</comment>
   </data>
   <data name="ScreenBrightnessHeading" xml:space="preserve">
     <value>Lysstyrke</value>

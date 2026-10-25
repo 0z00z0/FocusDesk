@@ -6,8 +6,8 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 namespace FocusDesk.UI;
 
 /// <summary>
-/// The Screen break page: whether a screen break dims the screen and blocks the mouse and keyboard,
-/// the display's brightness, and a button that puts back the level in force before the first change.
+/// The Screen break page: whether a screen break dims the screen, blocks the mouse and keyboard and
+/// blocks the network, the display's brightness, and a button that puts back the level in force before the first change.
 /// </summary>
 /// <remarks>The level moves outside this application — Windows itself moves it without this
 /// application hearing anything — so <see cref="Reload"/> reads it afresh every time the page is
@@ -35,6 +35,10 @@ public sealed partial class ScreenSettingsPanel : UserControl
         BlocksInputCard.Description = AppText.Get("ScreenBlocksInputDescription");
         BlocksInputInfo.Subject = AppText.Get("ScreenBlocksInputHeader");
         BlocksInputInfo.Info = AppText.Get("ScreenBlocksInputInfo");
+        BlocksNetworkCard.Header = AppText.Get("ScreenBlocksNetworkHeader");
+        BlocksNetworkCard.Description = AppText.Get("ScreenBlocksNetworkDescription");
+        BlocksNetworkInfo.Subject = AppText.Get("ScreenBlocksNetworkHeader");
+        BlocksNetworkInfo.Info = AppText.Get("ScreenBlocksNetworkInfo");
         BrightnessHeader.Heading = AppText.Get("ScreenBrightnessHeading");
         ScreenUnsupportedCard.Header = AppText.Get("ScreenBrightnessHeading");
         ScreenUnsupportedCard.Description = AppText.Get("ScreenUnsupportedDescription");
@@ -70,9 +74,11 @@ public sealed partial class ScreenSettingsPanel : UserControl
 
             // A running session reports the levers it holds; with none running, the next one's defaults.
             var session = FocusSessionService.Current;
-            var (dims, input) = SettingsService.Read(s => (s.FocusDimsScreen, s.FocusBlocksInput));
-            FocusDimsScreenToggle.IsOn  = session.IsRunning ? session.DimsScreen  : dims;
-            FocusBlocksInputToggle.IsOn = session.IsRunning ? session.BlocksInput : input;
+            var (dims, input, network) = SettingsService.Read(
+                s => (s.FocusDimsScreen, s.FocusBlocksInput, s.FocusBlocksNetwork));
+            FocusDimsScreenToggle.IsOn    = session.IsRunning ? session.DimsScreen    : dims;
+            FocusBlocksInputToggle.IsOn   = session.IsRunning ? session.BlocksInput   : input;
+            FocusBlocksNetworkToggle.IsOn = session.IsRunning ? session.BlocksNetwork : network;
 
             ApplySessionLock();
         }
@@ -86,6 +92,7 @@ public sealed partial class ScreenSettingsPanel : UserControl
         bool locked = FocusSessionService.LeversAreLocked;
         FocusDimsScreenToggle.IsEnabled  = !locked;
         FocusBlocksInputToggle.IsEnabled = !locked;
+        FocusBlocksNetworkToggle.IsEnabled = !locked;
         ScreenBrightnessSlider.IsEnabled = !locked;
         ScreenRestoreBtn.IsEnabled = !locked && ScreenBrightnessService.Holding;
     }
@@ -136,5 +143,12 @@ public sealed partial class ScreenSettingsPanel : UserControl
         if (_updating) return;
         if (FocusSessionService.LeversAreLocked) { Reload(); return; }
         SettingsService.Update(s => s.FocusBlocksInput = FocusBlocksInputToggle.IsOn);
+    }
+
+    private void OnFocusBlocksNetworkToggled(object sender, RoutedEventArgs e)
+    {
+        if (_updating) return;
+        if (FocusSessionService.LeversAreLocked) { Reload(); return; }
+        SettingsService.Update(s => s.FocusBlocksNetwork = FocusBlocksNetworkToggle.IsOn);
     }
 }
