@@ -806,4 +806,12 @@
     <value>Save open programs as session</value>
     <comment>Full-width button in the status window that makes a new named session from the programs open now and shows it in Settings, imperative.</comment>
   </data>
+  <data name="PopOutCancel" xml:space="preserve">
+    <value>Cancel {0}</value>
+    <comment>Button in the status window during the grace period after a start; ends the session. {0} is the time left as minutes and seconds, such as 1:42. Imperative verb.</comment>
+  </data>
+  <data name="PopOutGraceModeHeading" xml:space="preserve">
+    <value>Mode can be changed</value>
+    <comment>Heading over the three Program focus modes in the status window during the grace period.</comment>
+  </data>
 </root>
