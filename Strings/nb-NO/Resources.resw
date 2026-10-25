@@ -635,7 +635,7 @@
     <comment>Card heading for the screen-break network switch.</comment>
   </data>
   <data name="ScreenBlocksNetworkDescription" xml:space="preserve">
-    <value>Blokkerer alle tilkoblinger så lenge økten varer, unntatt til MQTT-megleren og programmene som er merket Kan bruke nettverket i den navngitte økten som er i bruk.</value>
+    <value>Blokkerer alle tilkoblinger under økten, unntatt til MQTT-megleren og programmene som får bruke nettverket i den navngitte økten i bruk.</value>
     <comment>Description under Blocks the network.</comment>
   </data>
   <data name="ScreenBlocksNetworkInfo" xml:space="preserve">

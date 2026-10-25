@@ -635,7 +635,7 @@
     <comment>Card heading for the screen-break network switch.</comment>
   </data>
   <data name="ScreenBlocksNetworkDescription" xml:space="preserve">
-    <value>Blocks every connection for the length of a session, except to the MQTT broker and the programs ticked Can use the network in the named session in use.</value>
+    <value>Blocks every connection during a session, except to the MQTT broker and the programs the named session in use allows the network.</value>
     <comment>Description under Blocks the network.</comment>
   </data>
   <data name="ScreenBlocksNetworkInfo" xml:space="preserve">
