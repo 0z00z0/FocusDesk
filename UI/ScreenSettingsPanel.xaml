@@ -38,6 +38,14 @@
             </StackPanel>
         </controls:SettingsCard>
 
+        <!-- The programs that keep the network, filled in from code. Shown only while the switch is
+             on, and greyed as a whole for the length of a session. -->
+        <StackPanel x:Name="ExceptionsPanel" Spacing="4">
+            <TextBlock x:Name="ExceptionsCaption" Margin="0,8,0,0"/>
+            <StackPanel x:Name="ExceptionRows" Spacing="4"/>
+            <Button x:Name="ExceptionAddBtn" Margin="0,4,0,0" Click="OnAddException"/>
+        </StackPanel>
+
         <zz:SettingsSectionHeader x:Name="BrightnessHeader"/>
 
         <!-- The unsupported line and the two controls swap: a machine whose only screen is an
