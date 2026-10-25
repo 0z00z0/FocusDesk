@@ -483,7 +483,7 @@
     <comment>Section heading on the Program focus page.</comment>
   </data>
   <data name="NamedSessionsDescription" xml:space="preserve">
-    <value>Each has its own programs and network block. The one in use is what a Program focus session started over MQTT uses.</value>
+    <value>Each has its own programs. The one in use is what a Program focus session started over MQTT uses.</value>
     <comment>Sentence under the Named sessions heading.</comment>
   </data>
   <data name="NamedSessionActivate" xml:space="preserve">
@@ -502,37 +502,17 @@
     <value>A Program focus session started over MQTT uses this session.</value>
     <comment>Hover text on the In use marker.</comment>
   </data>
-  <data name="NamedSessionSummaryBlocked" xml:space="preserve">
-    <value>{0} programs, network blocked</value>
+  <data name="NamedSessionSummary" xml:space="preserve">
+    <value>{0} programs</value>
     <comment>Row summary, {0} is the number of programs.</comment>
   </data>
-  <data name="NamedSessionSummaryOpen" xml:space="preserve">
-    <value>{0} programs, network open</value>
-    <comment>Row summary, {0} is the number of programs.</comment>
-  </data>
-  <data name="NamedSessionSummaryOneBlocked" xml:space="preserve">
-    <value>1 program, network blocked</value>
-    <comment>Row summary for a session with one program.</comment>
-  </data>
-  <data name="NamedSessionSummaryOneOpen" xml:space="preserve">
-    <value>1 program, network open</value>
+  <data name="NamedSessionSummaryOne" xml:space="preserve">
+    <value>1 program</value>
     <comment>Row summary for a session with one program.</comment>
   </data>
   <data name="NamedSessionNameHeader" xml:space="preserve">
     <value>Name</value>
     <comment>Card heading for the name box in an expanded row, noun.</comment>
-  </data>
-  <data name="NamedSessionBlocksNetworkHeader" xml:space="preserve">
-    <value>Blocks the network</value>
-    <comment>Card heading for the network switch in an expanded row.</comment>
-  </data>
-  <data name="NamedSessionBlocksNetworkDescription" xml:space="preserve">
-    <value>Blocks every connection for the length of the session, except to the MQTT broker and the programs allowed below.</value>
-    <comment>Description under Blocks the network.</comment>
-  </data>
-  <data name="NamedSessionBlocksNetworkInfo" xml:space="preserve">
-    <value>Needs administrator rights and a broker set on the MQTT page. Where refused, the session runs without it.</value>
-    <comment>Hover text on the network switch's info bubble.</comment>
   </data>
   <data name="NamedSessionDelete" xml:space="preserve">
     <value>Delete named session</value>
@@ -649,6 +629,18 @@
   <data name="ScreenBlocksInputInfo" xml:space="preserve">
     <value>Needs administrator rights. Where Windows refuses it, the session runs without it and this switch reads off.</value>
     <comment>Hover text on the input switch's info bubble.</comment>
+  </data>
+  <data name="ScreenBlocksNetworkHeader" xml:space="preserve">
+    <value>Blocks the network</value>
+    <comment>Card heading for the screen-break network switch.</comment>
+  </data>
+  <data name="ScreenBlocksNetworkDescription" xml:space="preserve">
+    <value>Blocks every connection during a session, except to the MQTT broker and the programs the named session in use allows the network.</value>
+    <comment>Description under Blocks the network.</comment>
+  </data>
+  <data name="ScreenBlocksNetworkInfo" xml:space="preserve">
+    <value>Needs administrator rights and a broker set on the MQTT page. Where refused, the session runs without it.</value>
+    <comment>Hover text on the network switch's info bubble.</comment>
   </data>
   <data name="ScreenBrightnessHeading" xml:space="preserve">
     <value>Brightness</value>

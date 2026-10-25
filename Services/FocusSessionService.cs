@@ -94,10 +94,10 @@ internal static class FocusSessionService
     public static FocusArmOutcome Arm(ActionCause cause, int? minutes = null, FocusSessionKind? kind = null,
                                       string? goal = null, string? namedSession = null)
     {
-        var (stored, storedKind, screen, input, session) = SettingsService.Read(
+        var (stored, storedKind, screen, input, network, session) = SettingsService.Read(
             s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusDimsScreen, s.FocusBlocksInput,
-                  NamedSessions.Find(s, namedSession) ?? NamedSessions.InUse(s)));
-        var plan = FocusSessionPlan.For(kind ?? storedKind, session.BlocksNetwork, screen, input, session.Key);
+                  s.FocusBlocksNetwork, NamedSessions.Find(s, namedSession) ?? NamedSessions.InUse(s)));
+        var plan = FocusSessionPlan.For(kind ?? storedKind, network, screen, input, session.Key);
 
         lock (_armGate)
         {

@@ -44,6 +44,7 @@ public class SettingsFileShapeTests : IDisposable
         "Focus.FocusPointStartsSession",
         "Focus.FocusPointSeconds",
         "Focus.FocusSessionKind",
+        "Focus.FocusBlocksNetwork",
         "Focus.FocusProgramsDefaultAction",
         "Focus.FocusDimsScreen",
         "Focus.FocusCoverVisual",
@@ -164,7 +165,8 @@ public class SettingsFileShapeTests : IDisposable
         {
             ScreenSavedBrightness     = 42,
             FocusSessionMinutes       = 90,
-            NamedSessions             = [NamedSession.Create("Writing", blocksNetwork: true, programs:
+            FocusBlocksNetwork        = true,
+            NamedSessions             = [NamedSession.Create("Writing", programs:
             [
                 new() { Kind = FocusProgramKind.ProgramFile, Id = @"C:\Program Files\Example\editor.exe",
                         StartEntry = @"C:\ProgramData\Example\Editor.lnk", CanRun = true, CanUseNetwork = true },
@@ -266,8 +268,8 @@ public class SettingsFileShapeTests : IDisposable
     }
 
     private static string Describe(AppSettings s) => string.Join('|',
-        s.ScreenSavedBrightness, s.FocusSessionMinutes,
-        string.Join(';', s.NamedSessions.Select(n => $"{n.Name}/{n.BlocksNetwork}/{string.Join(',', n.Programs)}")),
+        s.ScreenSavedBrightness, s.FocusSessionMinutes, s.FocusBlocksNetwork,
+        string.Join(';', s.NamedSessions.Select(n => $"{n.Name}/{string.Join(',', n.Programs)}")),
         s.FocusProgramsDefaultAction, s.FocusSessionBlockedNetwork,
         s.FocusDimsScreen, s.FocusCoverVisual, s.FocusSessionKind, s.FocusSessionRunningKind,
         s.FocusSessionLimitedPrograms,
@@ -347,10 +349,11 @@ public class SettingsFileShapeTests : IDisposable
         Assert.Empty(Directory.GetFiles(_dir, "settings.*.bad.json"));
     }
 
-    /// <summary>A version 1 document's list and network switch become "Default" unchanged, once: the
-    /// second start leaves the file byte for byte, and the old list is never written again.</summary>
+    /// <summary>A version 1 document's list becomes "Default" unchanged, once, and its network switch
+    /// stays the screen break's: the second start leaves the file byte for byte, and the old list is
+    /// never written again.</summary>
     [Fact]
-    public void TodaysListAndNetworkSwitchCarryIntoDefaultOnce()
+    public void TodaysListCarriesIntoDefaultOnce()
     {
         Directory.CreateDirectory(_dir);
         System.IO.File.WriteAllText(File_,
@@ -360,7 +363,7 @@ public class SettingsFileShapeTests : IDisposable
 
         var first = SettingsService.ReadFrom(File_)!;
         var only = Assert.Single(first.NamedSessions);
-        Assert.Equal(("Default", true), (only.Name, only.BlocksNetwork));
+        Assert.Equal(("Default", true), (only.Name, first.FocusBlocksNetwork));
         Assert.Equal([@"C:\Tools\editor.exe", "Example.Notes_8wekyb3d8bbwe"], only.Programs.Select(p => p.Id));
         Assert.True(only.Programs.All(p => p.CanRun));
         Assert.Equal(only.Key, first.SelectedNamedSession);
@@ -377,16 +380,16 @@ public class SettingsFileShapeTests : IDisposable
         Assert.Empty(Assert.Single(SettingsService.ReadFrom(File_)!.NamedSessions).Programs);
     }
 
-    /// <summary>After a restart a running session reads its own named session's list and switch, not
-    /// the one in use, which may have moved since it started.</summary>
+    /// <summary>After a restart a running session reads its own named session's list, not the one in
+    /// use, which may have moved since it started.</summary>
     [Fact]
     public void ARunningSessionReadsItsOwnListAfterARestart()
     {
         Directory.CreateDirectory(_dir);
         var editor = new FocusProgramEntry { Kind = FocusProgramKind.ProgramFile, Id = @"C:\Tools\editor.exe", CanRun = true };
         var notes  = new FocusProgramEntry { Kind = FocusProgramKind.StorePackage, Id = "Example.Notes_8wekyb3d8bbwe", CanRun = true };
-        var running = NamedSession.Create("Writing", blocksNetwork: true, programs: [editor]);
-        var inUse   = NamedSession.Create("Reading", blocksNetwork: false, programs: [notes]);
+        var running = NamedSession.Create("Writing", programs: [editor]);
+        var inUse   = NamedSession.Create("Reading", programs: [notes]);
         Assert.True(SettingsService.WriteTo(new AppSettings
         {
             NamedSessions               = [running, inUse],
@@ -400,7 +403,7 @@ public class SettingsFileShapeTests : IDisposable
         var restarted = SettingsService.ReadFrom(File_)!;
         var read = NamedSessions.ForLevers(restarted, arming: null);
 
-        Assert.Equal((running.Key, true, editor.Id), (read.Key, read.BlocksNetwork, Assert.Single(read.Programs).Id));
+        Assert.Equal((running.Key, editor.Id), (read.Key, Assert.Single(read.Programs).Id));
         restarted.FocusSessionEndsAt = null;
         Assert.Equal(inUse.Key, NamedSessions.ForLevers(restarted, arming: null).Key);
     }

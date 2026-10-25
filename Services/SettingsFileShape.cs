@@ -84,9 +84,8 @@ internal sealed class SettingsFile
         [JsonPropertyOrder(4)] public bool? FocusPointStartsSession { get; set; }
         [JsonPropertyOrder(5)] public int?  FocusPointSeconds       { get; set; }
         [JsonPropertyOrder(6)] public FocusSessionKind? FocusSessionKind { get; set; }
+        [JsonPropertyOrder(7)] public bool? FocusBlocksNetwork      { get; set; }
         // Read once into "Default" and never written; the store keeps the earlier bytes where they stand.
-        [JsonPropertyOrder(7), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public bool? FocusBlocksNetwork { get; set; }
         [JsonPropertyOrder(8), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<FocusProgramEntry>? FocusPrograms { get; set; }
         [JsonPropertyOrder(9)] public FocusProgramAction? FocusProgramsDefaultAction { get; set; }
@@ -120,7 +119,6 @@ internal sealed class SettingsFile
     public static readonly string[] ReadOnlyKeys =
     [
         nameof(FocusGroup.FocusAllowedPrograms), nameof(FocusGroup.FocusPrograms),
-        nameof(FocusGroup.FocusBlocksNetwork),
     ];
 
     internal sealed class AppearanceGroup
@@ -178,6 +176,7 @@ internal sealed class SettingsFile
             {
                 FocusSessionMinutes       = s.FocusSessionMinutes,
                 FocusSessionKind          = s.FocusSessionKind,
+                FocusBlocksNetwork        = s.FocusBlocksNetwork,
                 FocusProgramsDefaultAction = s.FocusProgramsDefaultAction,
                 FocusDimsScreen           = s.FocusDimsScreen,
                 FocusCoverVisual          = CoverAppearance.NameOf(s.FocusCoverVisual),
@@ -207,12 +206,12 @@ internal sealed class SettingsFile
         ProgramFocus.NamedSessions is not { Count: > 0 } sessions
         || sessions.Any(n => n is null || string.IsNullOrWhiteSpace(n.Key) || string.IsNullOrWhiteSpace(n.Name));
 
-    /// <summary>The list as read. Absent, today's Focus list and network switch become "Default"; empty,
-    /// "Default" holds nothing; a session missing its key or name gets one.</summary>
+    /// <summary>The list as read. Absent, today's Focus list becomes "Default"; empty, "Default" holds
+    /// nothing; a session missing its key or name gets one.</summary>
     private List<NamedSession> ReadNamedSessions()
     {
         if (ProgramFocus.NamedSessions is null)
-            return [NamedSession.Create(NamedSessions.DefaultName(), Focus.FocusBlocksNetwork ?? false,
+            return [NamedSession.Create(NamedSessions.DefaultName(),
                                         Focus.FocusPrograms ?? FocusAllowedPrograms.Migrate(Focus.FocusAllowedPrograms))];
 
         var sessions = ProgramFocus.NamedSessions.Where(n => n is not null).ToList();
@@ -233,6 +232,7 @@ internal sealed class SettingsFile
         // Nothing carries over from the two lever switches the kind replaced: an installation that
         // has never chosen a kind gets a screen break.
         FocusSessionKind          = Focus.FocusSessionKind ?? FocusSessionKind.ScreenBreak,
+        FocusBlocksNetwork        = Focus.FocusBlocksNetwork ?? false,
         FocusProgramsDefaultAction = Focus.FocusProgramsDefaultAction ?? FocusProgramAction.Minimise,
         FocusDimsScreen           = Focus.FocusDimsScreen ?? true,
         FocusCoverVisual          = CoverAppearance.ParseVisual(Focus.FocusCoverVisual),

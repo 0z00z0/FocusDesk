@@ -152,7 +152,7 @@ public class FocusHistoryTests
         Assert.Equal(Noon, written.StartedAt);
         Assert.Equal(Noon.AddMinutes(60), written.DueAt);
         Assert.Equal(Noon.AddMinutes(60), written.EndedAt);
-        Assert.Equal((false, false, true, true), (written.DimmedScreen, written.CoveredScreen,
+        Assert.Equal((false, false, false, true), (written.DimmedScreen, written.CoveredScreen,
                                                   written.BlockedNetwork, written.LimitedPrograms));
         Assert.Equal(FocusSessionKind.ProgramFocus, written.Kind);
     }

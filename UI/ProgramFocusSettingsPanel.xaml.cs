@@ -86,9 +86,8 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
     }
 
     private static string Summary(NamedSession session) => session.Programs.Count == 1
-        ? AppText.Get(session.BlocksNetwork ? "NamedSessionSummaryOneBlocked" : "NamedSessionSummaryOneOpen")
-        : AppText.Format(session.BlocksNetwork ? "NamedSessionSummaryBlocked" : "NamedSessionSummaryOpen",
-                         session.Programs.Count);
+        ? AppText.Get("NamedSessionSummaryOne")
+        : AppText.Format("NamedSessionSummary", session.Programs.Count);
 
     /// <summary>One session's row. Every commit looks the session up by its key, so a reload cannot
     /// leave a closure editing an orphaned copy.</summary>
@@ -97,26 +96,11 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         var session = SettingsService.Read(s => NamedSessions.Find(s, key)!);
 
         var nameBox = new TextBox { Text = session.Name, MinWidth = 220, MaxLength = NamedSessions.NameLength };
-        var network = new ToggleSwitch { IsOn = session.BlocksNetwork, OnContent = "", OffContent = "", MinWidth = 0 };
-        var networkInfo = new ZeroZero.Controls.WinUI.InfoIcon
-        {
-            Subject = AppText.Get("NamedSessionBlocksNetworkHeader"),
-            Info    = AppText.Get("NamedSessionBlocksNetworkInfo"),
-        };
-        var networkControls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
-        networkControls.Children.Add(networkInfo);
-        networkControls.Children.Add(network);
         var addProgram = new Button { Content = AppText.Get("FocusProgramsAddButton") };
 
         List<SettingsCard> cards =
         [
             new SettingsCard { Header = AppText.Get("NamedSessionNameHeader"), Content = nameBox },
-            new SettingsCard
-            {
-                Header      = AppText.Get("NamedSessionBlocksNetworkHeader"),
-                Description = AppText.Get("NamedSessionBlocksNetworkDescription"),
-                Content     = networkControls,
-            },
             new SettingsCard
             {
                 Header      = AppText.Get("FocusProgramsHeader"),
@@ -135,14 +119,12 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         row.Activate.Click += (_, _) => Activate(key);
         nameBox.LostFocus += (_, _) => CommitName(key, nameBox, row);
         nameBox.KeyDown   += (_, e) => { if (e.Key == VirtualKey.Enter) CommitName(key, nameBox, row); };
-        network.Toggled   += (_, _) => Write(key, s => NamedSessions.Find(s, key)!.BlocksNetwork = network.IsOn, row);
         addProgram.Click  += (_, _) => PickProgram(key, row);
         row.Delete.Click  += (_, _) => Delete(key);
 
         bool last = SettingsService.Read(s => s.NamedSessions.Count) <= 1;
         ToolTipService.SetToolTip(row.DeleteFrame, last ? AppText.Get("NamedSessionDeleteLastInfo") : null);
         _lockables.Add((nameBox, () => true));
-        _lockables.Add((network, () => true));
         _lockables.Add((addProgram, () => true));
         _lockables.Add((row.Delete, () => !last));
         _rows[key] = (row.Expander, nameBox);

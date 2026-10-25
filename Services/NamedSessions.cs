@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace FocusDesk.Services;
 
-/// <summary>One named session for Program focus: its own program list and network switch.</summary>
+/// <summary>One named session for Program focus: its own program list.</summary>
 internal sealed class NamedSession
 {
     /// <summary>Generated once, never edited or reused; every lookup is by this, never the name.</summary>
@@ -10,16 +10,12 @@ internal sealed class NamedSession
 
     [JsonPropertyOrder(2)] public string Name { get; set; } = "";
 
-    [JsonPropertyOrder(3)] public bool BlocksNetwork { get; set; }
+    [JsonPropertyOrder(3)] public List<FocusProgramEntry> Programs { get; set; } = [];
 
-    [JsonPropertyOrder(4)] public List<FocusProgramEntry> Programs { get; set; } = [];
-
-    public static NamedSession Create(string name, bool blocksNetwork = false,
-                                      List<FocusProgramEntry>? programs = null) => new()
+    public static NamedSession Create(string name, List<FocusProgramEntry>? programs = null) => new()
     {
         Key = NamedSessions.NewKey(),
         Name = name,
-        BlocksNetwork = blocksNetwork,
         Programs = programs ?? [],
     };
 }
@@ -64,7 +60,8 @@ internal static class NamedSessions
         if (s.FocusSessionEndsAt is null) return InUse(s);
         if (Find(s, s.FocusSessionNamedSession) is { } running) return running;
 
-        if (s.FocusSessionLimitedPrograms || s.FocusSessionBlockedNetwork)
+        // A screen break names no session, so it reads the one in use without a log line.
+        if (s.FocusSessionLimitedPrograms)
             AppLog.Info("Focus: the running session's named session is no longer in the list, so the "
                       + "session in use is read instead.");
         return InUse(s);
