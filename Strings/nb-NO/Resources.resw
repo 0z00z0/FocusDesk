@@ -518,6 +518,66 @@
     <value>Fem navngitte økter er så mange listen tar.</value>
     <comment>Hover text on the greyed Add button at five sessions.</comment>
   </data>
+  <data name="NamedSessionSummaryStart" xml:space="preserve">
+    <value>{0} starter med økten</value>
+    <comment>Second half of the row summary, {0} is the number of programs ticked Start with the session; follows the program count after a comma.</comment>
+  </data>
+  <data name="NamedSessionSummaryStartOne" xml:space="preserve">
+    <value>1 starter med økten</value>
+    <comment>Second half of the row summary when exactly one program is ticked Start with the session.</comment>
+  </data>
+  <data name="NamedSessionModeHeader" xml:space="preserve">
+    <value>Modus</value>
+    <comment>Card heading for the mode list in an expanded row, noun.</comment>
+  </data>
+  <data name="ProgramFocusModeAllowListed" xml:space="preserve">
+    <value>Tillat bare programmene på listen</value>
+    <comment>Mode 1 of a named session: nothing is opened, only the listed programs may run. Option in the mode list, imperative.</comment>
+  </data>
+  <data name="ProgramFocusModeOpenMarkedAllowListed" xml:space="preserve">
+    <value>Åpne de markerte, tillat bare listen</value>
+    <comment>Mode 2 of a named session: the marked programs are opened and only the listed programs may run. Option in the mode list.</comment>
+  </data>
+  <data name="ProgramFocusModeOpenMarkedAllowAll" xml:space="preserve">
+    <value>Åpne de markerte, tillat alle andre</value>
+    <comment>Mode 3 of a named session: the marked programs are opened and every other program may run too. Option in the mode list.</comment>
+  </data>
+  <data name="FocusProgramStartWithSession" xml:space="preserve">
+    <value>Start med økten</value>
+    <comment>Checkbox on a program row: the program is opened when a session starts in a mode that opens programs.</comment>
+  </data>
+  <data name="FocusProgramStartUnusedInfo" xml:space="preserve">
+    <value>Brukes ikke i denne modusen: ingenting åpnes.</value>
+    <comment>Hover text on the greyed Start with the session checkbox in mode 1, whole sentence.</comment>
+  </data>
+  <data name="FocusProgramCanRunUnusedInfo" xml:space="preserve">
+    <value>Brukes ikke i denne modusen: alle andre programmer kan kjøre.</value>
+    <comment>Hover text on the greyed Can run checkbox in mode 3, whole sentence.</comment>
+  </data>
+  <data name="FocusGraceHeader" xml:space="preserve">
+    <value>Tid til å avbryte eller endre etter en start</value>
+    <comment>Card heading for the grace period list on the Focus session page.</comment>
+  </data>
+  <data name="FocusGraceDescription" xml:space="preserve">
+    <value>Hvor lenge etter en start en økt kan avbrytes, og en programfokusøkt endres.</value>
+    <comment>Description under the grace period list, whole sentences.</comment>
+  </data>
+  <data name="FocusGraceChoice30" xml:space="preserve">
+    <value>30 sekunder</value>
+    <comment>Grace period choice.</comment>
+  </data>
+  <data name="FocusGraceChoice60" xml:space="preserve">
+    <value>1 minutt</value>
+    <comment>Grace period choice.</comment>
+  </data>
+  <data name="FocusGraceChoice120" xml:space="preserve">
+    <value>2 minutter</value>
+    <comment>Grace period choice, the default.</comment>
+  </data>
+  <data name="FocusGraceChoice300" xml:space="preserve">
+    <value>5 minutter</value>
+    <comment>Grace period choice.</comment>
+  </data>
   <data name="NamedSessionNewName" xml:space="preserve">
     <value>Ny økt</value>
     <comment>Name given to a newly added named session.</comment>
