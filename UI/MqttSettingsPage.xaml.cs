@@ -43,7 +43,6 @@ public sealed partial class MqttSettingsPage : UserControl
             ConnectionChanged  = _mqtt.ApplyConnection,
             PublishSetChanged  = _mqtt.Republish,
             DefaultDeviceName  = _mqtt.DefaultDeviceName,
-            PublishTitle       = "Publish to MQTT",
             PublishDescription = AppText.Get("MqttPublishDescription"),
             OfferRemoval       = true,
             DeviceIdConsequence =
