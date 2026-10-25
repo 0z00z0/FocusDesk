@@ -7,7 +7,8 @@ internal static class PresetButtonLayout
     // Narrow enough that five buttons share one row of the 364-unit pop-out; long names wrap.
     internal const double MinButtonWidth = 56;
 
-    internal const double Spacing = 4;
+    // The gap between every control in the status window's session card (SessionControlGap).
+    internal const double Spacing = 6;
 
     internal static (int Columns, int Rows) Choose(int count, double availableWidth)
     {

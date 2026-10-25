@@ -35,6 +35,14 @@
                 <Setter Property="VerticalAlignment" Value="Center"/>
                 <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
             </Style>
+
+            <!-- One shape for every session-card control; local values, since the kind buttons swap style. -->
+            <x:Double x:Key="SessionControlHeight">32</x:Double>
+            <x:Double x:Key="SessionControlFontSize">12</x:Double>
+            <Thickness x:Key="SessionControlPadding">10,5,10,6</Thickness>
+            <Thickness x:Key="SessionControlBorder">1</Thickness>
+            <CornerRadius x:Key="SessionControlCornerRadius">4</CornerRadius>
+            <x:Double x:Key="SessionControlGap">6</x:Double>
         </Grid.Resources>
 
         <!-- Top-aligned, so its height is the content's own and a change in it raises SizeChanged. -->
@@ -61,33 +69,42 @@
                 </Button>
             </Grid>
 
-            <!-- The session: the ring and the session's own lines, with the length and the one Start
-                 button on the heading row and the two kinds to choose between on a row of their own
-                 beneath. No control here ends a session — that is the feature's central property, not
-                 an omission. -->
+            <!-- The session. No control here ends a session — that is the feature's central
+                 property, not an omission. -->
             <Border Style="{StaticResource CardStyle}">
-                <StackPanel Spacing="6">
-                    <Grid ColumnSpacing="8">
+                <StackPanel Spacing="{StaticResource SessionControlGap}">
+                    <!-- Four units above the first row, as under the other cards' headings. -->
+                    <TextBlock x:Name="SessionHeading" Style="{StaticResource CardHeadingStyle}"
+                               Margin="0,0,0,-2"/>
+
+                    <!-- Shown only where the Focus settings page has turned the start box on. -->
+                    <Grid x:Name="StartRow" ColumnSpacing="{StaticResource SessionControlGap}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" x:Name="SessionHeading"
-                                   Style="{StaticResource CardHeadingStyle}"/>
-                        <!-- Shown only where the Focus settings page has turned the start box on. -->
-                        <StackPanel Grid.Column="1" x:Name="StartRow"
-                                    Orientation="Horizontal" Spacing="8">
-                            <ComboBox x:Name="MinutesCombo" VerticalAlignment="Center"/>
-                            <Button x:Name="StartButton" VerticalAlignment="Center" MinWidth="64"
-                                    Click="OnStart"/>
-                        </StackPanel>
+                        <ComboBox Grid.Column="0" x:Name="MinutesCombo"
+                                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                  MinHeight="{StaticResource SessionControlHeight}"
+                                  FontSize="{StaticResource SessionControlFontSize}"
+                                  Padding="{StaticResource SessionControlPadding}"
+                                  BorderThickness="{StaticResource SessionControlBorder}"
+                                  CornerRadius="{StaticResource SessionControlCornerRadius}"/>
+                        <Button Grid.Column="1" x:Name="StartButton"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                MinHeight="{StaticResource SessionControlHeight}"
+                                FontSize="{StaticResource SessionControlFontSize}"
+                                Padding="{StaticResource SessionControlPadding}"
+                                BorderThickness="{StaticResource SessionControlBorder}"
+                                CornerRadius="{StaticResource SessionControlCornerRadius}"
+                                Click="OnStart"/>
                     </Grid>
 
                     <!-- Both kinds, every time. Pressing one only chooses it, and the chosen kind
                          carries the accent; the Start button above opens the focus-point window, and
                          the session starts from there. Each showing begins on the stored default, and
                          choosing here never changes it. The texts come from the resource files. -->
-                    <Grid x:Name="KindChoices" ColumnSpacing="8">
+                    <Grid x:Name="KindChoices" ColumnSpacing="{StaticResource SessionControlGap}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
@@ -95,20 +112,37 @@
                         <!-- A disabled button shows no hover text of its own, so the reason sits on a
                              transparent frame around it. -->
                         <Grid Grid.Column="0" x:Name="ProgramFocusFrame" Background="Transparent">
-                            <Button x:Name="ProgramFocusChoice" HorizontalAlignment="Stretch"
+                            <Button x:Name="ProgramFocusChoice"
+                                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                    MinHeight="{StaticResource SessionControlHeight}"
+                                    FontSize="{StaticResource SessionControlFontSize}"
+                                    Padding="{StaticResource SessionControlPadding}"
+                                    BorderThickness="{StaticResource SessionControlBorder}"
+                                    CornerRadius="{StaticResource SessionControlCornerRadius}"
                                     Click="OnChooseProgramFocus"/>
                         </Grid>
                         <Button Grid.Column="1" x:Name="ScreenBreakChoice"
-                                HorizontalAlignment="Stretch"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                MinHeight="{StaticResource SessionControlHeight}"
+                                FontSize="{StaticResource SessionControlFontSize}"
+                                Padding="{StaticResource SessionControlPadding}"
+                                BorderThickness="{StaticResource SessionControlBorder}"
+                                CornerRadius="{StaticResource SessionControlCornerRadius}"
                                 Style="{StaticResource AccentButtonStyle}"
                                 Click="OnChooseScreenBreak"/>
                     </Grid>
 
-                    <!-- Program focus: one button per named session, equal columns set in code, the
-                         Smart Charge preset row's look. Screen break: the goal for this one session,
-                         empty at every showing and never stored. The two share the space. -->
-                    <Grid x:Name="NamedSessionChoices" Visibility="Collapsed"/>
-                    <TextBox x:Name="GoalBox" AcceptsReturn="False"/>
+                    <!-- Session buttons or the goal: both always laid out here, so a kind switch moves nothing below. -->
+                    <Grid x:Name="SessionDetailCell">
+                        <Grid x:Name="NamedSessionChoices"/>
+                        <TextBox x:Name="GoalBox" AcceptsReturn="False"
+                                 VerticalAlignment="Top"
+                                 MinHeight="{StaticResource SessionControlHeight}"
+                                 FontSize="{StaticResource SessionControlFontSize}"
+                                 Padding="{StaticResource SessionControlPadding}"
+                                 BorderThickness="{StaticResource SessionControlBorder}"
+                                 CornerRadius="{StaticResource SessionControlCornerRadius}"/>
+                    </Grid>
 
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
