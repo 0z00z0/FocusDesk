@@ -132,8 +132,8 @@ public class MqttEntityNamingTests
     [Fact]
     public void TheConfigurationRows_SortAsOneUninterruptedBlock()
     {
-        // All five are Configuration, and the receiver sorts a section by display name. Nothing
-        // else in that section leads with the word, so the five stand together.
+        // All four are Configuration, and the receiver sorts a section by display name. Nothing
+        // else in that section leads with the word, so the four stand together.
         var configuration = MqttTestBed.Declared().All
             .Where(e => e.Category == MqttEntityCategory.Config)
             .Select(e => e.Name!)
@@ -141,8 +141,8 @@ public class MqttEntityNamingTests
             .ToList();
 
         Assert.Equal(
-            ["Focus session blocks input", "Focus session blocks network", "Focus session dims screen",
-             "Focus session minutes", "Focus session type"],
+            ["Focus session blocks input", "Focus session dims screen", "Focus session minutes",
+             "Focus session type"],
             configuration);
     }
 }
