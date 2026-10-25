@@ -9,7 +9,7 @@ internal enum FocusAllowVerdict
     Added,
     Removed,
 
-    /// <summary>One of a row's two checkboxes moved.</summary>
+    /// <summary>A checkbox on the row moved.</summary>
     Changed,
 
     /// <summary>A session is running, so the list may not move. Changing it mid-session would either
@@ -28,10 +28,6 @@ internal enum FocusAllowVerdict
 
     /// <summary>Not on the list, so there was nothing to take off or change.</summary>
     NotAllowed,
-
-    /// <summary>The checkbox does nothing for this kind of program: a firewall rule by path cannot
-    /// name a Store package, and a web app's network belongs to its browser's row.</summary>
-    NotOffered,
 }
 
 /// <summary>How a program is identified. The member names are stored, so they never change.</summary>
@@ -60,7 +56,7 @@ internal enum FocusProgramAction
     ForceClose,
 }
 
-/// <summary>One program on the list: what it is, the two choices made for it, and what happens to it
+/// <summary>One program on the list: what it is, the choices made for it, and what happens to it
 /// while it may not run. No name is stored: the name shown is read from the Start entry each
 /// time.</summary>
 internal sealed record FocusProgramEntry
@@ -80,17 +76,49 @@ internal sealed record FocusProgramEntry
     [JsonPropertyOrder(4)] public string? StartEntry { get; init; }
 
     [JsonPropertyOrder(5)] public bool CanRun { get; init; }
-    [JsonPropertyOrder(6)] public bool CanUseNetwork { get; init; }
-    [JsonPropertyOrder(7)] public FocusProgramAction WhenNotAllowed { get; init; } = FocusProgramAction.Minimise;
+    [JsonPropertyOrder(6)] public bool StartWithSession { get; init; }
+
+    /// <summary>1-based position in the virtual-desktop order; null is the current desktop.</summary>
+    [JsonPropertyOrder(7)] public int? Desktop { get; init; }
+
+    [JsonPropertyOrder(8)] public List<ProgramPosition> Positions { get; init; } = [];
+    [JsonPropertyOrder(9)] public FocusProgramAction WhenNotAllowed { get; init; } = FocusProgramAction.Minimise;
+
+    // Record equality would compare the position list by reference.
+    public bool Equals(FocusProgramEntry? other) =>
+        other is not null && Kind == other.Kind && Id == other.Id && BrowserPath == other.BrowserPath
+        && StartEntry == other.StartEntry && CanRun == other.CanRun && StartWithSession == other.StartWithSession
+        && Desktop == other.Desktop && WhenNotAllowed == other.WhenNotAllowed
+        && (Positions ?? []).SequenceEqual(other.Positions ?? []);
+
+    public override int GetHashCode() => HashCode.Combine(Kind, Id, CanRun, StartWithSession, Desktop, WhenNotAllowed);
+}
+
+/// <summary>Where a program's window sat at one screen layout, in physical pixels from the display's top-left corner.</summary>
+internal sealed record ProgramPosition
+{
+    [JsonPropertyOrder(1)] public string Layout { get; init; } = "";
+    [JsonPropertyOrder(2)] public string Display { get; init; } = "";
+    [JsonPropertyOrder(3)] public int Left { get; init; }
+    [JsonPropertyOrder(4)] public int Top { get; init; }
+    [JsonPropertyOrder(5)] public int Width { get; init; }
+    [JsonPropertyOrder(6)] public int Height { get; init; }
+    [JsonPropertyOrder(7)] public bool Maximised { get; init; }
+}
+
+/// <summary>A program that keeps the network while a screen break blocks it.</summary>
+internal sealed record NetworkException
+{
+    [JsonPropertyOrder(1)] public FocusProgramKind Kind { get; init; }
+    [JsonPropertyOrder(2)] public string Id { get; init; } = "";
+    [JsonPropertyOrder(3)] public string? StartEntry { get; init; }
 }
 
 /// <summary>
-/// The one program list: which programs a session lets run, and which keep the network while a
-/// session blocks it. Two checkboxes per row, read as two lists.
+/// A named session's program list: which programs a session lets run.
 /// </summary>
 /// <remarks>
-/// A program is named by a stable identifier — a program file's path, which is also what a firewall
-/// rule keys on, a Store package family, or a web app's application identity. A display name or a
+/// A program is named by a stable identifier — a program file's path, a Store package family, or a web app's application identity. A display name or a
 /// window title is neither unique nor stable and is never stored or looked up.
 /// </remarks>
 internal static class FocusAllowedPrograms
@@ -145,10 +173,6 @@ internal static class FocusAllowedPrograms
     public static bool Names(FocusProgramEntry entry, FocusProgramKind kind, string id) =>
         entry.Kind == kind && Same(entry.Id, id);
 
-    /// <summary>Whether "can use the network" means anything for this kind: a firewall rule by path
-    /// names a program file and nothing else.</summary>
-    public static bool NetworkApplies(FocusProgramKind kind) => kind == FocusProgramKind.ProgramFile;
-
     /// <summary>What the row shows when no Start entry supplies a name: the file's own name, or the
     /// identifier itself.</summary>
     public static string DisplayName(FocusProgramEntry entry) =>
@@ -166,8 +190,6 @@ internal static class FocusAllowedPrograms
 
     /// <summary>Adds one program, or says why it was not added. <paramref name="list"/> is changed
     /// only on <see cref="FocusAllowVerdict.Added"/>.</summary>
-    /// <remarks>"Can use the network" is kept only where it applies, so a Store app or a web app
-    /// never carries a network choice nothing would honour.</remarks>
     public static FocusAllowVerdict Add(IList<FocusProgramEntry> list, FocusProgramEntry? candidate,
                                         bool sessionRunning)
     {
@@ -181,11 +203,7 @@ internal static class FocusAllowedPrograms
         if (list.Any(e => Names(e, candidate.Kind, id))) return FocusAllowVerdict.AlreadyAllowed;
         if (list.Count >= Maximum) return FocusAllowVerdict.ListFull;
 
-        list.Add(candidate with
-        {
-            Id = id,
-            CanUseNetwork = candidate.CanUseNetwork && NetworkApplies(candidate.Kind),
-        });
+        list.Add(candidate with { Id = id });
         return FocusAllowVerdict.Added;
     }
 
@@ -207,24 +225,15 @@ internal static class FocusAllowedPrograms
     /// <summary>Ticks or clears "can run" on one row.</summary>
     public static FocusAllowVerdict SetCanRun(IList<FocusProgramEntry> list, FocusProgramKind kind,
                                               string? id, bool canRun, bool sessionRunning) =>
-        Change(list, kind, id, sessionRunning, e => e with { CanRun = canRun }, offered: true);
-
-    /// <summary>Ticks or clears "can use the network" on one row. Refused where the checkbox does
-    /// nothing for that kind.</summary>
-    public static FocusAllowVerdict SetCanUseNetwork(IList<FocusProgramEntry> list, FocusProgramKind kind,
-                                                     string? id, bool canUseNetwork, bool sessionRunning) =>
-        Change(list, kind, id, sessionRunning, e => e with { CanUseNetwork = canUseNetwork },
-               offered: NetworkApplies(kind));
+        Change(list, kind, id, sessionRunning, e => e with { CanRun = canRun });
 
     private static FocusAllowVerdict Change(IList<FocusProgramEntry> list, FocusProgramKind kind,
                                             string? id, bool sessionRunning,
-                                            Func<FocusProgramEntry, FocusProgramEntry> change,
-                                            bool offered)
+                                            Func<FocusProgramEntry, FocusProgramEntry> change)
     {
         ArgumentNullException.ThrowIfNull(list);
 
         if (sessionRunning) return FocusAllowVerdict.SessionRunning;
-        if (!offered) return FocusAllowVerdict.NotOffered;
 
         int at = IndexOf(list, kind, id);
         if (at < 0) return FocusAllowVerdict.NotAllowed;
@@ -240,12 +249,6 @@ internal static class FocusAllowedPrograms
             if (Names(list[i], kind, stored)) return i;
         return -1;
     }
-
-    /// <summary>The paths the network lever writes its rules from: program-file entries with "can use
-    /// the network" ticked, in list order, with duplicates dropped.</summary>
-    public static IReadOnlyList<string> NetworkPaths(IEnumerable<FocusProgramEntry>? entries) =>
-        Usable(entries?.Where(e => e.Kind == FocusProgramKind.ProgramFile && e.CanUseNetwork)
-                       .Select(e => e.Id));
 
     /// <summary>The entries a session lets run: "can run" ticked and naming something, in list order,
     /// with duplicates dropped.</summary>
@@ -264,15 +267,13 @@ internal static class FocusAllowedPrograms
         return usable;
     }
 
-    /// <summary>The entries an earlier document's path list becomes. Each path was chosen to keep the
-    /// network; whether it may run is a choice nobody has made, so it may not.</summary>
+    /// <summary>The entries an earlier document's path list becomes, every tick off: whether each may
+    /// run is a choice nobody has made.</summary>
     public static List<FocusProgramEntry> Migrate(IEnumerable<string>? paths) =>
         [.. Usable(paths).Select(path => new FocusProgramEntry
         {
             Kind           = FocusProgramKind.ProgramFile,
             Id             = path,
-            CanRun         = false,
-            CanUseNetwork  = true,
             WhenNotAllowed = FocusProgramAction.Minimise,
         })];
 

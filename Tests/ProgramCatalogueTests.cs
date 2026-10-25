@@ -55,10 +55,10 @@ public class ProgramCatalogueTests
     public void AShortcutToAProgramThatIsGone_IsHidden() =>
         Assert.Null(Offered(Shortcut("Gone", Editor, exists: false)));
 
-    /// <summary>A Store app Windows signs as its own is always usable; neither checkbox would do
-    /// anything for it.</summary>
+    /// <summary>A Store app Windows signs as its own is always usable, so a row for it would do
+    /// nothing.</summary>
     [Fact]
-    public void AStoreAppWindowsSignsAsItsOwn_IsHidden_AndAnyOtherIsRunOnly()
+    public void AStoreAppWindowsSignsAsItsOwn_IsHidden_AndAnyOtherIsLimitable()
     {
         var settings = new AppsFolderEntry("windows.immersivecontrolpanel_cw5n1h2txyewy!microsoft.windows.immersivecontrolpanel",
                                            "Settings", "windows.immersivecontrolpanel_cw5n1h2txyewy!microsoft.windows.immersivecontrolpanel",
@@ -72,22 +72,21 @@ public class ProgramCatalogueTests
         Assert.NotNull(offered);
         Assert.Equal(FocusProgramKind.StorePackage, offered!.Kind);
         Assert.Equal("Claude_pzs8sxrjxfjjc", offered.Id);
-        Assert.Equal(ProgramOffer.RunOnly, offered.Offer);
+        Assert.Equal(ProgramOffer.Limitable, offered.Offer);
         Assert.Equal(@"shell:AppsFolder\Claude_pzs8sxrjxfjjc!Claude", offered.StartEntry);
     }
 
     // ── Windows programs ────────────────────────────────────────────────────────────────────────
 
-    /// <summary>Windows programs are offered for the network alone, because the network list takes
-    /// them today and limiting one could leave the machine unusable. Remote Desktop is the one
-    /// exception, and both checkboxes work for it.</summary>
+    /// <summary>Windows programs are always usable, because limiting one could leave the machine
+    /// unusable. Remote Desktop is the one exception.</summary>
     [Fact]
-    public void WindowsProgramsAreNetworkOnly_ExceptRemoteDesktop()
+    public void WindowsProgramsAreAlwaysUsable_ExceptRemoteDesktop()
     {
-        Assert.Equal(ProgramOffer.NetworkOnly, Offered(Shortcut("Command Prompt", @"C:\Windows\System32\cmd.exe"))!.Offer);
-        Assert.Equal(ProgramOffer.NetworkOnly, Offered(Shortcut("Task Manager", @"C:\Windows\System32\Taskmgr.exe"))!.Offer);
-        Assert.Equal(ProgramOffer.BothBoxes, Offered(Shortcut("Remote Desktop Connection", @"%windir%\system32\mstsc.exe".Replace("%windir%", Windows)))!.Offer);
-        Assert.Equal(ProgramOffer.BothBoxes, Offered(Shortcut("Editor", Editor))!.Offer);
+        Assert.Equal(ProgramOffer.AlwaysUsable, Offered(Shortcut("Command Prompt", @"C:\Windows\System32\cmd.exe"))!.Offer);
+        Assert.Equal(ProgramOffer.AlwaysUsable, Offered(Shortcut("Task Manager", @"C:\Windows\System32\Taskmgr.exe"))!.Offer);
+        Assert.Equal(ProgramOffer.Limitable, Offered(Shortcut("Remote Desktop Connection", @"%windir%\system32\mstsc.exe".Replace("%windir%", Windows)))!.Offer);
+        Assert.Equal(ProgramOffer.Limitable, Offered(Shortcut("Editor", Editor))!.Offer);
     }
 
     /// <summary>The one Windows file a session may limit, pinned: a second one added here is the next
@@ -111,7 +110,7 @@ public class ProgramCatalogueTests
         Assert.Equal(FocusProgramKind.WebApp, offered!.Kind);
         Assert.Equal(BraveWebApp, offered.Id);
         Assert.Equal(BraveProxy, offered.BrowserPath);
-        Assert.Equal(ProgramOffer.RunOnly, offered.Offer);
+        Assert.Equal(ProgramOffer.Limitable, offered.Offer);
     }
 
     [Fact]
@@ -155,23 +154,6 @@ public class ProgramCatalogueTests
     }
 
     // ── What a chosen row yields ────────────────────────────────────────────────────────────────
-
-    /// <summary>Every program-file row the picker offers becomes a rule naming that program when its
-    /// network is ticked. A row that could not is one a person chooses and never gets.</summary>
-    [Fact]
-    public void EveryProgramFileRowOffered_BecomesARuleNamingThatProgram()
-    {
-        var offered = ProgramCatalogue.Merge(
-            [Offered(Shortcut("Editor", Editor)), Offered(Shortcut("Vivaldi", Vivaldi)),
-             Offered(Shortcut("Remote Desktop Connection", @"C:\Windows\System32\mstsc.exe"))]);
-
-        var list = new List<FocusProgramEntry>();
-        foreach (var choice in offered)
-            Assert.Equal(FocusAllowVerdict.Added, FocusAllowedPrograms.Add(list, choice.ToEntry(), sessionRunning: false));
-
-        var rules = FocusFirewallRules.For("198.51.100.7", 8883, "198.51.100.1", FocusAllowedPrograms.NetworkPaths(list));
-        Assert.Equal(offered.Select(c => c.Id), rules.Where(r => r.ApplicationPath.Length > 0).Select(r => r.ApplicationPath));
-    }
 
     /// <summary>No name is ever stored: a display name is neither unique nor stable, and a lookup
     /// keyed on one breaks the moment the Start menu renames a program.</summary>

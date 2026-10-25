@@ -37,7 +37,7 @@ public class FocusProgramLeverTests
         new(entries, FocusProgramAction.Minimise, WindowsFolder, FocusDeskPath, [], [@"C:\Program Files"], _ => false);
 
     private static FocusProgramEntry Row(string path, bool run) =>
-        new() { Kind = FocusProgramKind.ProgramFile, Id = path, CanRun = run, CanUseNetwork = true };
+        new() { Kind = FocusProgramKind.ProgramFile, Id = path, CanRun = run };
 
     /// <summary>With nothing kept usable, every program window would be minimised the moment the
     /// session started. A Windows program's row does not count: it is usable anyway.</summary>

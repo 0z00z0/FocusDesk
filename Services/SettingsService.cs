@@ -13,6 +13,10 @@ internal sealed class AppSettings
     /// backstop against a session that never ends.</summary>
     public int FocusSessionMinutes { get; set; } = FocusSessionEngine.DefaultMinutes;
 
+    /// <summary>Seconds after a Program focus or Screen break session arms during which it can still
+    /// be cancelled; one of <see cref="SettingsFile.FocusGraceChoices"/>.</summary>
+    public int FocusGraceSeconds { get; set; } = SettingsFile.DefaultFocusGraceSeconds;
+
     /// <summary>The kind a session started from Home Assistant runs as. The status window offers both
     /// kinds every time and starting one there leaves this alone. A screen break for an installation
     /// that has never chosen.</summary>
@@ -20,6 +24,9 @@ internal sealed class AppSettings
 
     /// <summary>Whether the next screen break blocks the network; off by default, as it rewrites the firewall.</summary>
     public bool FocusBlocksNetwork { get; set; }
+
+    /// <summary>The programs that keep the network while a screen break blocks it.</summary>
+    public List<NetworkException> ScreenBreakNetworkExceptions { get; set; } = [];
 
     /// <summary>The named sessions for Program focus, in the order they were created. Never empty.</summary>
     public List<NamedSession> NamedSessions { get; set; } = [NamedSession.Create(Services.NamedSessions.DefaultName())];
@@ -91,6 +98,9 @@ internal sealed class AppSettings
     /// <summary>The goal typed for the running session, so a session resumed after a restart keeps
     /// it. Null where none was set or none is running.</summary>
     public string? FocusSessionGoal { get; set; }
+
+    /// <summary>The mode the running Program focus session runs in.</summary>
+    public ProgramFocusMode FocusSessionMode { get; set; }
 
     /// <summary>The key of the named session the running Program focus session runs on.</summary>
     public string? FocusSessionNamedSession { get; set; }

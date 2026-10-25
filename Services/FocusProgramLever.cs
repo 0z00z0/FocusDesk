@@ -28,7 +28,7 @@ internal sealed class FocusProgramLever(ProgramGate gate, Func<GateContext?> con
     /// before a session is asked for.</summary>
     internal static bool KeepsAProgramUsable(IEnumerable<FocusProgramEntry> entries, string windowsFolder) =>
         FocusAllowedPrograms.RunEntries(entries)
-                            .Any(e => ProgramCatalogue.OfferFor(e, windowsFolder) != ProgramOffer.NetworkOnly);
+                            .Any(e => ProgramCatalogue.OfferFor(e, windowsFolder) == ProgramOffer.Limitable);
 
     public string? Refusal() =>
         context() is { } read

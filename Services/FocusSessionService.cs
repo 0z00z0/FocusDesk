@@ -37,8 +37,9 @@ internal static class FocusSessionService
         new FocusNetworkLever(_firewall, new LiveFocusNetworkTargets(Broker),
                               FocusNetworkLever.ElevationRefusal,
                               (what, cause) => AppLog.Info($"{what}{cause.Clause}"),
-                              () => SettingsService.Read(s => FocusAllowedPrograms.NetworkPaths(
-                                  NamedSessions.ForLevers(s, _arming).Programs))),
+                              () => SettingsService.Read(s => FocusAllowedPrograms.Usable(
+                                  s.ScreenBreakNetworkExceptions.Where(e => e.Kind == FocusProgramKind.ProgramFile)
+                                                                .Select(e => e.Id)))),
         new SettingsFocusSessionRecord(),
         () => DateTimeOffset.Now,
         (what, cause) => AppLog.Info($"{what}{cause.Clause}"),

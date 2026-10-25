@@ -7,20 +7,14 @@ using FocusDesk.Helpers;
 
 namespace FocusDesk.Services;
 
-/// <summary>Which of a row's two checkboxes do anything for a program.</summary>
+/// <summary>Whether a session's program limit applies to a program.</summary>
 internal enum ProgramOffer
 {
-    /// <summary>"Can run" and "can use the network" both work: an ordinary program file, or Remote
-    /// Desktop Connection.</summary>
-    BothBoxes,
+    /// <summary>A Windows program, always usable and never limited.</summary>
+    AlwaysUsable,
 
-    /// <summary>"Can run" only: a Store app or a web app, which no firewall rule by path can
-    /// name.</summary>
-    RunOnly,
-
-    /// <summary>"Can use the network" only: a Windows program, always usable and never
-    /// limited.</summary>
-    NetworkOnly,
+    /// <summary>Any other program, Remote Desktop Connection included.</summary>
+    Limitable,
 }
 
 /// <summary>One program the picker offers.</summary>
@@ -45,16 +39,15 @@ internal sealed record ProgramChoice(
     /// visibility so the row binds straight to it.</summary>
     public string OpenMark => Running ? AppText.Get("PickerOpenMark") : "";
 
-    /// <summary>The row this choice becomes on the list: both checkboxes ticked, as every added
-    /// program starts. The name is not carried.</summary>
+    /// <summary>The row this choice becomes on the list: "can run" ticked, as every added program
+    /// starts. The name is not carried.</summary>
     public FocusProgramEntry ToEntry() => new()
     {
-        Kind          = Kind,
-        Id            = Id,
-        BrowserPath   = BrowserPath,
-        StartEntry    = StartEntry,
-        CanRun        = true,
-        CanUseNetwork = true,
+        Kind        = Kind,
+        Id          = Id,
+        BrowserPath = BrowserPath,
+        StartEntry  = StartEntry,
+        CanRun      = true,
     };
 }
 
@@ -64,7 +57,7 @@ internal sealed record StartShortcut(string ShortcutPath, string Target, string 
 
 /// <summary>
 /// What the picker offers: the Start menu's shortcuts, and the Store apps and web apps in the shell's
-/// Apps folder, sorted into what both checkboxes work for, what only one does, and what is hidden.
+/// Apps folder, sorted into what the limit applies to, what is always usable, and what is hidden.
 /// </summary>
 /// <remarks>
 /// <para>Measured on one machine: 160 shortcuts, 196 Apps-folder entries, 51 shortcuts carrying an
@@ -138,7 +131,7 @@ internal static class ProgramCatalogue
             return identity.Length == 0
                 ? null
                 : new ProgramChoice(FocusProgramKind.WebApp, identity, name, target, shortcut.ShortcutPath,
-                                    ProgramOffer.RunOnly, Bare: shortcut.Arguments.Length == 0);
+                                    ProgramOffer.Limitable, Bare: shortcut.Arguments.Length == 0);
         }
 
         if (IsUninstaller(target) || StartsShellOrConsole(target)) return null;
@@ -151,8 +144,8 @@ internal static class ProgramCatalogue
         if (IsPackaged(target)) return null;
 
         var offer = WindowsPrograms.IsAlwaysUsable(target, windowsFolder)
-            ? ProgramOffer.NetworkOnly
-            : ProgramOffer.BothBoxes;
+            ? ProgramOffer.AlwaysUsable
+            : ProgramOffer.Limitable;
         return new ProgramChoice(FocusProgramKind.ProgramFile, target, name, null, shortcut.ShortcutPath,
                                  offer, Bare: shortcut.Arguments.Length == 0);
     }
@@ -169,24 +162,21 @@ internal static class ProgramCatalogue
                 ? null
                 : new ProgramChoice(FocusProgramKind.WebApp, identity, entry.Name,
                                     FocusAllowedPrograms.IsProgram(browser) ? browser : null,
-                                    entry.StartEntry, ProgramOffer.RunOnly);
+                                    entry.StartEntry, ProgramOffer.Limitable);
         }
 
-        // A package Windows signs as its own is always usable, and neither checkbox would do anything.
+        // A package Windows signs as its own is always usable, so a row for it would do nothing.
         if (entry.PackageFamily.Length == 0 || entry.SignedByWindows) return null;
 
         return new ProgramChoice(FocusProgramKind.StorePackage, entry.PackageFamily, entry.Name, null,
-                                 entry.StartEntry, ProgramOffer.RunOnly);
+                                 entry.StartEntry, ProgramOffer.Limitable);
     }
 
-    /// <summary>Which checkboxes work for a row already on the list.</summary>
-    public static ProgramOffer OfferFor(FocusProgramEntry entry, string windowsFolder) => entry.Kind switch
-    {
-        FocusProgramKind.ProgramFile when WindowsPrograms.IsAlwaysUsable(entry.Id, windowsFolder)
-            => ProgramOffer.NetworkOnly,
-        FocusProgramKind.ProgramFile => ProgramOffer.BothBoxes,
-        _                            => ProgramOffer.RunOnly,
-    };
+    /// <summary>Whether the limit applies to a row already on the list.</summary>
+    public static ProgramOffer OfferFor(FocusProgramEntry entry, string windowsFolder) =>
+        entry.Kind == FocusProgramKind.ProgramFile && WindowsPrograms.IsAlwaysUsable(entry.Id, windowsFolder)
+            ? ProgramOffer.AlwaysUsable
+            : ProgramOffer.Limitable;
 
     /// <summary>Every choice as one list, one row per program: several shortcuts to one file, several
     /// entries of one package and a web app listed twice each become one row. Open programs first,
