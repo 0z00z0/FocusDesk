@@ -116,7 +116,7 @@ internal static class ProgramGateRules
             return Exempt(GateExemption.SecuritySoftware, process.Path);
 
         // A dialog owned by an allowed program's window, even from another process.
-        if (window.Owner is { } owner && Match(owner, context) is { CanRun: true } ownerEntry)
+        if (window.Owner is { } owner && EntryFor(owner, context) is { CanRun: true } ownerEntry)
             return new GateVerdict(GateOutcome.Allowed, ownerEntry.Id, Entry: ownerEntry);
 
         // A web app's window carries its own identity and belongs to its own row. One that matches no
@@ -130,14 +130,14 @@ internal static class ProgramGateRules
                 return new GateVerdict(GateOutcome.Limited, window.AppId, Action: context.DefaultAction);
         }
 
-        if (Match(process, context) is { } entry)
+        if (EntryFor(process, context) is { } entry)
             return Resolve(entry);
 
         // A helper started by an allowed program, from that program's own folder or carrying its
         // package. Anything else a program starts is judged on its own, so an allowed terminal does
         // not let through what it runs.
         foreach (var ancestor in window.Ancestors)
-            if (Match(ancestor, context) is { CanRun: true } parent && IsHelperOf(process, ancestor, parent, context))
+            if (EntryFor(ancestor, context) is { CanRun: true } parent && IsHelperOf(process, ancestor, parent, context))
                 return new GateVerdict(GateOutcome.Allowed, parent.Id, Entry: parent);
 
         return new GateVerdict(GateOutcome.Limited, Name(process), Action: context.DefaultAction);
@@ -154,7 +154,7 @@ internal static class ProgramGateRules
 
     /// <summary>The row a process belongs to: by package, then by program file or the file's own
     /// folder. Null where no row names it.</summary>
-    private static FocusProgramEntry? Match(ProcessFacts process, GateContext context)
+    internal static FocusProgramEntry? EntryFor(ProcessFacts process, GateContext context)
     {
         if (process.PackageFamily.Length > 0
             && context.Entries.FirstOrDefault(e => FocusAllowedPrograms.Names(e, FocusProgramKind.StorePackage, process.PackageFamily)) is { } package)

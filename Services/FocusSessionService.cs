@@ -79,6 +79,7 @@ internal static class FocusSessionService
         SettingsService.Reloaded += KeepRecords;
 
         _engine.Start();
+        if (Current is { IsRunning: true } resumed) OpenMarked(resumed.Kind, resumed.Mode, ProgramStartTrigger.Resume, resumed.NamedSession);
         _timer = new Timer(_ => Tick(), null, TickInterval, TickInterval);
     }
 
@@ -92,8 +93,9 @@ internal static class FocusSessionService
     /// <param name="goal">The goal typed in the start box. Null from Home Assistant, which has none.</param>
     /// <param name="namedSession">The named session chosen in the start box. Null from MQTT, which
     /// starts the session in use. A key naming no session in the list refuses the start.</param>
+    /// <param name="mode">The mode chosen for this start only; the session's saved mode otherwise.</param>
     public static FocusArmOutcome Arm(ActionCause cause, int? minutes = null, FocusSessionKind? kind = null,
-                                      string? goal = null, string? namedSession = null)
+                                      string? goal = null, string? namedSession = null, ProgramFocusMode? mode = null)
     {
         var (stored, storedKind, screen, input, network, session) = SettingsService.Read(
             s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusDimsScreen, s.FocusBlocksInput,
@@ -103,14 +105,29 @@ internal static class FocusSessionService
             AppLog.Info($"Focus: the chosen named session is no longer in the list, so nothing started{cause.Clause}.");
             return FocusArmOutcome.NamedSessionMissing;
         }
-        var plan = FocusSessionPlan.For(kind ?? storedKind, network, screen, input, session.Key);
+        var plan = FocusSessionPlan.For(kind ?? storedKind, network, screen, input, session.Key,
+                                        mode ?? session.Mode, session.Programs.Any(p => p.StartWithSession));
 
+        FocusArmOutcome outcome;
         lock (_armGate)
         {
             _arming = plan.NamedSession;
-            try { return _engine.Arm(FocusStartRequest.Minutes(minutes, stored), plan, cause, goal); }
+            try { outcome = _engine.Arm(FocusStartRequest.Minutes(minutes, stored), plan, cause, goal); }
             finally { _arming = null; }
         }
+
+        if (outcome == FocusArmOutcome.Armed)
+            OpenMarked(plan.Kind, plan.Mode, ProgramStartTrigger.Start, plan.NamedSession);
+        return outcome;
+    }
+
+    /// <summary>Opens the named session's marked programs where the rules say this moment does.</summary>
+    private static void OpenMarked(FocusSessionKind kind, ProgramFocusMode mode, ProgramStartTrigger how,
+                                   string? namedSession)
+    {
+        if (!ProgramStartRules.Opens(kind, mode, how)) return;
+        ProgramStarter.Run(SettingsService.Read(s =>
+            NamedSessions.Find(s, namedSession)?.Programs.Where(p => p.StartWithSession).ToList() ?? []));
     }
 
     /// <summary>What the focus-app lever decides against, read when a session arms or resumes: the
@@ -194,17 +211,17 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
 {
     public FocusSessionRecord? Read()
     {
-        var (startedAt, endsAt, screen, cover, input, network, programs, kind, goal, named) = SettingsService.Read(
+        var (startedAt, endsAt, screen, cover, input, network, programs, kind, goal, named, mode) = SettingsService.Read(
             s => (s.FocusSessionStartedAt, s.FocusSessionEndsAt, s.FocusSessionDimmedScreen,
                   s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput,
                   s.FocusSessionBlockedNetwork, s.FocusSessionLimitedPrograms,
-                  s.FocusSessionRunningKind, s.FocusSessionGoal, s.FocusSessionNamedSession));
+                  s.FocusSessionRunningKind, s.FocusSessionGoal, s.FocusSessionNamedSession, s.FocusSessionMode));
         // A document written before the start time was recorded falls back to the end time, which
         // reads as a session with no length. Only the cover's ring uses it, and such a document
         // carries no cover lever, so nothing draws from the fallback.
         return endsAt is { } ends
             ? new FocusSessionRecord(startedAt ?? ends, ends, screen, cover, input, network, programs, kind,
-                                     FocusSessionGoal.Clean(goal), named)
+                                     FocusSessionGoal.Clean(goal), named, mode)
             : null;
     }
 
@@ -220,6 +237,7 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
         s.FocusSessionRunningKind = session.Kind;
         s.FocusSessionGoal = session.Goal.Length > 0 ? session.Goal : null;
         s.FocusSessionNamedSession = session.NamedSession;
+        s.FocusSessionMode = session.Mode;
     });
 
     public void Clear() => SettingsService.Update(s =>
@@ -229,6 +247,7 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
         s.FocusSessionRunningKind = FocusSessionKind.ScreenBreak;
         s.FocusSessionGoal = null;
         s.FocusSessionNamedSession = null;
+        s.FocusSessionMode = ProgramFocusMode.AllowListed;
         s.FocusSessionDimmedScreen = false;
         s.FocusSessionCoveredScreen = false;
         s.FocusSessionBlockedInput = false;

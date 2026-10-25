@@ -23,7 +23,8 @@ namespace FocusDesk.Services;
 internal readonly record struct FocusSessionRecord(
     DateTimeOffset StartedAt, DateTimeOffset EndsAt, bool DimsScreen, bool CoversScreen,
     bool BlocksInput = false, bool BlocksNetwork = false, bool LimitsPrograms = false,
-    FocusSessionKind Kind = FocusSessionKind.ScreenBreak, string Goal = "", string? NamedSession = null);
+    FocusSessionKind Kind = FocusSessionKind.ScreenBreak, string Goal = "", string? NamedSession = null,
+    ProgramFocusMode Mode = ProgramFocusMode.AllowListed);
 
 /// <summary>Where a running session is kept so nothing but the clock can end it.</summary>
 internal interface IFocusSessionRecord
@@ -274,8 +275,15 @@ internal sealed class FocusSessionEngine(
     {
         if (_session is not null) return FocusArmOutcome.AlreadyRunning;
 
+        // Mode 3 holds no lever, so opening programs is all it does.
+        if (plan.Required is null && !plan.MarksAProgram)
+        {
+            log("Focus session refused: nothing to open, as no program is ticked to start with the session", cause);
+            return FocusArmOutcome.NothingToOpen;
+        }
+
         // The lever the kind always holds is the session: without it, it refuses in its own words.
-        if (LeverFor(plan.Required).Refusal() is { } requiredRefusal)
+        if (plan.Required is { } required && LeverFor(required).Refusal() is { } requiredRefusal)
         {
             log($"Focus session refused: {requiredRefusal}", cause);
             return FocusArmOutcome.LeverRefused;
@@ -308,7 +316,7 @@ internal sealed class FocusSessionEngine(
         var session = new FocusSessionRecord(
             started, started.AddMinutes(Math.Clamp(minutes, MinMinutes, MaxMinutes)),
             dimsScreen, plan.CoversScreen, blocksInput, blocksNetwork, plan.LimitsPrograms, plan.Kind, goal,
-            plan.NamedSession);
+            plan.NamedSession, plan.Mode);
 
         // The record reaches disk before a lever moves: a crash between the two has to leave a
         // session the next start can end, never a lever nothing owns.
@@ -472,7 +480,7 @@ internal sealed class FocusSessionEngine(
         return new FocusSnapshot(stage, session.StartedAt, session.EndsAt,
                                  session.DimsScreen, session.CoversScreen, session.BlocksInput,
                                  session.BlocksNetwork, session.LimitsPrograms, session.Kind, session.Goal,
-                                 session.NamedSession);
+                                 session.NamedSession, session.Mode);
     }
 
     /// <summary>Brings the stage last reported into line with the stage now, and says whether it
