@@ -1,3 +1,5 @@
+using CommunityToolkit.WinUI.Controls;
+using FocusDesk.Helpers;
 using FocusDesk.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -19,6 +21,7 @@ public sealed partial class ScreenSettingsPanel : UserControl
     /// slider.</summary>
     private readonly DispatcherTimer _debounce = new() { Interval = TimeSpan.FromMilliseconds(250) };
 
+    private readonly List<Button> _removeButtons = [];
     private int _wanted;
     private bool _updating;
 
@@ -49,6 +52,8 @@ public sealed partial class ScreenSettingsPanel : UserControl
         ScreenRestoreCard.Header = AppText.Get("ScreenRestoreHeader");
         ScreenRestoreCard.Description = AppText.Get("ScreenRestoreDescription");
         ScreenRestoreBtn.Content = AppText.Get("ScreenRestoreButton");
+        ExceptionsCaption.Text = AppText.Get("ScreenExceptionsCaption");
+        ExceptionAddBtn.Content = AppText.Get("FocusProgramsAddButton");
         _debounce.Tick += (_, _) => Apply();
         Loaded += (_, _) => Reload();
     }
@@ -80,6 +85,9 @@ public sealed partial class ScreenSettingsPanel : UserControl
             FocusBlocksInputToggle.IsOn   = session.IsRunning ? session.BlocksInput   : input;
             FocusBlocksNetworkToggle.IsOn = session.IsRunning ? session.BlocksNetwork : network;
 
+            ExceptionsPanel.Visibility = FocusBlocksNetworkToggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
+            BuildExceptionRows();
+
             ApplySessionLock();
         }
         finally { _updating = false; }
@@ -93,6 +101,8 @@ public sealed partial class ScreenSettingsPanel : UserControl
         FocusDimsScreenToggle.IsEnabled  = !locked;
         FocusBlocksInputToggle.IsEnabled = !locked;
         FocusBlocksNetworkToggle.IsEnabled = !locked;
+        ExceptionAddBtn.IsEnabled = !locked;
+        foreach (var remove in _removeButtons) remove.IsEnabled = !locked;
         ScreenBrightnessSlider.IsEnabled = !locked;
         ScreenRestoreBtn.IsEnabled = !locked && ScreenBrightnessService.Holding;
     }
@@ -150,5 +160,70 @@ public sealed partial class ScreenSettingsPanel : UserControl
         if (_updating) return;
         if (FocusSessionService.LeversAreLocked) { Reload(); return; }
         SettingsService.Update(s => s.FocusBlocksNetwork = FocusBlocksNetworkToggle.IsOn);
+        ExceptionsPanel.Visibility = FocusBlocksNetworkToggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>One card per program that keeps the network, with its icon, name and Remove.</summary>
+    private void BuildExceptionRows()
+    {
+        ExceptionRows.Children.Clear();
+        _removeButtons.Clear();
+        foreach (var exception in SettingsService.Read(s => s.ScreenBreakNetworkExceptions.ToList()))
+        {
+            var entry = new FocusProgramEntry { Kind = exception.Kind, Id = exception.Id, StartEntry = exception.StartEntry };
+            var remove = new Button { Content = AppText.Get("FocusProgramRemove") };
+            remove.Click += (_, _) => RemoveException(exception);
+            remove.IsEnabled = !FocusSessionService.LeversAreLocked;
+            _removeButtons.Add(remove);
+
+            var icon = new ImageIcon { Width = 24, Height = 24 };
+            ProgramIconLoader.Request(entry.StartEntry ?? entry.Id, image => icon.Source = image);
+
+            ExceptionRows.Children.Add(new SettingsCard
+            {
+                HeaderIcon  = icon,
+                Header      = ProgramNames.For(entry),
+                Description = ProgramCatalogue.IsPresent(entry)
+                    ? FocusAllowedPrograms.Describe(entry)
+                    : AppText.Get("FocusProgramNotFound"),
+                Content     = remove,
+            });
+        }
+    }
+
+    private void RemoveException(NetworkException exception)
+    {
+        if (FocusSessionService.LeversAreLocked) { Reload(); return; }
+        SettingsService.Update(s => s.ScreenBreakNetworkExceptions.RemoveAll(
+            e => e.Kind == exception.Kind && FocusAllowedPrograms.Same(e.Id, exception.Id)));
+        BuildExceptionRows();
+    }
+
+    private void OnAddException(object sender, RoutedEventArgs e)
+    {
+        if (FocusSessionService.LeversAreLocked) { Reload(); return; }
+        try
+        {
+            var listed = SettingsService.Read(s => s.ScreenBreakNetworkExceptions.Select(x => (x.Kind, x.Id)).ToList());
+            // Program files only: a web app shares its browser's file, and a Store package has no firewall rule yet.
+            new ProgramPickerWindow(chosen => DispatcherQueue.TryEnqueue(() => AddException(chosen)),
+                                    listed, [FocusProgramKind.ProgramFile])
+                .Activate();
+        }
+        catch (Exception ex) { AppLog.Error("ScreenSettingsPanel.OnAddException", ex); }
+    }
+
+    private void AddException(ProgramChoice chosen)
+    {
+        if (FocusSessionService.LeversAreLocked) { Reload(); return; }
+        string id = FocusAllowedPrograms.NormaliseId(chosen.Kind, chosen.Id);
+        if (chosen.Kind != FocusProgramKind.ProgramFile || id.Length == 0) return;
+
+        SettingsService.Update(s =>
+        {
+            if (s.ScreenBreakNetworkExceptions.Any(x => x.Kind == chosen.Kind && FocusAllowedPrograms.Same(x.Id, id))) return;
+            s.ScreenBreakNetworkExceptions.Add(new NetworkException { Kind = chosen.Kind, Id = id, StartEntry = chosen.StartEntry });
+        });
+        BuildExceptionRows();
     }
 }

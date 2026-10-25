@@ -18,7 +18,8 @@ A focus session runs for one duration and is one of two kinds, chosen when it st
   focus never blocks the network.
 - **Screen break.** Every display is covered with a black window. The mouse and keyboard can be
   blocked and the screen dimmed as well, and every network connection can be blocked except the MQTT
-  server and the programs on the Screen break exception list.
+  server and the programs on the Screen break exception list. The list is kept on the Screen break
+  page, under "Blocks the network", and holds program files only.
 
 A session ends when its time runs out, or early from Home Assistant through a staged cancel. The
 machine itself offers no way to end one. FocusDesk does not defend against a determined

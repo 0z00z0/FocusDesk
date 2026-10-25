@@ -742,6 +742,10 @@
     <value>Needs administrator rights and a server set on the MQTT page. Where refused, the session runs without it.</value>
     <comment>Hover text on the network switch's info bubble.</comment>
   </data>
+  <data name="ScreenExceptionsCaption" xml:space="preserve">
+    <value>Every program is blocked, except these:</value>
+    <comment>Line above the Screen break list of programs that keep the network.</comment>
+  </data>
   <data name="MqttPageHeading" xml:space="preserve">
     <value>Remote control (MQTT)</value>
     <comment>Heading at the top of the MQTT page in Settings. The navigation entry stays "MQTT".</comment>
