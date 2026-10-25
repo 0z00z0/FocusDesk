@@ -29,6 +29,9 @@ internal sealed class SettingsFile
     public const string AboutKey      = "About";
     public const string WindowKey     = "Window";
 
+    public static readonly int[] FocusGraceChoices = [30, 60, 120, 300];
+    public const int DefaultFocusGraceSeconds = 120;
+
     /// <summary>The section names, in the order the document carries them. The store binds a section
     /// by its exact spelling, and one spelled in another case binds nothing and hands back
     /// defaults.</summary>
@@ -79,37 +82,40 @@ internal sealed class SettingsFile
         // defaults rather than zero minutes and two levers switched off — a session that could
         // never be armed.
         [JsonPropertyOrder(1)] public int?  FocusSessionMinutes     { get; set; }
+        [JsonPropertyOrder(2)] public int?  FocusGraceSeconds       { get; set; }
         [JsonPropertyOrder(3)] public bool? FocusPointShown         { get; set; }
         [JsonPropertyOrder(4)] public bool? FocusPointStartsSession { get; set; }
         [JsonPropertyOrder(5)] public int?  FocusPointSeconds       { get; set; }
         [JsonPropertyOrder(6)] public FocusSessionKind? FocusSessionKind { get; set; }
         [JsonPropertyOrder(7)] public bool? FocusBlocksNetwork      { get; set; }
+        [JsonPropertyOrder(8)] public List<NetworkException>? ScreenBreakNetworkExceptions { get; set; }
         // Read once into "Default" and never written; the store keeps the earlier bytes where they stand.
-        [JsonPropertyOrder(8), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyOrder(9), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<FocusProgramEntry>? FocusPrograms { get; set; }
-        [JsonPropertyOrder(9)] public FocusProgramAction? FocusProgramsDefaultAction { get; set; }
-        [JsonPropertyOrder(10)] public bool? FocusDimsScreen        { get; set; }
+        [JsonPropertyOrder(10)] public FocusProgramAction? FocusProgramsDefaultAction { get; set; }
+        [JsonPropertyOrder(11)] public bool? FocusDimsScreen        { get; set; }
         // The cover's visual, written as its name rather than as a number: a document a person opens
         // reads "ring" or "focus-point", and a name unknown to this build falls back to the dial.
-        [JsonPropertyOrder(11)] public string? FocusCoverVisual     { get; set; }
-        [JsonPropertyOrder(12)] public bool? FocusBlocksInput       { get; set; }
+        [JsonPropertyOrder(12)] public string? FocusCoverVisual     { get; set; }
+        [JsonPropertyOrder(13)] public bool? FocusBlocksInput       { get; set; }
         // The running session and the firewall state it displaced. State rather than settings:
         // nothing on the page edits these, so they trail the visible rows.
-        [JsonPropertyOrder(13)] public DateTimeOffset? FocusSessionStartedAt { get; set; }
-        [JsonPropertyOrder(14)] public DateTimeOffset? FocusSessionEndsAt    { get; set; }
-        [JsonPropertyOrder(15)] public FocusSessionKind FocusSessionRunningKind { get; set; }
-        [JsonPropertyOrder(16)] public bool FocusSessionBlockedNetwork { get; set; }
-        [JsonPropertyOrder(17)] public bool FocusSessionDimmedScreen   { get; set; }
-        [JsonPropertyOrder(18)] public bool FocusSessionCoveredScreen  { get; set; }
-        [JsonPropertyOrder(19)] public bool FocusSessionBlockedInput   { get; set; }
-        [JsonPropertyOrder(20)] public bool FocusSessionLimitedPrograms { get; set; }
-        [JsonPropertyOrder(21)] public string? FocusSessionGoal { get; set; }
-        [JsonPropertyOrder(22)] public string? FocusSessionNamedSession { get; set; }
-        [JsonPropertyOrder(23)] public List<FirewallProfileSetting>? FocusSavedFirewall { get; set; }
+        [JsonPropertyOrder(14)] public DateTimeOffset? FocusSessionStartedAt { get; set; }
+        [JsonPropertyOrder(15)] public DateTimeOffset? FocusSessionEndsAt    { get; set; }
+        [JsonPropertyOrder(16)] public FocusSessionKind FocusSessionRunningKind { get; set; }
+        [JsonPropertyOrder(17)] public bool FocusSessionBlockedNetwork { get; set; }
+        [JsonPropertyOrder(18)] public bool FocusSessionDimmedScreen   { get; set; }
+        [JsonPropertyOrder(19)] public bool FocusSessionCoveredScreen  { get; set; }
+        [JsonPropertyOrder(20)] public bool FocusSessionBlockedInput   { get; set; }
+        [JsonPropertyOrder(21)] public bool FocusSessionLimitedPrograms { get; set; }
+        [JsonPropertyOrder(22)] public string? FocusSessionGoal { get; set; }
+        [JsonPropertyOrder(23)] public ProgramFocusMode FocusSessionMode { get; set; }
+        [JsonPropertyOrder(24)] public string? FocusSessionNamedSession { get; set; }
+        [JsonPropertyOrder(25)] public List<FirewallProfileSetting>? FocusSavedFirewall { get; set; }
 
         // An earlier document's path list, read to migrate and never written: null on every write,
         // and a null key is left out. The store keeps the earlier bytes where they stand.
-        [JsonPropertyOrder(24), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyOrder(26), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<string>? FocusAllowedPrograms { get; set; }
     }
 
@@ -174,8 +180,10 @@ internal sealed class SettingsFile
             Focus = new FocusGroup
             {
                 FocusSessionMinutes       = s.FocusSessionMinutes,
+                FocusGraceSeconds         = s.FocusGraceSeconds,
                 FocusSessionKind          = s.FocusSessionKind,
                 FocusBlocksNetwork        = s.FocusBlocksNetwork,
+                ScreenBreakNetworkExceptions = s.ScreenBreakNetworkExceptions,
                 FocusProgramsDefaultAction = s.FocusProgramsDefaultAction,
                 FocusDimsScreen           = s.FocusDimsScreen,
                 FocusCoverVisual          = CoverAppearance.NameOf(s.FocusCoverVisual),
@@ -192,6 +200,7 @@ internal sealed class SettingsFile
                 FocusSessionBlockedNetwork = s.FocusSessionBlockedNetwork,
                 FocusSessionLimitedPrograms = s.FocusSessionLimitedPrograms,
                 FocusSessionGoal          = s.FocusSessionGoal,
+                FocusSessionMode          = s.FocusSessionMode,
                 FocusSessionNamedSession  = s.FocusSessionNamedSession,
                 FocusSavedFirewall        = s.FocusSavedFirewall,
             },
@@ -234,6 +243,10 @@ internal sealed class SettingsFile
         ScreenSavedBrightness = Screen.ScreenSavedBrightness,
 
         FocusSessionMinutes       = Focus.FocusSessionMinutes ?? FocusSessionEngine.DefaultMinutes,
+        FocusGraceSeconds         = Focus.FocusGraceSeconds is { } grace && FocusGraceChoices.Contains(grace)
+                                        ? grace
+                                        : DefaultFocusGraceSeconds,
+        ScreenBreakNetworkExceptions = Focus.ScreenBreakNetworkExceptions ?? [],
         // Nothing carries over from the two lever switches the kind replaced: an installation that
         // has never chosen a kind gets a screen break.
         FocusSessionKind          = Focus.FocusSessionKind ?? FocusSessionKind.ScreenBreak,
@@ -254,6 +267,7 @@ internal sealed class SettingsFile
         FocusSessionBlockedNetwork = Focus.FocusSessionBlockedNetwork,
         FocusSessionLimitedPrograms = Focus.FocusSessionLimitedPrograms,
         FocusSessionGoal          = Focus.FocusSessionGoal,
+        FocusSessionMode          = Focus.FocusSessionMode,
         FocusSessionNamedSession  = Focus.FocusSessionNamedSession,
         FocusSavedFirewall        = Focus.FocusSavedFirewall,
 

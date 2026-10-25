@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace FocusDesk.Services;
 
-/// <summary>One named session for Program focus: its own program list.</summary>
+/// <summary>One named session for Program focus: its mode and its own program list.</summary>
 internal sealed class NamedSession
 {
     /// <summary>Generated once, never edited or reused; every lookup is by this, never the name.</summary>
@@ -10,7 +10,10 @@ internal sealed class NamedSession
 
     [JsonPropertyOrder(2)] public string Name { get; set; } = "";
 
-    [JsonPropertyOrder(3)] public List<FocusProgramEntry> Programs { get; set; } = [];
+    /// <summary>The mode a start uses unless that start chooses another.</summary>
+    [JsonPropertyOrder(3)] public ProgramFocusMode Mode { get; set; }
+
+    [JsonPropertyOrder(4)] public List<FocusProgramEntry> Programs { get; set; } = [];
 
     public static NamedSession Create(string name, List<FocusProgramEntry>? programs = null) => new()
     {

@@ -131,9 +131,8 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         return row.Expander;
     }
 
-    /// <summary>One card per program of the session: its icon and name, "can run", "can use the
-    /// network" and Remove. A checkbox that does nothing for that kind of program is disabled, with
-    /// the reason on hover.</summary>
+    /// <summary>One card per program of the session: its icon and name, "can run" and Remove. For a
+    /// Windows program "can run" is disabled, with the reason on hover.</summary>
     private IEnumerable<SettingsCard> ProgramCards(string key, Action<FocusAllowVerdict> refused)
     {
         string windows = WindowsPrograms.Folder;
@@ -145,35 +144,22 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
             var canRun = new CheckBox
             {
                 Content   = AppText.Get("FocusProgramCanRun"),
-                IsChecked = offer == ProgramOffer.NetworkOnly || entry.CanRun,
-            };
-            var canUseNetwork = new CheckBox
-            {
-                Content   = AppText.Get("FocusProgramCanUseNetwork"),
-                IsChecked = offer != ProgramOffer.RunOnly && entry.CanUseNetwork,
+                IsChecked = offer == ProgramOffer.AlwaysUsable || entry.CanRun,
             };
             canRun.Click += (_, _) => ChangePrograms(key, refused, list => FocusAllowedPrograms.SetCanRun(
                 list, program.Kind, program.Id, canRun.IsChecked == true, FocusSessionService.LeversAreLocked));
-            canUseNetwork.Click += (_, _) => ChangePrograms(key, refused, list => FocusAllowedPrograms.SetCanUseNetwork(
-                list, program.Kind, program.Id, canUseNetwork.IsChecked == true, FocusSessionService.LeversAreLocked));
 
             var remove = new Button { Content = AppText.Get("FocusProgramRemove") };
             remove.Click += (_, _) => ChangePrograms(key, refused, list => FocusAllowedPrograms.Remove(
                 list, program.Kind, program.Id, FocusSessionService.LeversAreLocked));
 
-            _lockables.Add((canRun, () => offer != ProgramOffer.NetworkOnly));
-            _lockables.Add((canUseNetwork, () => offer != ProgramOffer.RunOnly));
+            _lockables.Add((canRun, () => offer == ProgramOffer.Limitable));
             _lockables.Add((remove, () => true));
 
-            string? runWhy = offer == ProgramOffer.NetworkOnly ? AppText.Get("FocusProgramWindowsRunInfo") : null;
-            string? networkWhy = offer != ProgramOffer.RunOnly ? null
-                : AppText.Get(entry.Kind == FocusProgramKind.WebApp
-                                  ? "FocusProgramWebAppNetworkInfo"
-                                  : "FocusProgramStoreNetworkInfo");
+            string? runWhy = offer == ProgramOffer.AlwaysUsable ? AppText.Get("FocusProgramWindowsRunInfo") : null;
 
             var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
             controls.Children.Add(WithReason(canRun, runWhy));
-            controls.Children.Add(WithReason(canUseNetwork, networkWhy));
             controls.Children.Add(remove);
 
             var icon = new ImageIcon { Width = 24, Height = 24 };
@@ -306,7 +292,6 @@ internal static class ProgramFocusText
         FocusAllowVerdict.ListFull       => AppText.Format("FocusProgramsRefusalListFull", FocusAllowedPrograms.Maximum),
         FocusAllowVerdict.AlreadyAllowed => AppText.Get("FocusProgramsRefusalAlreadyAllowed"),
         FocusAllowVerdict.NotAllowed     => AppText.Get("FocusProgramsRefusalNotAllowed"),
-        FocusAllowVerdict.NotOffered     => AppText.Get("FocusProgramsRefusalNotOffered"),
         _                                => "",
     };
 

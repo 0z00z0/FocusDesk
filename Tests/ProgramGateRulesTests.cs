@@ -29,7 +29,7 @@ public class ProgramGateRulesTests
     private const string Keyboard  = "MicrosoftWindows.Client.CBS_cw5n1h2txyewy";
 
     private static FocusProgramEntry File(string path, bool run = true) =>
-        new() { Kind = FocusProgramKind.ProgramFile, Id = path, CanRun = run, CanUseNetwork = true };
+        new() { Kind = FocusProgramKind.ProgramFile, Id = path, CanRun = run };
 
     private static FocusProgramEntry Package(string family, bool run = true) =>
         new() { Kind = FocusProgramKind.StorePackage, Id = family, CanRun = run };

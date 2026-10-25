@@ -39,11 +39,13 @@ public class SettingsFileShapeTests : IDisposable
         "ConfigVersion",
         "Focus",
         "Focus.FocusSessionMinutes",
+        "Focus.FocusGraceSeconds",
         "Focus.FocusPointShown",
         "Focus.FocusPointStartsSession",
         "Focus.FocusPointSeconds",
         "Focus.FocusSessionKind",
         "Focus.FocusBlocksNetwork",
+        "Focus.ScreenBreakNetworkExceptions",
         "Focus.FocusProgramsDefaultAction",
         "Focus.FocusDimsScreen",
         "Focus.FocusCoverVisual",
@@ -57,6 +59,7 @@ public class SettingsFileShapeTests : IDisposable
         "Focus.FocusSessionBlockedInput",
         "Focus.FocusSessionLimitedPrograms",
         "Focus.FocusSessionGoal",
+        "Focus.FocusSessionMode",
         "Focus.FocusSessionNamedSession",
         "Focus.FocusSavedFirewall",
         "ProgramFocus",
@@ -168,7 +171,7 @@ public class SettingsFileShapeTests : IDisposable
             NamedSessions             = [NamedSession.Create("Writing", programs:
             [
                 new() { Kind = FocusProgramKind.ProgramFile, Id = @"C:\Program Files\Example\editor.exe",
-                        StartEntry = @"C:\ProgramData\Example\Editor.lnk", CanRun = true, CanUseNetwork = true },
+                        StartEntry = @"C:\ProgramData\Example\Editor.lnk", CanRun = true },
                 new() { Kind = FocusProgramKind.StorePackage, Id = "Example.Notes_8wekyb3d8bbwe",
                         StartEntry = "Example.Notes_8wekyb3d8bbwe!App", CanRun = true,
                         WhenNotAllowed = FocusProgramAction.AskToClose },
@@ -206,12 +209,9 @@ public class SettingsFileShapeTests : IDisposable
                      (after.SelectedNamedSession, after.FocusSessionNamedSession));
     }
 
-    /// <summary>A document from before the one program list carries a bare path list. Each path was
-    /// chosen to keep the network, so it keeps it; whether it may run is a choice nobody made, so it
-    /// may not. The store never deletes a key, so the earlier list stays in the file; it must never
-    /// migrate a second time, or a program taken off the list comes back at the next start.</summary>
+    /// <summary>An earlier bare path list migrates once, with nothing ticked, or a removed program comes back.</summary>
     [Fact]
-    public void AnEarlierPathListMigratesOnce_ToNetworkOnRunOffAndMinimise()
+    public void AnEarlierPathListMigratesOnce_ToEveryTickOffAndMinimise()
     {
         Directory.CreateDirectory(_dir);
         System.IO.File.WriteAllText(File_,
@@ -225,7 +225,7 @@ public class SettingsFileShapeTests : IDisposable
         Assert.Equal(new FocusProgramEntry
         {
             Kind = FocusProgramKind.ProgramFile, Id = @"C:\Program Files\Example\editor.exe",
-            CanRun = false, CanUseNetwork = true, WhenNotAllowed = FocusProgramAction.Minimise,
+            CanRun = false, WhenNotAllowed = FocusProgramAction.Minimise,
         }, only);
 
         Assert.True(SettingsService.WriteTo(loaded, File_));
@@ -377,6 +377,38 @@ public class SettingsFileShapeTests : IDisposable
         Assert.True(SettingsService.WriteTo(second, File_));
         Assert.Contains("Example.Notes_8wekyb3d8bbwe", System.IO.File.ReadAllText(File_), StringComparison.Ordinal);
         Assert.Empty(Assert.Single(SettingsService.ReadFrom(File_)!.NamedSessions).Programs);
+    }
+
+    /// <summary>After an update nothing opens by itself, and a renamed mode word would reset every session.</summary>
+    [Fact]
+    public void A110DocumentOpensNothing_AndTheWrittenShapeKeepsItsVersionAndModeWords()
+    {
+        Directory.CreateDirectory(_dir);
+        System.IO.File.WriteAllText(File_,
+            "{ \"ConfigVersion\": 2, \"Focus\": { \"FocusBlocksNetwork\": true, \"FocusStartFromDashboard\": true }, "
+          + "\"ProgramFocus\": { \"NamedSessions\": [ "
+          + "{ \"Key\": \"k1\", \"Name\": \"Writing\", \"BlocksNetwork\": true, \"Programs\": [ "
+          + "{ \"Kind\": \"ProgramFile\", \"Id\": \"C:\\\\Tools\\\\editor.exe\", \"CanRun\": true, \"CanUseNetwork\": true, \"WhenNotAllowed\": \"Minimise\" } ] }, "
+          + "{ \"Key\": \"k2\", \"Name\": \"Calls\", \"BlocksNetwork\": false, \"Programs\": [] }, "
+          + "{ \"Key\": \"k3\", \"Name\": \"Reading\", \"BlocksNetwork\": false, \"Programs\": [] } ], "
+          + "\"SelectedNamedSession\": \"k1\" } }");
+
+        var loaded = SettingsService.ReadFrom(File_)!;
+
+        Assert.All(loaded.NamedSessions, n => Assert.Equal(ProgramFocusMode.AllowListed, n.Mode));
+        Assert.False(Assert.Single(loaded.NamedSessions[0].Programs).StartWithSession);
+        Assert.Empty(loaded.ScreenBreakNetworkExceptions);
+
+        loaded.NamedSessions[1].Mode = ProgramFocusMode.OpenMarkedAllowListed;
+        loaded.NamedSessions[2].Mode = ProgramFocusMode.OpenMarkedAllowAll;
+        Assert.True(SettingsService.WriteTo(loaded, File_));
+        string written = System.IO.File.ReadAllText(File_);
+
+        Assert.Contains("\"ConfigVersion\": 2", written, StringComparison.Ordinal);
+        Assert.Contains("\"Mode\": \"AllowListed\"", written, StringComparison.Ordinal);
+        Assert.Contains("\"Mode\": \"OpenMarkedAllowListed\"", written, StringComparison.Ordinal);
+        Assert.Contains("\"Mode\": \"OpenMarkedAllowAll\"", written, StringComparison.Ordinal);
+        Assert.DoesNotContain("CanUseNetwork", written, StringComparison.Ordinal);
     }
 
     /// <summary>After a restart a running session reads its own named session's list, not the one in
