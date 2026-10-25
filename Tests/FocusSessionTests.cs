@@ -752,7 +752,7 @@ public class FocusSessionTests
         Assert.StartsWith("Programfokus: 5 min igjen — ",
                           FocusSessionStages.Describe(programFocus, Noon, ShippedStrings.For("nb-NO")),
                           StringComparison.Ordinal);
-        Assert.Equal("No focus session is running.",
+        Assert.Equal("No session running.",
                      FocusSessionStages.Describe(FocusSnapshot.None, Noon, ShippedStrings.For("en-GB")));
     }
 

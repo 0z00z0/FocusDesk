@@ -100,6 +100,25 @@ public class FocusHistoryTests
         Assert.False(entry.LimitedPrograms);
     }
 
+    /// <summary>A session found finished days later shows the length it was armed for, never the
+    /// hours the application was closed, and its kind leads the restrictions in both languages.</summary>
+    [Theory]
+    [InlineData("en-GB", " · 25 min · Ended while closed", "Screen break: Network, Covered")]
+    [InlineData("nb-NO", " · 25 min · Endte mens lukket", "Skjermpause: Nettverk, Dekket")]
+    public void AStaleRowShowsTheArmedLengthAndItsKind(string language, string summaryEnd, string restrictions)
+    {
+        var entry = new FocusHistoryEntry(
+            Noon, Noon.AddMinutes(25), Noon.AddDays(4),
+            DimmedScreen: false, CoveredScreen: true, FocusSessionOutcome.FoundStale,
+            BlockedNetwork: true, Kind: FocusSessionKind.ScreenBreak);
+
+        var (summary, held) = FocusHistoryService.Describe(
+            entry, ShippedStrings.For(language), new System.Globalization.CultureInfo(language));
+
+        Assert.EndsWith(summaryEnd, summary, StringComparison.Ordinal);
+        Assert.Equal(restrictions, held);
+    }
+
     // ── One row per ending, from the engine itself ──────────────────────────────────────────────
 
     private sealed class Bed

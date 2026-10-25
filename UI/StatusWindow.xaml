@@ -56,8 +56,6 @@
                 <Button Grid.Column="2" x:Name="SettingsButton"
                         Width="28" Height="28" Padding="0"
                         Style="{StaticResource QuickButtonStyle}"
-                        ToolTipService.ToolTip="Settings"
-                        AutomationProperties.Name="Settings"
                         Click="OnSettings">
                     <FontIcon Glyph="&#xE713;" FontSize="14"/>
                 </Button>
@@ -74,13 +72,12 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Focus session"
+                        <TextBlock Grid.Column="0" x:Name="SessionHeading"
                                    Style="{StaticResource CardHeadingStyle}"/>
                         <!-- Shown only where the Focus settings page has turned the start box on. -->
                         <StackPanel Grid.Column="1" x:Name="StartRow"
                                     Orientation="Horizontal" Spacing="8">
-                            <ComboBox x:Name="MinutesCombo" VerticalAlignment="Center"
-                                      AutomationProperties.Name="Session length"/>
+                            <ComboBox x:Name="MinutesCombo" VerticalAlignment="Center"/>
                             <Button x:Name="StartButton" VerticalAlignment="Center" MinWidth="64"
                                     Click="OnStart"/>
                         </StackPanel>
@@ -133,7 +130,6 @@
                                        FontSize="13" TextWrapping="Wrap"
                                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                             <TextBlock x:Name="WayOutText"
-                                       Text="Nothing on this computer ends a session. An MQTT command ends one early, after a five-minute wait and a second request."
                                        FontSize="11" TextWrapping="Wrap"
                                        Visibility="Collapsed"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
@@ -147,10 +143,10 @@
                 </StackPanel>
             </Border>
 
-            <!-- What a session holds, as a reading. Tinted while a lever is in force. -->
+            <!-- The restrictions in force, one short line each. Tinted while any is. -->
             <Border x:Name="LeverCard" Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="4">
-                    <TextBlock Text="Screen" Style="{StaticResource CardHeadingStyle}"/>
+                    <TextBlock x:Name="LeverHeading" Style="{StaticResource CardHeadingStyle}"/>
                     <TextBlock x:Name="LeverText" FontSize="12" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                 </StackPanel>
@@ -160,7 +156,7 @@
                  here rather than on the Focus settings page. -->
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="4">
-                    <TextBlock Text="Recent sessions" Style="{StaticResource CardHeadingStyle}"/>
+                    <TextBlock x:Name="HistoryHeading" Style="{StaticResource CardHeadingStyle}"/>
                     <StackPanel x:Name="HistoryRows" Spacing="3"/>
                 </StackPanel>
             </Border>

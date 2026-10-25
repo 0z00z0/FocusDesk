@@ -20,7 +20,7 @@ public class PopOutPlacementTests
     {
         var rect = PopOutPlacement.BottomRight(Work, 1.0, 400);
 
-        Assert.Equal(360, rect.Width);
+        Assert.Equal(364, rect.Width);
         Assert.Equal(400, rect.Height);
         Assert.Equal(Work.Right - rect.Width - PopOutPlacement.EdgeMarginInUnits, rect.X);
         Assert.Equal(Work.Bottom - rect.Height - PopOutPlacement.EdgeMarginInUnits, rect.Y);
@@ -42,9 +42,9 @@ public class PopOutPlacementTests
     {
         var rect = PopOutPlacement.BottomRight(Work, 1.5, 400);
 
-        Assert.Equal(540, rect.Width);
+        Assert.Equal(546, rect.Width);
         Assert.Equal(600, rect.Height);
-        Assert.Equal(Work.Right - 540 - 18, rect.X);
+        Assert.Equal(Work.Right - 546 - 18, rect.X);
     }
 
     /// <summary>A frame left on the window takes its pixels out of the client area. Unless the window
@@ -55,7 +55,7 @@ public class PopOutPlacementTests
     {
         var rect = PopOutPlacement.BottomRight(Work, 1.0, 400, new SizeInt32(6, 6));
 
-        Assert.Equal(366, rect.Width);
+        Assert.Equal(370, rect.Width);
         Assert.Equal(406, rect.Height);
         Assert.Equal(Work.Bottom - 406 - PopOutPlacement.EdgeMarginInUnits, rect.Y);
     }
