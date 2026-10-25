@@ -51,6 +51,7 @@ internal sealed partial class FocusPointWindow : Window
     private readonly DispatcherTimer _minute = new();
     private readonly bool _animate = MotionPreference.AnimationsAllowed();
     private readonly string _goal;
+    private readonly string? _namedSession;
 
     private Storyboard? _breath;
     private bool _drawsEveryFrame;
@@ -61,18 +62,22 @@ internal sealed partial class FocusPointWindow : Window
     /// button or, where <paramref name="startsItself"/>, arming the session itself. One already open
     /// is closed first, which cancels it. A <paramref name="goal"/> stands in for the quiet line and
     /// goes with the session.</summary>
-    internal static void Open(FocusSessionKind kind, int minutes, int seconds, bool startsItself, string goal)
+    /// <param name="namedSession">The key of the named session a Program focus session runs on.</param>
+    internal static void Open(FocusSessionKind kind, string? namedSession, int minutes, int seconds,
+                              bool startsItself, string goal)
     {
         _open?.Close();
 
-        var window = new FocusPointWindow(kind, minutes, seconds, startsItself, goal);
+        var window = new FocusPointWindow(kind, namedSession, minutes, seconds, startsItself, goal);
         _open = window;
         window.Closed += (_, _) => { if (ReferenceEquals(_open, window)) _open = null; };
         window.Activate();
     }
 
-    private FocusPointWindow(FocusSessionKind kind, int minutes, int seconds, bool startsItself, string goal)
+    private FocusPointWindow(FocusSessionKind kind, string? namedSession, int minutes, int seconds,
+                             bool startsItself, string goal)
     {
+        _namedSession = namedSession;
         InitializeComponent();
         _start = new FocusPointStart(kind, minutes, TimeSpan.FromSeconds(FocusPointStart.SecondsOrDefault(seconds)),
                                      startsItself, () => _clock.Elapsed);
@@ -239,7 +244,7 @@ internal sealed partial class FocusPointWindow : Window
     private FocusArmOutcome Arm(int minutes, FocusSessionKind kind)
     {
         SettingsService.Update(s => s.FocusSessionMinutes = minutes);
-        return FocusSessionService.Arm(ActionCause.FocusPointWindow(), minutes, kind, _goal);
+        return FocusSessionService.Arm(ActionCause.FocusPointWindow(), minutes, kind, _goal, _namedSession);
     }
 
     // Alt+F4 too, so it does not depend on the frameless window passing the key to the system close.

@@ -104,8 +104,10 @@
                                 Click="OnChooseScreenBreak"/>
                     </Grid>
 
-                    <!-- The goal for this one session, shown on the cover and the focus point in place
-                         of their own line. Empty at every showing and never stored as a default. -->
+                    <!-- Program focus: one button per named session, equal columns set in code, the
+                         Smart Charge preset row's look. Screen break: the goal for this one session,
+                         empty at every showing and never stored. The two share the space. -->
+                    <Grid x:Name="NamedSessionChoices" Visibility="Collapsed"/>
                     <TextBox x:Name="GoalBox" AcceptsReturn="False"/>
 
                     <Grid ColumnSpacing="12">
