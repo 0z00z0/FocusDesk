@@ -100,7 +100,7 @@ internal readonly record struct FocusSnapshot(
     FocusSessionStage Stage, DateTimeOffset? StartedAt, DateTimeOffset? EndsAt,
     bool DimsScreen, bool CoversScreen, bool BlocksInput = false, bool BlocksNetwork = false,
     bool LimitsPrograms = false, FocusSessionKind Kind = FocusSessionKind.ScreenBreak, string Goal = "",
-    string? NamedSession = null)
+    string? NamedSession = null, ProgramFocusMode Mode = ProgramFocusMode.AllowListed)
 {
     public static readonly FocusSnapshot None =
         new(FocusSessionStage.Off, null, null, false, false);
@@ -134,4 +134,7 @@ internal enum FocusArmOutcome
     /// <summary>The start named a session the list does not hold. Nothing is armed, and the session
     /// in use is not run in its place.</summary>
     NamedSessionMissing,
+
+    /// <summary>Mode 3 with no program ticked to start: the session would do nothing.</summary>
+    NothingToOpen,
 }
