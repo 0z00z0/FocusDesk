@@ -9,6 +9,28 @@ in the code. Newest version first; the heading is the version alone, exactly as 
 `FocusDesk.csproj`. A section never carries an installer hash: the workflow adds the one hash the
 updater reads.
 
+## 1.1.0
+
+- Program focus runs on a named session, each with its own list of allowed programs and its own
+  network block, and up to five named sessions can be kept.
+- The Program focus page in Settings lists the named sessions: Activate makes one the session in use,
+  marked In use, and sessions are renamed, added and deleted there.
+- On the dashboard opened from the notification-area icon, choosing Program focus shows one button
+  per named session to pick the one it runs on; Screen break keeps the goal field in that place.
+- The MQTT select "Named session" picks the named session a Program focus session uses, and refuses a
+  change while a session runs.
+- Settings has seven pages: Focus session, Program focus, Screen break, MQTT, Appearance, About and
+  Diagnostics.
+- The dashboard's Restrictions card and Recent sessions rows use short wording, and every text in them
+  follows the interface language, Norwegian included.
+- A screen break does not block the network; network blocking belongs to a named session, for
+  Program focus.
+- The existing program list and network switch carry over unchanged into a named session called
+  "Default" ("Standard" in a Norwegian interface).
+- The MQTT switch "Focus session blocks network" is removed: an automation or dashboard card that used
+  it has to set "Blocks the network" on a named session on the Program focus page, and pick that
+  session with "Named session" before starting.
+
 ## 1.0.0
 
 - FocusDesk is a Windows tray application that holds the computer in a chosen state for a chosen
