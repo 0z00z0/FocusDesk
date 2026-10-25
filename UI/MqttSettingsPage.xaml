@@ -6,11 +6,14 @@
     xmlns:mqtt="using:ZeroZero.Mqtt.WinUI">
 
     <StackPanel Spacing="4">
-        <TextBlock Text="MQTT" Style="{StaticResource SectionHeaderStyle}"/>
+        <TextBlock x:Name="Heading" Style="{StaticResource SectionHeaderStyle}"/>
 
-        <!-- Said once, above everything: it is why the page matters rather than what a control does. -->
-        <TextBlock Text="An MQTT command is the only way a running focus session can be ended early. Switch publishing off and a session runs to its own clock."
-                   TextWrapping="Wrap" Margin="0,0,0,12"
+        <!-- Said once, above everything: it is why the page matters rather than what a control does.
+             Two lines, each short enough to fit the page's width; wrapping stays on so a narrow
+             window wraps rather than cuts a line off. -->
+        <TextBlock x:Name="RemoteControlLine" TextWrapping="Wrap"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+        <TextBlock x:Name="EndsEarlyLine" TextWrapping="Wrap" Margin="0,0,0,12"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 
         <!-- Shown instead of the panel when startup never built the publisher. A panel that was never

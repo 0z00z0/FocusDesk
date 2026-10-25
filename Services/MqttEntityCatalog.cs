@@ -143,7 +143,7 @@ internal static class MqttEntityCatalog
                 EntityId = FocusSessionBlocksNetwork, Name = "Focus session blocks network",
                 Group = MqttPublishGroups.Focus,
                 Description = "Sets whether a screen break blocks all network traffic except the MQTT "
-                            + "broker and the programs ticked Can use the network in the named session in "
+                            + "server and the programs ticked Can use the network in the named session in "
                             + "use; while a session runs, it shows whether the block is held and a change "
                             + "is refused.",
                 Category = MqttEntityCategory.Config, Icon = "mdi:lan-disconnect",

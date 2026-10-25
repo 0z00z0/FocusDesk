@@ -74,15 +74,19 @@ internal interface IFirewallBlockRecord
 internal static class FocusFirewallRules
 {
     public const string Group = "FocusDesk focus session";
-    public const string BrokerRuleName = "FocusDesk focus session: broker";
+    public const string BrokerRuleName = "FocusDesk focus session: MQTT server";
     public const string ResolverRuleName = "FocusDesk focus session: name resolution";
+
+    /// <summary>The MQTT server rule's name up to 1.1.0: never written, always removed.</summary>
+    public const string EarlierBrokerRuleName = "FocusDesk focus session: broker";
 
     /// <summary>What an allowed program's rule is called, before its number.</summary>
     public const string AllowedProgramPrefix = "FocusDesk focus session: allowed program ";
 
-    /// <summary>The two rules that exist for every blocked session, whatever the allow-list holds.
-    /// A removal falls back to these where the live rules cannot be enumerated.</summary>
-    public static IReadOnlyList<string> Names { get; } = [BrokerRuleName, ResolverRuleName];
+    /// <summary>The two rules that exist for every blocked session, whatever the allow-list holds,
+    /// and the earlier name. A removal falls back to these where the live rules cannot be read.</summary>
+    public static IReadOnlyList<string> Names { get; } =
+        [BrokerRuleName, ResolverRuleName, EarlierBrokerRuleName];
 
     /// <summary>Whether a rule name belongs to this feature. Read off the name alone, so a rule whose
     /// grouping was cleared by hand is still recognised as one to remove.</summary>
@@ -114,7 +118,7 @@ internal static class FocusFirewallRules
         var rules = new List<FirewallAllowRule>
         {
             new(BrokerRuleName, Group,
-                "Lets FocusDesk reach its MQTT broker while a focus session blocks everything else. "
+                "Lets FocusDesk reach its MQTT server while a focus session blocks everything else. "
               + "Removing this rule ends that exception.",
                 FirewallDirection.Outbound, ProtocolTcp, brokerAddresses,
                 brokerPort is { } port ? port.ToString(CultureInfo.InvariantCulture) : ""),
@@ -124,7 +128,7 @@ internal static class FocusFirewallRules
         // TCP fallback a resolver keeps for large answers is never reached here.
         if (resolverAddresses.Length > 0)
             rules.Add(new(ResolverRuleName, Group,
-                "Lets FocusDesk look up its MQTT broker's address while a focus session blocks "
+                "Lets FocusDesk look up its MQTT server's address while a focus session blocks "
               + "everything else. Removing this rule ends that exception.",
                 FirewallDirection.Outbound, ProtocolUdp, resolverAddresses, "53"));
 
@@ -191,8 +195,8 @@ internal sealed class FirewallBlockPark(
                     return false;
                 }
                 _parked = held;
-                log("Network block put back on every firewall profile, with the broker and its name "
-                  + "resolution left open", cause);
+                log("Network block put back on every firewall profile, with the MQTT server and its "
+                  + "name resolution left open", cause);
                 return true;
             }
 
@@ -216,8 +220,8 @@ internal sealed class FirewallBlockPark(
             }
 
             _parked = original;
-            log("Network blocked on every firewall profile, with the broker and its name resolution "
-              + "left open", cause);
+            log("Network blocked on every firewall profile, with the MQTT server and its name "
+              + "resolution left open", cause);
             return true;
         }
     }
@@ -473,7 +477,7 @@ internal sealed class WindowsFirewallPolicy : IFirewallPolicy
     /// </summary>
     /// <remarks>
     /// The allow-list can be shorter than it was when a block went on, and a rule that outlives its
-    /// session is a program permanently outside every later block. The two fixed names are always
+    /// session is a program permanently outside every later block. The fixed names are always
     /// included, so a collection that cannot be walked still loses the rule that keeps the broker
     /// reachable.
     /// </remarks>

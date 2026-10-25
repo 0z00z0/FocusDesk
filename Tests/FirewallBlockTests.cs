@@ -249,6 +249,18 @@ public class FirewallBlockTests
         Assert.Equal(["Some other program"], policy.Rules);
     }
 
+    /// <summary>The name versions up to 1.1.0 gave the MQTT server rule, written out as a literal.</summary>
+    [Fact]
+    public void ARuleUnderTheEarlierMqttServerRuleName_IsStillFoundAndRemoved()
+    {
+        var policy = Firewall();
+        policy.Rules.Add("FocusDesk focus session: broker");
+
+        Assert.True(Park(policy, new FakeFirewallRecord()).Lift("a test"));
+
+        Assert.Empty(policy.Rules);
+    }
+
     // ── The rules a session writes ──────────────────────────────────────────────────────────────
 
     [Fact]

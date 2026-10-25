@@ -20,6 +20,10 @@ public sealed partial class MqttSettingsPage : UserControl
     {
         InitializeComponent();
 
+        Heading.Text           = AppText.Get("MqttPageHeading");
+        RemoteControlLine.Text = AppText.Get("MqttPageRemoteControlLine");
+        EndsEarlyLine.Text     = AppText.Get("MqttPageEndsEarlyLine");
+
         _mqtt = MqttService.Current;
         if (_mqtt is null)
         {
@@ -40,7 +44,7 @@ public sealed partial class MqttSettingsPage : UserControl
             PublishSetChanged  = _mqtt.Republish,
             DefaultDeviceName  = _mqtt.DefaultDeviceName,
             PublishTitle       = "Publish to MQTT",
-            PublishDescription = "Publishes the focus session and the screen to an MQTT broker.",
+            PublishDescription = AppText.Get("MqttPublishDescription"),
             OfferRemoval       = true,
             DeviceIdConsequence =
                 "Every automation and dashboard card pointing at the old entities has to be repointed "

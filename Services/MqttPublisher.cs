@@ -48,7 +48,7 @@ internal sealed class MqttPublisher : IDisposable
         // and the broker settings are back at their defaults, which is a silent loss otherwise.
         if (_settings.File.LastQuarantinePath is { Length: > 0 } quarantined)
             AppLog.Error($"mqtt.json could not be read and was set aside as "
-                       + $"{Path.GetFileName(quarantined)}. The broker settings start from their "
+                       + $"{Path.GetFileName(quarantined)}. The MQTT settings start from their "
                        + "defaults.", null);
 
         _groups = new PublishGroupSet(_settings, MqttPublishGroups.Declared);

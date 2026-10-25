@@ -631,12 +631,28 @@
     <comment>Card heading for the screen-break network switch.</comment>
   </data>
   <data name="ScreenBlocksNetworkDescription" xml:space="preserve">
-    <value>Blokkerer alle tilkoblinger under økten, unntatt til MQTT-megleren og programmene som får bruke nettverket i den navngitte økten i bruk.</value>
+    <value>Blokkerer alle tilkoblinger under økten, unntatt til MQTT-serveren og programmene som får bruke nettverket i den navngitte økten i bruk.</value>
     <comment>Description under Blocks the network.</comment>
   </data>
   <data name="ScreenBlocksNetworkInfo" xml:space="preserve">
-    <value>Krever administratorrettigheter og en megler angitt på MQTT-siden. Avvises den, kjører økten uten.</value>
+    <value>Krever administratorrettigheter og en server angitt på MQTT-siden. Avvises den, kjører økten uten.</value>
     <comment>Hover text on the network switch's info bubble.</comment>
+  </data>
+  <data name="MqttPageHeading" xml:space="preserve">
+    <value>Fjernstyring (MQTT)</value>
+    <comment>Heading at the top of the MQTT page in Settings. The navigation entry stays "MQTT".</comment>
+  </data>
+  <data name="MqttPageRemoteControlLine" xml:space="preserve">
+    <value>FocusDesk kan styres over MQTT fra et hjemmeautomasjonssystem som Home Assistant, openHAB eller Domoticz.</value>
+    <comment>First line under the MQTT page heading, whole sentence on one line.</comment>
+  </data>
+  <data name="MqttPageEndsEarlyLine" xml:space="preserve">
+    <value>Bare en fjernkommando kan avslutte en fokusøkt før tiden.</value>
+    <comment>Second line under the MQTT page heading, whole sentence on one line.</comment>
+  </data>
+  <data name="MqttPublishDescription" xml:space="preserve">
+    <value>Publiserer fokusøkten og skjermen over MQTT.</value>
+    <comment>Description under the Publish to MQTT switch on the MQTT page.</comment>
   </data>
   <data name="ScreenBrightnessHeading" xml:space="preserve">
     <value>Lysstyrke</value>
