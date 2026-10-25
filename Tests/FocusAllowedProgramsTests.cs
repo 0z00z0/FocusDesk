@@ -29,16 +29,22 @@ public class FocusAllowedProgramsTests
         Assert.Equal("FocusDesk focus session", FocusFirewallRules.Group);
     }
 
-    /// <summary>The Focus page names the group and the broker rule exactly as the code writes them.
-    /// A line that drifted from the rules would send a person stuck behind a block looking for names
-    /// that are not there.</summary>
+    /// <summary>The Focus session page names the group and the broker rule exactly as the code writes
+    /// them, in every language. A line that drifted from the rules would send a person stuck behind a
+    /// block looking for names that are not there.</summary>
     [Fact]
     public void TheFocusPageQuotesTheRuleNamesTheCodeWrites()
     {
-        string page = RepoFiles.Read(System.IO.Path.Combine("UI", "FocusSettingsPanel.xaml"));
+        string page = RepoFiles.Read(System.IO.Path.Combine("UI", "FocusSettingsPanel.xaml.cs"));
 
-        Assert.Contains($"&quot;{FocusFirewallRules.Group}&quot;", page, System.StringComparison.Ordinal);
-        Assert.Contains($"&quot;{FocusFirewallRules.BrokerRuleName}&quot;", page, System.StringComparison.Ordinal);
+        Assert.Contains("AppText.Format(\"FocusStuckRules\", FocusFirewallRules.Group, FocusFirewallRules.BrokerRuleName)",
+                        page, System.StringComparison.Ordinal);
+        foreach (string language in new[] { "en-GB", "nb-NO" })
+        {
+            string line = ShippedStrings.For(language)("FocusStuckRules");
+            Assert.Contains("{0}", line, System.StringComparison.Ordinal);
+            Assert.Contains("{1}", line, System.StringComparison.Ordinal);
+        }
     }
 
     /// <summary>Every rule this application creates has to be recognised again later. One left

@@ -7,9 +7,9 @@ using Microsoft.UI.Xaml.Controls;
 namespace FocusDesk.UI;
 
 /// <summary>
-/// The Focus page: what the session is doing, how long the next one runs, which levers it takes, the
-/// programs that keep the network, and the published way out. Nothing here ends a session — no
-/// control on this machine does.
+/// The Focus session page: what the session is doing, how long and of which kind the next one is,
+/// the focus point, the setup guide for an automatic session and the published way out. Nothing
+/// here ends a session — no control on this machine does.
 /// </summary>
 /// <remarks>The session moves on its own clock and from Home Assistant, so the page follows
 /// <see cref="FocusSessionService.Changed"/> while it is on screen and stops following it when it
@@ -22,11 +22,28 @@ public sealed partial class FocusSettingsPanel : UserControl
     public FocusSettingsPanel()
     {
         InitializeComponent();
+        PageTitle.Text = AppText.Get("SettingsFocusSessionPage");
+        SessionHeader.Heading = AppText.Get("FocusSessionSectionHeading");
+        FocusStatusCard.Header = AppText.Get("FocusStatusHeader");
+        FocusStatusCard.Description = AppText.Get("FocusStatusDescription");
+        FocusLengthCard.Header = AppText.Get("FocusLengthHeader");
+        FocusLengthCard.Description = AppText.Get("FocusLengthDescription");
+        FocusStartFromStatusCard.Header = AppText.Get("FocusStartFromStatusHeader");
+        FocusStartFromStatusCard.Description = AppText.Get("FocusStartFromStatusDescription");
+        AutomaticSessionHeader.Heading = AppText.Get("AutomaticSessionSectionLabel");
+        GuideCard.Header = AppText.Get("AutomaticSessionGuideHeader");
+        GuideCard.Description = AppText.Get("AutomaticSessionGuideDescription");
+        OpenGuideButton.Content = AppText.Get("AutomaticSessionGuideButton");
+        StuckHeader.Heading = AppText.Get("FocusStuckHeading");
+        StuckEndEarlyText.Text = AppText.Get("FocusStuckEndEarly");
+        StuckNetworkText.Text = AppText.Get("FocusStuckNetwork");
+        StuckRulesText.Text = AppText.Format("FocusStuckRules", FocusFirewallRules.Group, FocusFirewallRules.BrokerRuleName);
+        StuckInputText.Text = AppText.Get("FocusStuckInput");
+        StuckBrightnessText.Text = AppText.Get("FocusStuckBrightness");
         FocusKindCard.Header      = AppText.Get("FocusKindCardHeader");
         FocusKindCard.Description = AppText.Get("FocusKindCardDescription");
         FocusKindProgramFocusRadio.Content = AppText.Get("FocusKindProgramFocusOption");
         FocusKindScreenBreakRadio.Content  = AppText.Get("FocusKindScreenBreakOption");
-        FocusScreenBreakHeader.Heading  = AppText.Get("FocusScreenBreakHeading");
         FocusPointHeader.Heading = AppText.Get("FocusPointHeading");
         FocusPointShownCard.Header      = AppText.Get("FocusPointShownHeader");
         FocusPointShownCard.Description = AppText.Get("FocusPointShownDescription");
@@ -71,9 +88,8 @@ public sealed partial class FocusSettingsPanel : UserControl
         {
             FocusStatusValue.Text = FocusSessionStages.Describe(session, DateTimeOffset.Now);
 
-            var (minutes, kind, dims, input, startFromStatus) = SettingsService.Read(
-                s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusDimsScreen,
-                      s.FocusBlocksInput, s.FocusStartFromDashboard));
+            var (minutes, kind, startFromStatus) = SettingsService.Read(
+                s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusStartFromDashboard));
 
             FocusLengthChoices.Fill(FocusMinutesCombo, minutes);
 
@@ -84,13 +100,6 @@ public sealed partial class FocusSettingsPanel : UserControl
             FocusKindScreenBreakRadio.IsChecked  = shownKind == FocusSessionKind.ScreenBreak;
             FocusKindProgramFocusRadio.IsEnabled = !locked;
             FocusKindScreenBreakRadio.IsEnabled  = !locked;
-
-            // A running session reports the levers it actually holds — a refused input block reads
-            // off — and with none running these show the defaults the next session starts from.
-            FocusDimsScreenToggle.IsOn   = session.IsRunning ? session.DimsScreen   : dims;
-            FocusBlocksInputToggle.IsOn  = session.IsRunning ? session.BlocksInput  : input;
-            FocusDimsScreenToggle.IsEnabled   = !locked;
-            FocusBlocksInputToggle.IsEnabled  = !locked;
 
             FocusStartFromStatusToggle.IsOn = startFromStatus;
 
@@ -126,18 +135,6 @@ public sealed partial class FocusSettingsPanel : UserControl
         SettingsService.Update(s => s.FocusSessionKind = kind);
     }
 
-    private void OnFocusDimsScreenToggled(object sender, RoutedEventArgs e)
-    {
-        if (_updating) return;
-        SettingsService.Update(s => s.FocusDimsScreen = FocusDimsScreenToggle.IsOn);
-    }
-
-    private void OnFocusBlocksInputToggled(object sender, RoutedEventArgs e)
-    {
-        if (_updating) return;
-        SettingsService.Update(s => s.FocusBlocksInput = FocusBlocksInputToggle.IsOn);
-    }
-
     private void OnFocusStartFromStatusToggled(object sender, RoutedEventArgs e)
     {
         if (_updating) return;
@@ -167,4 +164,6 @@ public sealed partial class FocusSettingsPanel : UserControl
         int seconds = (int)Math.Round(Math.Clamp(args.NewValue, FocusPointStart.MinSeconds, FocusPointStart.MaxSeconds));
         SettingsService.Update(s => s.FocusPointSeconds = seconds);
     }
+
+    private void OnOpenGuideClick(object sender, RoutedEventArgs e) => SetupGuideWindow.Open();
 }
