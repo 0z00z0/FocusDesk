@@ -450,10 +450,6 @@
     <value>Automatisk fokusøkt</value>
     <comment>Settings navigation entry for the page about starting a focus session from Home Assistant, noun phrase.</comment>
   </data>
-  <data name="AutomaticSessionHeading" xml:space="preserve">
-    <value>Automatisk fokusøkt</value>
-    <comment>Heading of that page, noun phrase.</comment>
-  </data>
   <data name="AutomaticSessionGuideHeader" xml:space="preserve">
     <value>Oppsettsveiledning</value>
     <comment>Header of the card opening the setup guide, noun phrase.</comment>
@@ -557,5 +553,129 @@
   <data name="NamedSessionNewName" xml:space="preserve">
     <value>Ny økt</value>
     <comment>Name given to a newly added named session.</comment>
+  </data>
+  <data name="SettingsFocusSessionPage" xml:space="preserve">
+    <value>Fokusøkt</value>
+    <comment>Settings page name in the navigation pane and the page title.</comment>
+  </data>
+  <data name="SettingsAppearancePage" xml:space="preserve">
+    <value>Utseende</value>
+    <comment>Settings page name in the navigation pane.</comment>
+  </data>
+  <data name="SettingsAboutPage" xml:space="preserve">
+    <value>Om</value>
+    <comment>Settings page name in the navigation pane.</comment>
+  </data>
+  <data name="SettingsDiagnosticsPage" xml:space="preserve">
+    <value>Diagnostikk</value>
+    <comment>Settings page name in the navigation pane.</comment>
+  </data>
+  <data name="FocusSessionSectionHeading" xml:space="preserve">
+    <value>Økten</value>
+    <comment>Section heading on the Focus session page.</comment>
+  </data>
+  <data name="FocusStatusHeader" xml:space="preserve">
+    <value>Status</value>
+    <comment>Card heading for the session status line, noun.</comment>
+  </data>
+  <data name="FocusStatusDescription" xml:space="preserve">
+    <value>En økt varer så lenge den fikk. Ingenting på denne datamaskinen avslutter den tidlig.</value>
+    <comment>Description under Status.</comment>
+  </data>
+  <data name="FocusLengthHeader" xml:space="preserve">
+    <value>Lengde</value>
+    <comment>Card heading for the session length list, noun.</comment>
+  </data>
+  <data name="FocusLengthDescription" xml:space="preserve">
+    <value>Hvor lenge neste økt varer. Endres dette mens en økt kjører, gjelder det bare den neste.</value>
+    <comment>Description under Length.</comment>
+  </data>
+  <data name="FocusStartFromStatusHeader" xml:space="preserve">
+    <value>Start en økt fra statusvinduet</value>
+    <comment>Card heading for the switch that adds a Start button to the status window.</comment>
+  </data>
+  <data name="FocusStartFromStatusDescription" xml:space="preserve">
+    <value>Legger til en Start-knapp i statusvinduet. Den starter en økt; å avslutte en krever fortsatt en MQTT-kommando.</value>
+    <comment>Description under Start a session from the status window.</comment>
+  </data>
+  <data name="FocusStuckHeading" xml:space="preserve">
+    <value>Hvis en økt ikke vil slutte</value>
+    <comment>Section heading above the published way out.</comment>
+  </data>
+  <data name="FocusStuckEndEarly" xml:space="preserve">
+    <value>Avslutt den tidlig med en MQTT-kommando: send forespørselen, vent fem minutter, og send den igjen innen ti sekunder.</value>
+    <comment>Way-out line, whole sentence.</comment>
+  </data>
+  <data name="FocusStuckNetwork" xml:space="preserve">
+    <value>Opphev nettverksblokkeringen for hånd: i Windows Defender-brannmur med avansert sikkerhet, sett Utgående tilkoblinger tilbake til Tillat på hver profil.</value>
+    <comment>Way-out line, whole sentence.</comment>
+  </data>
+  <data name="FocusStuckRules" xml:space="preserve">
+    <value>Slett så reglene i gruppen «{0}»: «{1}», regelen for navneoppslag og én per tillatt program.</value>
+    <comment>Way-out line; {0} is the firewall group name and {1} the broker rule name, both filled in untranslated.</comment>
+  </data>
+  <data name="FocusStuckInput" xml:space="preserve">
+    <value>Mus og tastatur kommer tilbake når økten slutter. Ctrl+Alt+Delete når fortsatt Windows' egen skjerm, for å logge av eller starte på nytt.</value>
+    <comment>Way-out line, whole sentence.</comment>
+  </data>
+  <data name="FocusStuckBrightness" xml:space="preserve">
+    <value>Skru lysstyrken opp igjen for hånd.</value>
+    <comment>Way-out line, whole sentence.</comment>
+  </data>
+  <data name="ScreenBreakDuringHeading" xml:space="preserve">
+    <value>Under en skjermpause</value>
+    <comment>Section heading on the Screen break page.</comment>
+  </data>
+  <data name="ScreenDimsHeader" xml:space="preserve">
+    <value>Demper skjermen</value>
+    <comment>Card heading for the screen-break dim switch.</comment>
+  </data>
+  <data name="ScreenDimsDescription" xml:space="preserve">
+    <value>Senker lysstyrken på den innebygde skjermen så lenge økten varer, og setter den tilbake etterpå.</value>
+    <comment>Description under Dims the screen.</comment>
+  </data>
+  <data name="ScreenDimsInfo" xml:space="preserve">
+    <value>Kan ikke endres mens en økt kjører: registreringen ville stått igjen uten eier.</value>
+    <comment>Hover text on the dim switch's info bubble.</comment>
+  </data>
+  <data name="ScreenBlocksInputHeader" xml:space="preserve">
+    <value>Blokkerer mus og tastatur</value>
+    <comment>Card heading for the screen-break input switch.</comment>
+  </data>
+  <data name="ScreenBlocksInputDescription" xml:space="preserve">
+    <value>Slår av mus og tastatur så lenge økten varer. Datamaskinen svarer ikke på noe, heller ikke dette programmet.</value>
+    <comment>Description under Blocks the mouse and keyboard.</comment>
+  </data>
+  <data name="ScreenBlocksInputInfo" xml:space="preserve">
+    <value>Krever administratorrettigheter. Avviser Windows det, kjører økten uten, og bryteren viser av.</value>
+    <comment>Hover text on the input switch's info bubble.</comment>
+  </data>
+  <data name="ScreenBrightnessHeading" xml:space="preserve">
+    <value>Lysstyrke</value>
+    <comment>Section heading and card heading for the display brightness, noun.</comment>
+  </data>
+  <data name="ScreenUnsupportedDescription" xml:space="preserve">
+    <value>Ingen skjerm her tar imot lysstyrke fra Windows. En ekstern skjerm stilles med sine egne knapper.</value>
+    <comment>Description shown instead of the slider on a machine with no settable display.</comment>
+  </data>
+  <data name="ScreenBrightnessDescription" xml:space="preserve">
+    <value>Demper den innebygde skjermen uten å sette datamaskinen i dvale.</value>
+    <comment>Description under the brightness slider.</comment>
+  </data>
+  <data name="ScreenBrightnessInfo" xml:space="preserve">
+    <value>Når bare den innebygde skjermen. Gjenopprett setter tilbake nivået fra før første endring.</value>
+    <comment>Hover text on the brightness info bubble.</comment>
+  </data>
+  <data name="ScreenRestoreHeader" xml:space="preserve">
+    <value>Gjenopprett lysstyrke</value>
+    <comment>Card heading for the restore button.</comment>
+  </data>
+  <data name="ScreenRestoreDescription" xml:space="preserve">
+    <value>Setter tilbake nivået skjermen hadde før første endring.</value>
+    <comment>Description under Restore brightness.</comment>
+  </data>
+  <data name="ScreenRestoreButton" xml:space="preserve">
+    <value>Gjenopprett</value>
+    <comment>Button that puts the brightness back, verb.</comment>
   </data>
 </root>

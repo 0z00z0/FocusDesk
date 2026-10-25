@@ -6,32 +6,47 @@
     xmlns:zz="using:ZeroZero.Controls.WinUI"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls">
 
+    <!-- Every text on this page is set from the resource files in the constructor. -->
     <StackPanel Spacing="4">
-        <TextBlock Text="Screen" Style="{StaticResource SectionHeaderStyle}"/>
+        <TextBlock x:Name="PageTitle" Style="{StaticResource SectionHeaderStyle}"/>
+
+        <!-- The cover is the kind itself, so only the two optional levers remain. Locked for the
+             length of a session: a lever turned off part-way through would leave its record parked. -->
+        <zz:SettingsSectionHeader x:Name="DuringHeader" ShowDivider="False"/>
+
+        <controls:SettingsCard x:Name="DimsScreenCard">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <zz:InfoIcon x:Name="DimsScreenInfo"/>
+                <ToggleSwitch x:Name="FocusDimsScreenToggle" OnContent="" OffContent=""
+                              MinWidth="0" Toggled="OnFocusDimsScreenToggled"/>
+            </StackPanel>
+        </controls:SettingsCard>
+
+        <controls:SettingsCard x:Name="BlocksInputCard">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <zz:InfoIcon x:Name="BlocksInputInfo"/>
+                <ToggleSwitch x:Name="FocusBlocksInputToggle" OnContent="" OffContent=""
+                              MinWidth="0" Toggled="OnFocusBlocksInputToggled"/>
+            </StackPanel>
+        </controls:SettingsCard>
+
+        <zz:SettingsSectionHeader x:Name="BrightnessHeader"/>
 
         <!-- The unsupported line and the two controls swap: a machine whose only screen is an
              external monitor gets the explanation instead of a slider that would reach nothing. -->
-        <controls:SettingsCard x:Name="ScreenUnsupportedCard"
-                               Header="Brightness"
-                               Description="No display here accepts a brightness from Windows. An external monitor is set from its own buttons."
-                               Visibility="Collapsed"/>
+        <controls:SettingsCard x:Name="ScreenUnsupportedCard" Visibility="Collapsed"/>
 
-        <controls:SettingsCard x:Name="ScreenBrightnessCard"
-                               Header="Brightness"
-                               Description="Dims the built-in screen without sleeping the computer.">
+        <controls:SettingsCard x:Name="ScreenBrightnessCard">
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                <zz:InfoIcon Subject="brightness"
-                             Info="Reaches the built-in screen only. Restore puts back the level in force before the first change."/>
+                <zz:InfoIcon x:Name="BrightnessInfo"/>
                 <TextBlock x:Name="ScreenBrightnessValue" VerticalAlignment="Center" MinWidth="44"/>
                 <Slider x:Name="ScreenBrightnessSlider" Width="200" Minimum="0" Maximum="100"
                         StepFrequency="1" ValueChanged="OnScreenBrightnessChanged"/>
             </StackPanel>
         </controls:SettingsCard>
 
-        <controls:SettingsCard x:Name="ScreenRestoreCard"
-                               Header="Restore brightness"
-                               Description="Puts back the level the screen was on before the first change.">
-            <Button x:Name="ScreenRestoreBtn" Content="Restore" Click="OnScreenRestore"/>
+        <controls:SettingsCard x:Name="ScreenRestoreCard">
+            <Button x:Name="ScreenRestoreBtn" Click="OnScreenRestore"/>
         </controls:SettingsCard>
     </StackPanel>
 </UserControl>

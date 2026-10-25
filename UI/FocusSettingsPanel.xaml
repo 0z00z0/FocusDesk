@@ -6,34 +6,40 @@
     xmlns:zz="using:ZeroZero.Controls.WinUI"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls">
 
+    <!-- Every text on this page is set from the resource files in the constructor. -->
     <StackPanel Spacing="4">
-        <TextBlock Text="Focus" Style="{StaticResource SectionHeaderStyle}"/>
+        <TextBlock x:Name="PageTitle" Style="{StaticResource SectionHeaderStyle}"/>
 
-        <zz:SettingsSectionHeader Heading="The session" ShowDivider="False"/>
+        <zz:SettingsSectionHeader x:Name="SessionHeader" ShowDivider="False"/>
 
-        <!-- Status, and nothing to press. A person at the keyboard cannot end a session: that is the
-             feature's central property, not an omission to be filled in. -->
-        <controls:SettingsCard Header="Status"
-                               Description="A session runs for the length it was given. Nothing on this computer ends one early.">
+        <!-- Status, and nothing to press: a person at the keyboard cannot end a session. -->
+        <controls:SettingsCard x:Name="FocusStatusCard">
             <TextBlock x:Name="FocusStatusValue" VerticalAlignment="Center"
                        MaxWidth="320" TextTrimming="CharacterEllipsis"/>
         </controls:SettingsCard>
 
-        <controls:SettingsCard Header="Length"
-                               Description="How long the next session runs. Changing this while one runs changes the next one only.">
+        <controls:SettingsCard x:Name="FocusLengthCard">
             <ComboBox x:Name="FocusMinutesCombo" MinWidth="110"
                       SelectionChanged="OnFocusMinutesChanged"/>
         </controls:SettingsCard>
 
-        <controls:SettingsCard Header="Start a session from the status window"
-                               Description="Adds a Start button to the status window. It starts a session; ending one still needs an MQTT command.">
+        <!-- The kind the session switch over MQTT starts, locked and showing the running kind while
+             a session runs. -->
+        <controls:SettingsCard x:Name="FocusKindCard">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <RadioButton x:Name="FocusKindProgramFocusRadio" GroupName="FocusKind"
+                             Checked="OnFocusKindChecked"/>
+                <RadioButton x:Name="FocusKindScreenBreakRadio" GroupName="FocusKind"
+                             Checked="OnFocusKindChecked"/>
+            </StackPanel>
+        </controls:SettingsCard>
+
+        <controls:SettingsCard x:Name="FocusStartFromStatusCard">
             <ToggleSwitch x:Name="FocusStartFromStatusToggle" OnContent="" OffContent=""
                           MinWidth="0" Toggled="OnFocusStartFromStatusToggled"/>
         </controls:SettingsCard>
 
-        <!-- The breathing exercise the status window's Start button opens. Read when Start is pressed,
-             so a window already open keeps what it opened with. The texts come from the resource
-             files. -->
+        <!-- Read when Start is pressed, so a window already open keeps what it opened with. -->
         <zz:SettingsSectionHeader x:Name="FocusPointHeader"/>
 
         <controls:SettingsCard x:Name="FocusPointShownCard">
@@ -53,62 +59,25 @@
                        ValueChanged="OnFocusPointSecondsChanged"/>
         </controls:SettingsCard>
 
-        <zz:SettingsSectionHeader Heading="What a session holds"/>
+        <zz:SettingsSectionHeader x:Name="AutomaticSessionHeader"/>
 
-        <!-- The kind the session switch in Home Assistant starts. Locked for the length of a session
-             like every lever switch, and showing the running session's kind while one runs. The texts
-             come from the resource files. -->
-        <controls:SettingsCard x:Name="FocusKindCard">
-            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                <RadioButton x:Name="FocusKindProgramFocusRadio" GroupName="FocusKind"
-                             Checked="OnFocusKindChecked"/>
-                <RadioButton x:Name="FocusKindScreenBreakRadio" GroupName="FocusKind"
-                             Checked="OnFocusKindChecked"/>
-            </StackPanel>
+        <controls:SettingsCard x:Name="GuideCard">
+            <Button x:Name="OpenGuideButton" Style="{StaticResource AccentButtonStyle}"
+                    Click="OnOpenGuideClick"/>
         </controls:SettingsCard>
 
-        <!-- Screen break: the cover is the kind itself, so only the two optional levers remain. -->
-        <zz:SettingsSectionHeader x:Name="FocusScreenBreakHeader"/>
+        <zz:SettingsSectionHeader x:Name="StuckHeader"/>
 
-        <controls:SettingsCard Header="Dims the screen"
-                               Description="Lowers the built-in screen's brightness for the length of a session and puts it back afterwards.">
-            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                <zz:InfoIcon Subject="the screen dim"
-                             Info="A lever cannot change while a session runs: its record would be left with nothing owning it."/>
-                <ToggleSwitch x:Name="FocusDimsScreenToggle" OnContent="" OffContent=""
-                              MinWidth="0" Toggled="OnFocusDimsScreenToggled"/>
-            </StackPanel>
-        </controls:SettingsCard>
-
-        <controls:SettingsCard Header="Blocks the mouse and keyboard"
-                               Description="Turns the mouse and keyboard off for the length of a session. The computer answers nothing, this application included.">
-            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                <zz:InfoIcon Subject="the mouse and keyboard block"
-                             Info="Needs administrator rights. Where Windows refuses it, the session runs without it and this switch reads off."/>
-                <ToggleSwitch x:Name="FocusBlocksInputToggle" OnContent="" OffContent=""
-                              MinWidth="0" Toggled="OnFocusBlocksInputToggled"/>
-            </StackPanel>
-        </controls:SettingsCard>
-
-        <zz:SettingsSectionHeader Heading="If you are stuck"/>
-
-        <!-- The published way out, in the words of whoever is sitting at the machine. The firewall
-             names are quoted exactly and never translated: they are what a person searches the
-             firewall console for. The group heading above names this card, so the card carries
-             none of its own. -->
+        <!-- The published way out. The firewall names are filled in from the rules the code writes
+             and never translated: they are what a person searches the firewall console for. -->
         <controls:SettingsCard ContentAlignment="Vertical"
                                HorizontalContentAlignment="Stretch">
             <StackPanel Spacing="6">
-                <TextBlock TextWrapping="Wrap" FontSize="12"
-                           Text="End it early with an MQTT command: send the request, wait five minutes, send it again within ten seconds."/>
-                <TextBlock TextWrapping="Wrap" FontSize="12"
-                           Text="Lift the network block by hand: in Windows Defender Firewall with Advanced Security, set Outbound connections back to Allow on every profile."/>
-                <TextBlock TextWrapping="Wrap" FontSize="12"
-                           Text="Then delete the rules in the group &quot;FocusDesk focus session&quot;: &quot;FocusDesk focus session: broker&quot;, its name resolution rule and one per allowed program."/>
-                <TextBlock TextWrapping="Wrap" FontSize="12"
-                           Text="The mouse and keyboard come back when the session ends. Ctrl+Alt+Delete still reaches Windows' own screen, to sign out or restart."/>
-                <TextBlock TextWrapping="Wrap" FontSize="12"
-                           Text="Turn the screen brightness back up by hand."/>
+                <TextBlock x:Name="StuckEndEarlyText" TextWrapping="Wrap" FontSize="12"/>
+                <TextBlock x:Name="StuckNetworkText" TextWrapping="Wrap" FontSize="12"/>
+                <TextBlock x:Name="StuckRulesText" TextWrapping="Wrap" FontSize="12"/>
+                <TextBlock x:Name="StuckInputText" TextWrapping="Wrap" FontSize="12"/>
+                <TextBlock x:Name="StuckBrightnessText" TextWrapping="Wrap" FontSize="12"/>
             </StackPanel>
         </controls:SettingsCard>
     </StackPanel>

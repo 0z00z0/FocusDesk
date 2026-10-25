@@ -9,7 +9,7 @@ using ZeroZero.SettingsShell.WinUI;
 namespace FocusDesk.UI;
 
 /// <summary>
-/// The Settings window: the shared shell, holding this application's two pages. One window at a
+/// The Settings window: the shared shell, holding this application's seven pages. One window at a
 /// time — a second request brings the open one forward rather than opening another.
 /// </summary>
 /// <remarks>The shell owns the window, the navigation pane, the placement and Escape; everything
@@ -18,8 +18,7 @@ internal static class SettingsShellHost
 {
     public const string FocusTag  = "focus";
     public const string ProgramFocusTag = "program-focus";
-    public const string AutomaticSessionTag = "automatic";
-    public const string ScreenTag = "screen";
+    public const string ScreenBreakTag = "screen-break";
     public const string MqttTag       = "mqtt";
     public const string AppearanceTag = "appearance";
     public const string AboutTag       = "about";
@@ -57,7 +56,7 @@ internal static class SettingsShellHost
             [
                 new SettingsSection
                 {
-                    Tag = FocusTag, Label = "Focus",
+                    Tag = FocusTag, Label = AppText.Get("SettingsFocusSessionPage"),
                     Icon = NavIcon("focus"),
                     Build = () => focus = new FocusSettingsPanel(),
                     // The session moves on its own clock, so the page follows it only while it is
@@ -75,16 +74,11 @@ internal static class SettingsShellHost
                 },
                 new SettingsSection
                 {
-                    Tag = AutomaticSessionTag, Label = AppText.Get("AutomaticSessionSectionLabel"),
-                    Icon = NavIcon("automatic"),
-                    Build = () => new AutomaticSessionSettingsPanel(),
-                },
-                new SettingsSection
-                {
-                    Tag = ScreenTag, Label = "Screen",
+                    Tag = ScreenBreakTag, Label = AppText.Get("FocusScreenBreakHeading"),
                     Icon = NavIcon("screen"),
                     Build = () => screen = new ScreenSettingsPanel(),
-                    // Windows moves the brightness without this application hearing anything.
+                    // Windows moves the brightness without this application hearing anything, and the
+                    // session moves the two levers.
                     Enter = () => screen?.Reload(),
                     // A slider position the debounce is still holding would otherwise be lost.
                     Leave = () => screen?.Flush(),
@@ -103,7 +97,7 @@ internal static class SettingsShellHost
                 },
                 new SettingsSection
                 {
-                    Tag = AppearanceTag, Label = "Appearance",
+                    Tag = AppearanceTag, Label = AppText.Get("SettingsAppearancePage"),
                     Icon = NavIcon("appearance"),
                     Build = () => appearance = new AppearanceSettingsPanel(),
                     // settings.json roams, so the stored wish can arrive from another machine while
@@ -112,7 +106,7 @@ internal static class SettingsShellHost
                 },
                 new SettingsSection
                 {
-                    Tag = AboutTag, Label = "About",
+                    Tag = AboutTag, Label = AppText.Get("SettingsAboutPage"),
                     Icon = NavIcon("about"),
                     // Built once: the payload is fixed for the run, and the button follows the shared
                     // check from the moment the page exists rather than from when it is looked at.
@@ -120,7 +114,7 @@ internal static class SettingsShellHost
                 },
                 new SettingsSection
                 {
-                    Tag = DiagnosticsTag, Label = "Diagnostics",
+                    Tag = DiagnosticsTag, Label = AppText.Get("SettingsDiagnosticsPage"),
                     Icon = NavIcon("diagnostics"),
                     Build = () => diagnostics = new DiagnosticsSettingsPanel(),
                     // The log folder gains files while the window is open.

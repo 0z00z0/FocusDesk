@@ -6,8 +6,8 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 namespace FocusDesk.UI;
 
 /// <summary>
-/// The Screen page: what the display is on, a slider that sets it, and a button that puts back the
-/// level in force before the first change.
+/// The Screen break page: whether a screen break dims the screen and blocks the mouse and keyboard,
+/// the display's brightness, and a button that puts back the level in force before the first change.
 /// </summary>
 /// <remarks>The level moves outside this application — Windows itself moves it without this
 /// application hearing anything — so <see cref="Reload"/> reads it afresh every time the page is
@@ -25,6 +25,26 @@ public sealed partial class ScreenSettingsPanel : UserControl
     public ScreenSettingsPanel()
     {
         InitializeComponent();
+        PageTitle.Text = AppText.Get("FocusScreenBreakHeading");
+        DuringHeader.Heading = AppText.Get("ScreenBreakDuringHeading");
+        DimsScreenCard.Header = AppText.Get("ScreenDimsHeader");
+        DimsScreenCard.Description = AppText.Get("ScreenDimsDescription");
+        DimsScreenInfo.Subject = AppText.Get("ScreenDimsHeader");
+        DimsScreenInfo.Info = AppText.Get("ScreenDimsInfo");
+        BlocksInputCard.Header = AppText.Get("ScreenBlocksInputHeader");
+        BlocksInputCard.Description = AppText.Get("ScreenBlocksInputDescription");
+        BlocksInputInfo.Subject = AppText.Get("ScreenBlocksInputHeader");
+        BlocksInputInfo.Info = AppText.Get("ScreenBlocksInputInfo");
+        BrightnessHeader.Heading = AppText.Get("ScreenBrightnessHeading");
+        ScreenUnsupportedCard.Header = AppText.Get("ScreenBrightnessHeading");
+        ScreenUnsupportedCard.Description = AppText.Get("ScreenUnsupportedDescription");
+        ScreenBrightnessCard.Header = AppText.Get("ScreenBrightnessHeading");
+        ScreenBrightnessCard.Description = AppText.Get("ScreenBrightnessDescription");
+        BrightnessInfo.Subject = AppText.Get("ScreenBrightnessHeading");
+        BrightnessInfo.Info = AppText.Get("ScreenBrightnessInfo");
+        ScreenRestoreCard.Header = AppText.Get("ScreenRestoreHeader");
+        ScreenRestoreCard.Description = AppText.Get("ScreenRestoreDescription");
+        ScreenRestoreBtn.Content = AppText.Get("ScreenRestoreButton");
         _debounce.Tick += (_, _) => Apply();
         Loaded += (_, _) => Reload();
     }
@@ -48,6 +68,12 @@ public sealed partial class ScreenSettingsPanel : UserControl
                 ScreenBrightnessValue.Text   = $"{percent} %";
             }
 
+            // A running session reports the levers it holds; with none running, the next one's defaults.
+            var session = FocusSessionService.Current;
+            var (dims, input) = SettingsService.Read(s => (s.FocusDimsScreen, s.FocusBlocksInput));
+            FocusDimsScreenToggle.IsOn  = session.IsRunning ? session.DimsScreen  : dims;
+            FocusBlocksInputToggle.IsOn = session.IsRunning ? session.BlocksInput : input;
+
             ApplySessionLock();
         }
         finally { _updating = false; }
@@ -58,6 +84,8 @@ public sealed partial class ScreenSettingsPanel : UserControl
     public void ApplySessionLock()
     {
         bool locked = FocusSessionService.LeversAreLocked;
+        FocusDimsScreenToggle.IsEnabled  = !locked;
+        FocusBlocksInputToggle.IsEnabled = !locked;
         ScreenBrightnessSlider.IsEnabled = !locked;
         ScreenRestoreBtn.IsEnabled = !locked && ScreenBrightnessService.Holding;
     }
@@ -85,14 +113,28 @@ public sealed partial class ScreenSettingsPanel : UserControl
         _debounce.Stop();
         // A drag that ended just before a session started must not lift its dim.
         if (FocusSessionService.LeversAreLocked) return;
-        ScreenBrightnessService.Set(_wanted, ActionCause.SettingsPage("Screen"));
+        ScreenBrightnessService.Set(_wanted, ActionCause.SettingsPage("Screen break"));
         ApplySessionLock();
     }
 
     private void OnScreenRestore(object sender, RoutedEventArgs e)
     {
         _debounce.Stop();
-        ScreenBrightnessService.Restore(ActionCause.SettingsPage("Screen"));
+        ScreenBrightnessService.Restore(ActionCause.SettingsPage("Screen break"));
         Reload();
+    }
+
+    private void OnFocusDimsScreenToggled(object sender, RoutedEventArgs e)
+    {
+        if (_updating) return;
+        if (FocusSessionService.LeversAreLocked) { Reload(); return; }
+        SettingsService.Update(s => s.FocusDimsScreen = FocusDimsScreenToggle.IsOn);
+    }
+
+    private void OnFocusBlocksInputToggled(object sender, RoutedEventArgs e)
+    {
+        if (_updating) return;
+        if (FocusSessionService.LeversAreLocked) { Reload(); return; }
+        SettingsService.Update(s => s.FocusBlocksInput = FocusBlocksInputToggle.IsOn);
     }
 }
