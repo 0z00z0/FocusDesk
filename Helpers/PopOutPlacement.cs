@@ -21,8 +21,9 @@ internal static class PopOutPlacement
     internal const int EdgeMarginInUnits = 12;
 
     /// <summary>The width, in device-independent units. Fixed: a pop-out that changed width with its
-    /// content would move under the pointer between one open and the next.</summary>
-    internal const int WidthInUnits = 360;
+    /// content would move under the pointer between one open and the next. The narrowest that keeps
+    /// the longest first line of a Recent sessions row on one line.</summary>
+    internal const int WidthInUnits = 364;
 
     /// <summary>What the measured height is held between, in device-independent units. The floor
     /// keeps a window with nothing to say from collapsing to a strip; the ceiling keeps the window

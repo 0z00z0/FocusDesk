@@ -1,3 +1,4 @@
+using FocusDesk.Services;
 using Microsoft.UI.Xaml.Controls;
 
 namespace FocusDesk.UI;
@@ -9,12 +10,16 @@ namespace FocusDesk.UI;
 /// </summary>
 internal static class FocusLengthChoices
 {
-    /// <summary>The lengths offered, in the order they are offered.</summary>
-    private static readonly (string Label, int Value)[] Presets =
-    [
-        ("15 min", 15), ("25 min", 25), ("45 min", 45), ("1 hour", 60),
-        ("90 min", 90), ("2 hours", 120), ("3 hours", 180), ("4 hours", 240),
-    ];
+    /// <summary>The lengths offered, in minutes, in the order they are offered.</summary>
+    private static readonly int[] Presets = [15, 25, 45, 60, 90, 120, 180, 240];
+
+    /// <summary>A length as the list shows it: whole hours from one hour up, minutes otherwise.</summary>
+    private static string Label(int minutes) => minutes switch
+    {
+        60                          => AppText.Get("FocusLengthOneHour"),
+        > 60 when minutes % 60 == 0 => AppText.Format("FocusLengthHours", minutes / 60),
+        _                           => AppText.Format("FocusLengthMinutes", minutes),
+    };
 
     /// <summary>
     /// Fills a list with the lengths and selects <paramref name="stored"/>, adding it as a choice of
@@ -29,16 +34,16 @@ internal static class FocusLengthChoices
         combo.Items.Clear();
 
         var offered = Presets.ToList();
-        if (!offered.Any(p => p.Value == stored))
+        if (!offered.Contains(stored))
         {
-            int at = offered.FindIndex(p => p.Value > stored);
-            offered.Insert(at < 0 ? offered.Count : at, ($"{stored} min", stored));
+            int at = offered.FindIndex(p => p > stored);
+            offered.Insert(at < 0 ? offered.Count : at, stored);
         }
 
-        foreach (var (label, value) in offered)
-            combo.Items.Add(new ComboBoxItem { Content = label, Tag = value });
+        foreach (int value in offered)
+            combo.Items.Add(new ComboBoxItem { Content = Label(value), Tag = value });
 
-        combo.SelectedIndex = offered.FindIndex(p => p.Value == stored);
+        combo.SelectedIndex = offered.IndexOf(stored);
     }
 
     /// <summary>The length a list is showing, or null where nothing is selected.</summary>

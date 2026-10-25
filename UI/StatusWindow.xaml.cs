@@ -32,7 +32,7 @@ namespace FocusDesk.UI;
 /// </remarks>
 internal sealed partial class StatusWindow : Window
 {
-    /// <summary>How many finished sessions the list shows. Five rows of up to two lines each keep the
+    /// <summary>How many finished sessions the list shows. Five rows of two lines each keep the
     /// whole pop-out under <see cref="PopOutPlacement.MaxHeightInUnits"/>, so it fits a laptop's
     /// work area without scrolling.</summary>
     private const int HistoryRowCount = 5;
@@ -97,9 +97,18 @@ internal sealed partial class StatusWindow : Window
     private StatusWindow()
     {
         InitializeComponent();
-        Title = $"{AppInfo.Name} status";
+        Title = AppText.Format("PopOutWindowTitle", AppInfo.Name);
 
         ConfigureChrome();
+
+        string settings = AppText.Get("PopOutSettings");
+        ToolTipService.SetToolTip(SettingsButton, settings);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(SettingsButton, settings);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(MinutesCombo, AppText.Get("PopOutSessionLength"));
+        SessionHeading.Text = AppText.Get("PopOutSessionHeading");
+        WayOutText.Text     = AppText.Get("PopOutWayOut");
+        LeverHeading.Text   = AppText.Get("PopOutRestrictionsHeading");
+        HistoryHeading.Text = AppText.Get("PopOutHistoryHeading");
 
         RingTrack.Data = RingGeometry.Arc(
             RingCentre, RingCentre, RingRadius, RingGeometry.StartAngle, RingGeometry.Sweep);
@@ -285,24 +294,28 @@ internal sealed partial class StatusWindow : Window
         ScreenBreakChoice.Style  = _chosenKind == FocusSessionKind.ScreenBreak  ? _accentStyle : null;
     }
 
-    /// <summary>What the session holds. Tinted while a lever is in force and in the plain card fill
-    /// while none is, so the card carries the state without a word for it.</summary>
+    /// <summary>The restrictions in force, one short line each. Tinted while any is and in the plain
+    /// card fill while none is.</summary>
     private void ShowLevers()
     {
         var session = FocusSessionService.Current;
-        var held = new List<string>(2);
-        if (session.DimsScreen)   held.Add("dimmed");
-        if (session.CoversScreen) held.Add("covered");
+        string? screen = (session.DimsScreen, session.CoversScreen) switch
+        {
+            (true, true)  => "RestrictionScreenDimmedAndCovered",
+            (true, false) => "RestrictionScreenDimmed",
+            (false, true) => "RestrictionScreenCovered",
+            _             => null,
+        };
 
-        var lines = new List<string>(3);
-        if (session.BlocksNetwork) lines.Add("The network is blocked until the session ends, except for the broker and the allowed programs.");
-        if (held.Count > 0) lines.Add($"The screen is {string.Join(" and ", held)} until the session ends.");
-        if (session.BlocksInput) lines.Add("The mouse and keyboard are blocked until the session ends.");
-        if (session.LimitsPrograms) lines.Add(AppText.Get("PopOutProgramsLimited"));
+        var lines = new List<string>(4);
+        if (session.BlocksNetwork) lines.Add(AppText.Get("RestrictionNetwork"));
+        if (screen is not null) lines.Add(AppText.Get(screen));
+        if (session.BlocksInput) lines.Add(AppText.Get("RestrictionInput"));
+        if (session.LimitsPrograms) lines.Add(AppText.Get("RestrictionPrograms"));
 
         LeverText.Text = lines.Count > 0
             ? string.Join("\n", lines)
-            : "Nothing is held. The screen is as it was.";
+            : AppText.Get("RestrictionsNone");
 
         if (lines.Count > 0) LeverCard.Background = _activeTint;
         else LeverCard.ClearValue(Border.BackgroundProperty);
@@ -321,30 +334,35 @@ internal sealed partial class StatusWindow : Window
     private void ShowHistory()
     {
         var recent = FocusHistoryService.Recent(HistoryRowCount);
-        string[] lines = recent.Count == 0
-            ? ["No session has finished yet."]
-            : [.. recent.Select(FocusHistoryService.Describe)];
+        var rows = recent.Select(FocusHistoryService.Describe).ToList();
 
-        string shown = string.Join('\n', lines);
+        string shown = string.Join('\n', rows.Select(r => r.Summary + "\n" + r.Restrictions));
         if (shown == _historyShown) return;
         _historyShown = shown;
 
         HistoryRows.Children.Clear();
-        foreach (string line in lines)
-            HistoryRows.Children.Add(Line(line, secondary: recent.Count == 0));
+        if (rows.Count == 0)
+        {
+            HistoryRows.Children.Add(Line(AppText.Get("PopOutHistoryEmpty"), secondary: true));
+            return;
+        }
+
+        foreach (var (summary, restrictions) in rows)
+        {
+            var row = new StackPanel();
+            row.Children.Add(Line(summary, secondary: false));
+            row.Children.Add(Line(restrictions, secondary: true));
+            HistoryRows.Children.Add(row);
+        }
     }
 
-    /// <summary>One line of the list. The opacity rather than a theme brush: a brush looked up from
-    /// the application's own dictionary does not follow a light or dark switch, and these lines are
-    /// built in code rather than in markup where the theme reference would. Two lines at most, so the
-    /// row cap bounds the window's height.</summary>
+    /// <summary>One line of the list, wrapping at its spaces. The opacity rather than a theme brush:
+    /// a brush from the application's own dictionary does not follow a light or dark switch.</summary>
     private static TextBlock Line(string text, bool secondary) => new()
     {
         Text = text,
         FontSize = 12,
         TextWrapping = TextWrapping.Wrap,
-        MaxLines = 2,
-        TextTrimming = TextTrimming.CharacterEllipsis,
         Opacity = secondary ? 0.65 : 1,
     };
 

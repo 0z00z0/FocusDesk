@@ -194,7 +194,7 @@
     <comment>Session line while the cancel can be confirmed from Home Assistant; placeholders as in FocusDescribeActive.</comment>
   </data>
   <data name="FocusDescribeNotRunning" xml:space="preserve">
-    <value>Ingen fokusøkt kjører.</value>
+    <value>Ingen økt kjører.</value>
     <comment>Session line when nothing runs, whole sentence.</comment>
   </data>
   <data name="FocusKindProgramFocus" xml:space="preserve">
@@ -231,9 +231,119 @@
     <value>programmer begrenset</value>
     <comment>One item in the comma-joined list of what a running session holds, lower case, no full stop.</comment>
   </data>
-  <data name="PopOutProgramsLimited" xml:space="preserve">
-    <value>Bare de valgte programmene kan brukes til økten er slutt.</value>
-    <comment>Line on the tray pop-out while the lever holds, whole sentence.</comment>
+
+  <!-- The tray pop-out: headings, the Restrictions card and the Recent sessions rows. -->
+  <data name="PopOutWindowTitle" xml:space="preserve">
+    <value>{0}-status</value>
+    <comment>Title of the tray pop-out window, not shown on screen; {0} the product name.</comment>
+  </data>
+  <data name="PopOutSettings" xml:space="preserve">
+    <value>Innstillinger</value>
+    <comment>Hover text and screen-reader name of the button that opens the Settings window, noun.</comment>
+  </data>
+  <data name="PopOutSessionHeading" xml:space="preserve">
+    <value>Fokusøkt</value>
+    <comment>Heading of the pop-out card with the countdown and the start box, noun phrase.</comment>
+  </data>
+  <data name="PopOutSessionLength" xml:space="preserve">
+    <value>Lengde på økten</value>
+    <comment>Screen-reader name of the list of session lengths, noun phrase.</comment>
+  </data>
+  <data name="FocusLengthMinutes" xml:space="preserve">
+    <value>{0} min</value>
+    <comment>A session length in the length list; {0} whole minutes; min is the unit symbol.</comment>
+  </data>
+  <data name="FocusLengthOneHour" xml:space="preserve">
+    <value>1 time</value>
+    <comment>The one-hour session length in the length list.</comment>
+  </data>
+  <data name="FocusLengthHours" xml:space="preserve">
+    <value>{0} timer</value>
+    <comment>A session length of whole hours in the length list; {0} two or more hours.</comment>
+  </data>
+  <data name="PopOutWayOut" xml:space="preserve">
+    <value>Ingenting på denne datamaskinen avslutter en økt. En MQTT-kommando avslutter den tidlig, etter fem minutters ventetid og en forespørsel til.</value>
+    <comment>Quiet line under the session line while a session runs, whole sentences.</comment>
+  </data>
+  <data name="PopOutRestrictionsHeading" xml:space="preserve">
+    <value>Begrensninger</value>
+    <comment>Heading of the pop-out card listing what the running session restricts, noun.</comment>
+  </data>
+  <data name="RestrictionNetwork" xml:space="preserve">
+    <value>Nettverk: Blokkert</value>
+    <comment>Line on the Restrictions card while the network block holds; label, colon, one fixed word.</comment>
+  </data>
+  <data name="RestrictionScreenDimmed" xml:space="preserve">
+    <value>Skjerm: Dempet</value>
+    <comment>Line on the Restrictions card while the screen is dimmed and not covered; label, colon, one fixed word.</comment>
+  </data>
+  <data name="RestrictionScreenCovered" xml:space="preserve">
+    <value>Skjerm: Dekket</value>
+    <comment>Line on the Restrictions card while the screen is covered and not dimmed; label, colon, one fixed word.</comment>
+  </data>
+  <data name="RestrictionScreenDimmedAndCovered" xml:space="preserve">
+    <value>Skjerm: Dempet og dekket</value>
+    <comment>Line on the Restrictions card while the screen is both dimmed and covered; label, colon, fixed words.</comment>
+  </data>
+  <data name="RestrictionInput" xml:space="preserve">
+    <value>Tastatur og mus: Blokkert</value>
+    <comment>Line on the Restrictions card while the mouse and keyboard are blocked; label, colon, one fixed word.</comment>
+  </data>
+  <data name="RestrictionPrograms" xml:space="preserve">
+    <value>Programmer: Begrenset</value>
+    <comment>Line on the Restrictions card while only the chosen programs can be used; label, colon, one fixed word.</comment>
+  </data>
+  <data name="RestrictionsNone" xml:space="preserve">
+    <value>Ingen begrensninger</value>
+    <comment>The only line on the Restrictions card when nothing is in force, no full stop.</comment>
+  </data>
+  <data name="PopOutHistoryHeading" xml:space="preserve">
+    <value>Siste økter</value>
+    <comment>Heading of the pop-out card listing finished sessions, noun phrase.</comment>
+  </data>
+  <data name="PopOutHistoryEmpty" xml:space="preserve">
+    <value>Ingen økt er avsluttet ennå.</value>
+    <comment>The only line in Recent sessions before any session has ended, whole sentence.</comment>
+  </data>
+  <data name="HistoryRowSummary" xml:space="preserve">
+    <value>{0} · {1} min · {2}</value>
+    <comment>First line of a Recent sessions row; {0} start date and time, {1} whole minutes, {2} outcome word.</comment>
+  </data>
+  <data name="HistoryOutcomeCompleted" xml:space="preserve">
+    <value>Fullført</value>
+    <comment>Outcome of a session that ran to its end time, capitalised, no full stop.</comment>
+  </data>
+  <data name="HistoryOutcomeEndedEarly" xml:space="preserve">
+    <value>Avsluttet tidlig</value>
+    <comment>Outcome of a session ended early by the MQTT cancel, capitalised, no full stop.</comment>
+  </data>
+  <data name="HistoryOutcomeEndedWhileClosed" xml:space="preserve">
+    <value>Endte mens lukket</value>
+    <comment>Outcome of a session whose time ran out while FocusDesk was closed; at most 18 characters.</comment>
+  </data>
+  <data name="HistoryRestrictionNetwork" xml:space="preserve">
+    <value>Nettverk</value>
+    <comment>Word in the second line of a Recent sessions row: the network was blocked. Capitalised.</comment>
+  </data>
+  <data name="HistoryRestrictionDimmed" xml:space="preserve">
+    <value>Dempet</value>
+    <comment>Word in the second line of a Recent sessions row: the screen was dimmed. Capitalised.</comment>
+  </data>
+  <data name="HistoryRestrictionCovered" xml:space="preserve">
+    <value>Dekket</value>
+    <comment>Word in the second line of a Recent sessions row: the screen was covered. Capitalised.</comment>
+  </data>
+  <data name="HistoryRestrictionInput" xml:space="preserve">
+    <value>Tastatur og mus</value>
+    <comment>Word in the second line of a Recent sessions row: the mouse and keyboard were blocked. Capitalised.</comment>
+  </data>
+  <data name="HistoryRowKindAndRestrictions" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>Second line of a Recent sessions row; {0} the session kind, {1} the restriction words joined with comma and space.</comment>
+  </data>
+  <data name="HistoryNoExtraRestrictions" xml:space="preserve">
+    <value>Ingen ekstra begrensninger</value>
+    <comment>Second line of a Recent sessions row for an older session with no kind recorded and nothing held, no full stop.</comment>
   </data>
   <data name="FocusPointWindowTitle" xml:space="preserve">
     <value>Fokuspunkt</value>

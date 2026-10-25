@@ -184,23 +184,51 @@ internal static class FocusHistoryService
         return true;
     }
 
-    /// <summary>One finished session in a line, for the Settings page. The date, how long it ran,
-    /// which levers it used and how it ended.</summary>
-    public static string Describe(FocusHistoryEntry entry)
+    /// <summary>One finished session as the status window's two lines: when it started, how long it
+    /// was and how it ended; then its kind and the restrictions that held.</summary>
+    public static (string Summary, string Restrictions) Describe(FocusHistoryEntry entry) =>
+        Describe(entry, AppText.Get, CultureInfo.CurrentCulture);
+
+    /// <summary>The same two lines, composed through <paramref name="text"/> so a test can use each
+    /// shipped resource file.</summary>
+    internal static (string Summary, string Restrictions) Describe(
+        FocusHistoryEntry entry, Func<string, string> text, CultureInfo culture)
     {
-        var ran = entry.EndedAt - entry.StartedAt;
-        string levers = Levers(entry.BlockedNetwork, entry.DimmedScreen, entry.CoveredScreen,
-                               entry.BlockedInput).Replace('+', ',');
-        return string.Create(CultureInfo.CurrentCulture,
-            $"{entry.StartedAt.ToLocalTime():d MMM HH:mm} — {Math.Max(0, (int)ran.TotalMinutes)} min, " +
-            $"{levers}, {Ending(entry.Outcome)}");
+        ArgumentNullException.ThrowIfNull(text);
+
+        // The armed length, so a session found finished later never counts the hours the app was closed.
+        var length = entry.Outcome == FocusSessionOutcome.EndedEarly
+            ? entry.EndedAt - entry.StartedAt
+            : entry.DueAt - entry.StartedAt;
+        string summary = string.Format(culture, text("HistoryRowSummary"),
+            entry.StartedAt.ToLocalTime().ToString("d MMM HH:mm", culture),
+            Math.Max(0, (int)length.TotalMinutes),
+            text(entry.Outcome switch
+            {
+                FocusSessionOutcome.RanToTime  => "HistoryOutcomeCompleted",
+                FocusSessionOutcome.EndedEarly => "HistoryOutcomeEndedEarly",
+                _                              => "HistoryOutcomeEndedWhileClosed",
+            }));
+
+        var held = new List<string>(4);
+        if (entry.BlockedNetwork) held.Add(text("HistoryRestrictionNetwork"));
+        if (entry.DimmedScreen)   held.Add(text("HistoryRestrictionDimmed"));
+        if (entry.CoveredScreen)  held.Add(text("HistoryRestrictionCovered"));
+        if (entry.BlockedInput)   held.Add(text("HistoryRestrictionInput"));
+        string list = string.Join(", ", held);
+
+        // A row written before the kind column existed says only what held.
+        string restrictions = entry.Kind switch
+        {
+            null when held.Count == 0 => text("HistoryNoExtraRestrictions"),
+            null                      => list,
+            { } kind => held.Count == 0
+                ? KindName(kind, text)
+                : string.Format(culture, text("HistoryRowKindAndRestrictions"), KindName(kind, text), list),
+        };
+        return (summary, restrictions);
     }
 
-    /// <summary>How the ending reads on the page, in the words a person would use for it.</summary>
-    private static string Ending(FocusSessionOutcome outcome) => outcome switch
-    {
-        FocusSessionOutcome.RanToTime  => "ran to time",
-        FocusSessionOutcome.EndedEarly => "ended early",
-        _                              => "found finished at a later start",
-    };
+    private static string KindName(FocusSessionKind kind, Func<string, string> text) =>
+        text(kind == FocusSessionKind.ProgramFocus ? "FocusKindProgramFocus" : "FocusKindScreenBreak");
 }
