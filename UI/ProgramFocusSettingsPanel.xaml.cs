@@ -38,6 +38,7 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
             IdleTip   = AppText.Get("NamedSessionActivateInfo"),
         };
         Loaded += (_, _) => Reload();
+        _latest = this;
     }
 
     /// <summary>Follows the session while the page is on screen.</summary>
@@ -65,6 +66,12 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         _rows.Clear();
         _list.Rebuild();
         ApplySessionLock();
+
+        if (IsLoaded && _pendingNew is { } saved)
+        {
+            _pendingNew = null;
+            ShowNew(saved.Key, saved.LeftOut);
+        }
     }
 
     /// <summary>Greys every control while a session runs and moves the marking to the running one.</summary>
@@ -331,8 +338,6 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         OpenWithNameFocused(added);
     }
 
-    /// <summary>Adds a session in "Open marked, allow only listed" holding the programs open now, in
-    /// window order, at most a full list.</summary>
     private async void OnSaveOpenPrograms(object sender, RoutedEventArgs e)
     {
         if (FocusSessionService.LeversAreLocked || _saving) { ApplySessionLock(); return; }
@@ -340,27 +345,50 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         ApplySessionLock();
         try
         {
-            var open = ProgramCatalogue.OpenNow(await ProgramCatalogue.BuildAsync(), ProgramCatalogue.OpenWindows());
-            if (FocusSessionService.LeversAreLocked) return;
-
-            string? added = null;
-            SettingsService.Update(s => added = NamedSessions.AddFrom(
-                s, AppText.Get("NamedSessionNewName"),
-                open.Take(FocusAllowedPrograms.Maximum).Select(c => c.ToEntry()))?.Key);
-            if (added is null) return;
-
-            OpenWithNameFocused(added);
-            if (open.Count > FocusAllowedPrograms.Maximum && _rows.TryGetValue(added, out var row))
-            {
-                row.Error.Text = AppText.Format("NamedSessionSaveOpenLeftOut", open.Count - FocusAllowedPrograms.Maximum);
-                row.Error.Visibility = Visibility.Visible;
-            }
+            var (added, leftOut) = await SaveOpenProgramsAsync();
+            if (added is not null) ShowNew(added, leftOut);
         }
         catch (Exception ex) { AppLog.Error("ProgramFocusSettingsPanel.SaveOpenPrograms", ex); }
         finally
         {
             _saving = false;
             ApplySessionLock();
+        }
+    }
+
+    /// <summary>A session in mode 2 from the programs open now, at most a full list; also the dashboard's save.</summary>
+    internal static async Task<(string? Key, int LeftOut)> SaveOpenProgramsAsync()
+    {
+        var open = ProgramCatalogue.OpenNow(await ProgramCatalogue.BuildAsync(), ProgramCatalogue.OpenWindows());
+        if (FocusSessionService.LeversAreLocked) return (null, 0);
+
+        string? added = null;
+        SettingsService.Update(s => added = NamedSessions.AddFrom(
+            s, AppText.Get("NamedSessionNewName"),
+            open.Take(FocusAllowedPrograms.Maximum).Select(c => c.ToEntry()))?.Key);
+        return (added, Math.Max(0, open.Count - FocusAllowedPrograms.Maximum));
+    }
+
+    // Shown once loaded: a page built for it loads after it enters, and loading rebuilds the list.
+    private static (string Key, int LeftOut)? _pendingNew;
+    private static ProgramFocusSettingsPanel? _latest;
+
+    /// <summary>Opens Settings on this page with a session saved from the dashboard expanded.</summary>
+    internal static void ShowSaved(string key, int leftOut)
+    {
+        _pendingNew = (key, leftOut);
+        SettingsShellHost.Open(SettingsShellHost.ProgramFocusTag);
+        // The page already on screen enters nothing again.
+        if (_pendingNew is not null && _latest is { IsLoaded: true } page) page.Reload();
+    }
+
+    private void ShowNew(string key, int leftOut)
+    {
+        OpenWithNameFocused(key);
+        if (leftOut > 0 && _rows.TryGetValue(key, out var row))
+        {
+            row.Error.Text = AppText.Format("NamedSessionSaveOpenLeftOut", leftOut);
+            row.Error.Visibility = Visibility.Visible;
         }
     }
 

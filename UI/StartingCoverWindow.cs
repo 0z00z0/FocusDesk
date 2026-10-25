@@ -133,11 +133,15 @@ internal static class StartingCover
     private static readonly PerDisplayWindows<StartingCoverWindow> _covers = new(
         "StartingCover", bounds => new StartingCoverWindow(bounds), cover => cover.Dismiss(), cover => cover.IsGone);
 
-    internal static void Show()
+    // The focus point window's display, left uncovered while programs start behind it.
+    private static RectInt32? _except;
+
+    internal static void Show(RectInt32? except = null)
     {
+        _except = except;
         try
         {
-            _covers.Rebuild();
+            _covers.Rebuild(except);
             AppLog.Info($"Focus: the see-through cover is over {_covers.Windows.Count} display(s).");
         }
         catch (Exception ex) { AppLog.Error("StartingCover.Show", ex); }
@@ -149,7 +153,7 @@ internal static class StartingCover
     {
         try
         {
-            if (_covers.DisplaysChanged()) _covers.Rebuild();
+            if (_covers.DisplaysChanged()) _covers.Rebuild(_except);
             foreach (var cover in _covers.Windows) cover.KeepOnTop();
         }
         catch (Exception ex) { AppLog.Error("StartingCover.KeepUp", ex); }

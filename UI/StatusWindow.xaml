@@ -89,14 +89,19 @@
                                   Padding="{StaticResource SessionControlPadding}"
                                   BorderThickness="{StaticResource SessionControlBorder}"
                                   CornerRadius="{StaticResource SessionControlCornerRadius}"/>
-                        <Button Grid.Column="1" x:Name="StartButton"
+                        <!-- The menu part holds the three Program focus modes, for this start only. -->
+                        <SplitButton Grid.Column="1" x:Name="StartButton"
                                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                 MinHeight="{StaticResource SessionControlHeight}"
                                 FontSize="{StaticResource SessionControlFontSize}"
                                 Padding="{StaticResource SessionControlPadding}"
                                 BorderThickness="{StaticResource SessionControlBorder}"
                                 CornerRadius="{StaticResource SessionControlCornerRadius}"
-                                Click="OnStart"/>
+                                Click="OnStart">
+                            <SplitButton.Flyout>
+                                <MenuFlyout x:Name="ModeMenu" Placement="Bottom"/>
+                            </SplitButton.Flyout>
+                        </SplitButton>
                     </Grid>
 
                     <!-- Both kinds, every time. Pressing one only chooses it, and the chosen kind
@@ -142,6 +147,15 @@
                                  BorderThickness="{StaticResource SessionControlBorder}"
                                  CornerRadius="{StaticResource SessionControlCornerRadius}"/>
                     </Grid>
+
+                    <Button x:Name="SaveOpenProgramsButton"
+                            HorizontalAlignment="Stretch"
+                            MinHeight="{StaticResource SessionControlHeight}"
+                            FontSize="{StaticResource SessionControlFontSize}"
+                            Padding="{StaticResource SessionControlPadding}"
+                            BorderThickness="{StaticResource SessionControlBorder}"
+                            CornerRadius="{StaticResource SessionControlCornerRadius}"
+                            Click="OnSaveOpenPrograms"/>
 
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions>

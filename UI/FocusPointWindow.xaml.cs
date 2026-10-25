@@ -21,8 +21,8 @@ namespace FocusDesk.UI;
 /// it precedes.
 /// </summary>
 /// <remarks>
-/// <para>Closing it with Escape or Alt+F4 before the session starts cancels: nothing is armed and
-/// nothing on the machine changes. A click anywhere does nothing. The button, or the end of the time
+/// <para>Closing it with Escape or Alt+F4 before the session starts cancels: nothing is armed, and
+/// programs already opened behind it stay open. A click anywhere does nothing. The button, or the end of the time
 /// where the window starts the session itself, is the only way on to one.</para>
 /// <para>The same for both kinds of session. What follows the button is the session's own business:
 /// a screen break's cover opens straight on its configured visual, a program focus minimises the
@@ -52,6 +52,12 @@ internal sealed partial class FocusPointWindow : Window
     private readonly bool _animate = MotionPreference.AnimationsAllowed();
     private readonly string _goal;
     private readonly string? _namedSession;
+    private readonly FocusSessionKind _kind;
+    private readonly ProgramFocusMode? _mode;
+    private readonly DispatcherTimer _raise = new() { Interval = TimeSpan.FromSeconds(1) };
+
+    /// <summary>The marked programs opening behind this window, shown in the starting window once it ends.</summary>
+    private ProgramStartRun? _run;
 
     private Storyboard? _breath;
     private bool _drawsEveryFrame;
@@ -63,21 +69,24 @@ internal sealed partial class FocusPointWindow : Window
     /// is closed first, which cancels it. A <paramref name="goal"/> stands in for the quiet line and
     /// goes with the session.</summary>
     /// <param name="namedSession">The key of the named session a Program focus session runs on.</param>
+    /// <param name="mode">The mode chosen for this start only; null for the session's saved mode.</param>
     internal static void Open(FocusSessionKind kind, string? namedSession, int minutes, int seconds,
-                              bool startsItself, string goal)
+                              bool startsItself, string goal, ProgramFocusMode? mode)
     {
         _open?.Close();
 
-        var window = new FocusPointWindow(kind, namedSession, minutes, seconds, startsItself, goal);
+        var window = new FocusPointWindow(kind, namedSession, minutes, seconds, startsItself, goal, mode);
         _open = window;
         window.Closed += (_, _) => { if (ReferenceEquals(_open, window)) _open = null; };
         window.Activate();
     }
 
     private FocusPointWindow(FocusSessionKind kind, string? namedSession, int minutes, int seconds,
-                             bool startsItself, string goal)
+                             bool startsItself, string goal, ProgramFocusMode? mode)
     {
         _namedSession = namedSession;
+        _kind = kind;
+        _mode = mode;
         InitializeComponent();
         _start = new FocusPointStart(kind, minutes, TimeSpan.FromSeconds(FocusPointStart.SecondsOrDefault(seconds)),
                                      startsItself, () => _clock.Elapsed);
@@ -102,6 +111,7 @@ internal sealed partial class FocusPointWindow : Window
 
         _minute.Interval = _start.Remaining;
         _minute.Tick += (_, _) => OnMinuteUp();
+        _raise.Tick += (_, _) => KeepAbove();
 
         StartBreathing();
         FadeHint();
@@ -244,8 +254,37 @@ internal sealed partial class FocusPointWindow : Window
     private FocusArmOutcome Arm(int minutes, FocusSessionKind kind)
     {
         SettingsService.Update(s => s.FocusSessionMinutes = minutes);
-        return FocusSessionService.Arm(ActionCause.FocusPointWindow(), minutes, kind, _goal, _namedSession);
+        return FocusSessionService.Arm(ActionCause.FocusPointWindow(), minutes, kind, _goal, _namedSession, _mode, openedAhead: _run is not null);
     }
+
+    /// <summary>Opens the marked programs behind this window, kept quiet: topmost, the foreground
+    /// locked against them, and the see-through cover on every other display.</summary>
+    private void StartBehind(RectInt32 here)
+    {
+        _run = FocusSessionService.OpenAhead(_kind, _namedSession, _mode);
+        if (_run is null) return;
+
+        if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.IsAlwaysOnTop = true;
+        LockSetForegroundWindow(LSFW_LOCK);
+        StartingCover.Show(except: here);
+        KeepAbove();
+        _raise.Start();
+        AppLog.Info("Focus: the marked programs are opening behind the focus point window.");
+    }
+
+    // Held until the window ends rather than the run: a started program's window can come after its process.
+    private void KeepAbove()
+    {
+        StartingCover.KeepUp();
+        NativeMethods.RaiseToTopmost(Win32Interop.GetWindowFromWindowId(AppWindow.Id));
+    }
+
+    private const uint LSFW_LOCK = 1;
+    private const uint LSFW_UNLOCK = 2;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool LockSetForegroundWindow(uint code);
 
     // Alt+F4 too, so it does not depend on the frameless window passing the key to the system close.
     private void OnCloseKeyInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
@@ -268,6 +307,13 @@ internal sealed partial class FocusPointWindow : Window
         _minute.Stop();
         _breath?.Stop();
         StopDrawing();
+
+        // The run carries on; the starting window shows it, as "Completed" where it has finished, and
+        // takes the cover over every display.
+        if (_run is null) return;
+        _raise.Stop();
+        LockSetForegroundWindow(LSFW_UNLOCK);
+        StartingWindow.Show(_run);
     }
 
     /// <summary>Full-screen on the monitor under the pointer the first time it is shown, which is the
@@ -288,7 +334,11 @@ internal sealed partial class FocusPointWindow : Window
                 var all = NativeMethods.AllDisplayBounds();
                 if (all.Count > 0) bounds = all[0];
             }
-            if (bounds is { } b) AppWindow.MoveAndResize(b);
+            if (bounds is { } b)
+            {
+                AppWindow.MoveAndResize(b);
+                StartBehind(b);
+            }
         }
         catch (Exception ex) { AppLog.Error("FocusPointWindow.Place", ex); }
     }

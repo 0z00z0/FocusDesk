@@ -14,7 +14,9 @@ A focus session runs for one duration and is one of two kinds, chosen when it st
 
   A program already open is left alone, and a session resumed after a restart opens nothing. While
   programs open, a window lists each one over a see-through cover on every display, then reads
-  "Completed" with any program that could not be started and why; closing it closes the cover. Program
+  "Completed" with any program that could not be started and why; closing it closes the cover. With
+  the focus point window shown, the programs open behind it with the cover on the other displays, and
+  the list shows when it ends. The Start button's menu picks another mode for one start. Program
   focus never blocks the network.
 - **Screen break.** Every display is covered with a black window. The mouse and keyboard can be
   blocked and the screen dimmed as well, and every network connection can be blocked except the MQTT
