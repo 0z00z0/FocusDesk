@@ -130,4 +130,8 @@ internal enum FocusArmOutcome
     /// <summary>Every lever agreed and one then failed to engage. Whatever did engage is lifted
     /// again before this is returned.</summary>
     LeverFailed,
+
+    /// <summary>The start named a session the list does not hold. Nothing is armed, and the session
+    /// in use is not run in its place.</summary>
+    NamedSessionMissing,
 }

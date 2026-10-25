@@ -397,6 +397,10 @@
     <value>Noe økten trengte, slo ikke inn. Det som slo inn, er satt tilbake.</value>
     <comment>Line under the start buttons when a lever failed after agreeing, whole sentences.</comment>
   </data>
+  <data name="PopOutRefusalNamedSessionMissing" xml:space="preserve">
+    <value>Den valgte navngitte økten finnes ikke lenger i listen, så ingenting ble startet.</value>
+    <comment>Line under the start buttons when the chosen named session was deleted before the start armed, whole sentence.</comment>
+  </data>
   <data name="CoverProgramsLimited" xml:space="preserve">
     <value>bare de valgte programmene kan brukes</value>
     <comment>One clause in the cover's list of what the session holds, lower case, no full stop.</comment>

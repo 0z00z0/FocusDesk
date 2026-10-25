@@ -84,9 +84,11 @@ internal sealed class SettingsStore
         var (file, conflict) = ReadSections();
         if (conflict is null)
         {
+            // Asked before the read repairs the sessions in place, which would hide every repair.
+            bool repair = file.NamedSessionsNeedWriting;
             var settings = file.ToSettings();
-            if (file.NamedSessionsNeedWriting && Write(settings))
-                AppLog.Info("settings.json: the named sessions were written for the first time.");
+            if (repair && Write(settings))
+                AppLog.Info("settings.json: the named sessions were created or repaired and written back.");
             return settings;
         }
 

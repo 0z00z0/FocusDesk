@@ -26,6 +26,7 @@ internal static class PresetRows
 
         // In the header row, so activation is one click from the list without opening the editor.
         var activate = new Button { Tag = tag, MinWidth = 88 };
+        ApplyActiveResources(activate);
 
         var error = new TextBlock
         {
@@ -80,7 +81,6 @@ internal static class PresetRows
         public void Rebuild()
         {
             Panel.Children.Clear();
-            ApplyActiveResources(Panel);
 
             int count = Count();
             for (int i = 0; i < count; i++) Panel.Children.Add(BuildRow(i));
@@ -113,12 +113,13 @@ internal static class PresetRows
     private static SolidColorBrush AccentBrush() => new(AppColors.FromHex(Brand.ColorAmber));
 
     /// <summary>The in-use row disables its own button, so the disabled visual state is what shows
-    /// the marker. Set before the rows are parented, or their templates never resolve them.</summary>
-    private static void ApplyActiveResources(StackPanel panel)
+    /// the marker. Set on the Activate button alone, before it is parented, so every other greyed
+    /// button in the row keeps the ordinary look.</summary>
+    private static void ApplyActiveResources(Button activate)
     {
-        panel.Resources["ButtonBackgroundDisabled"]  = AccentBrush();
-        panel.Resources["ButtonBorderBrushDisabled"] = AccentBrush();
-        panel.Resources["ButtonForegroundDisabled"]  = new SolidColorBrush(Microsoft.UI.Colors.Black);
+        activate.Resources["ButtonBackgroundDisabled"]  = AccentBrush();
+        activate.Resources["ButtonBorderBrushDisabled"] = AccentBrush();
+        activate.Resources["ButtonForegroundDisabled"]  = new SolidColorBrush(Microsoft.UI.Colors.Black);
     }
 
     private static void StyleActiveName(TextBlock header, bool active)

@@ -575,7 +575,8 @@ internal sealed partial class StatusWindow : Window
     {
         FocusArmOutcome.AlreadyRunning => "PopOutRefusalAlreadyRunning",
         FocusArmOutcome.LeverRefused   => "PopOutRefusalLeverRefused",
-        _                              => "PopOutRefusalLeverFailed",
+        FocusArmOutcome.NamedSessionMissing => "PopOutRefusalNamedSessionMissing",
+        _                             => "PopOutRefusalLeverFailed",
     });
 
     /// <summary>Opens the Settings window, and stands down behind it.</summary>
