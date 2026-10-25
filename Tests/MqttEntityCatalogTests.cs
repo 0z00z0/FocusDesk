@@ -134,18 +134,24 @@ public class MqttEntityCatalogTests
                      Assert.IsType<MqttSelect>(set.Find(MqttEntityCatalog.FocusSessionType)).Read());
     }
 
-    /// <summary>The select's refusal is what keeps a running session on the list it started with.</summary>
+    /// <summary>The select's refusal is what keeps a running session on the list it started with, and
+    /// a name already ending in a number still leaves every session its own option.</summary>
     [Fact]
     public void TheNamedSessionSelect_RefusesAChangeWhileASessionRuns()
     {
-        var settings = new AppSettings { NamedSessions = [NamedSession.Create("Writing"), NamedSession.Create("Writing")] };
+        var settings = new AppSettings
+        {
+            NamedSessions = [NamedSession.Create("Writing"), NamedSession.Create("Writing (2)"), NamedSession.Create("Writing")],
+        };
         settings.SelectedNamedSession = settings.NamedSessions[0].Key;
 
-        Assert.Equal(NamedSessions.Choice.SessionRunning, NamedSessions.Choose(settings, "Writing (2)", sessionRunning: true));
+        Assert.Equal(["Writing", "Writing (2)", "Writing (3)"], NamedSessions.Options(settings.NamedSessions));
+
+        Assert.Equal(NamedSessions.Choice.SessionRunning, NamedSessions.Choose(settings, "Writing (3)", sessionRunning: true));
         Assert.Equal(settings.NamedSessions[0].Key, settings.SelectedNamedSession);
 
-        Assert.Equal(NamedSessions.Choice.Chosen, NamedSessions.Choose(settings, "Writing (2)", sessionRunning: false));
-        Assert.Equal(settings.NamedSessions[1].Key, settings.SelectedNamedSession);
+        Assert.Equal(NamedSessions.Choice.Chosen, NamedSessions.Choose(settings, "Writing (3)", sessionRunning: false));
+        Assert.Equal(settings.NamedSessions[2].Key, settings.SelectedNamedSession);
     }
 
     [Theory]

@@ -204,10 +204,12 @@ internal sealed class SettingsFile
     /// it back at once and every key it hands out stays the one on disk.</summary>
     public bool NamedSessionsNeedWriting =>
         ProgramFocus.NamedSessions is not { Count: > 0 } sessions
-        || sessions.Any(n => n is null || string.IsNullOrWhiteSpace(n.Key) || string.IsNullOrWhiteSpace(n.Name));
+        || sessions.Any(n => n is null || string.IsNullOrWhiteSpace(n.Key) || string.IsNullOrWhiteSpace(n.Name))
+        || sessions.Select(n => n.Key).Distinct(StringComparer.Ordinal).Count() < sessions.Count;
 
     /// <summary>The list as read. Absent, today's Focus list becomes "Default"; empty, "Default" holds
-    /// nothing; a session missing its key or name gets one.</summary>
+    /// nothing; a session missing its key or name gets one, and so does a later session repeating a
+    /// key, since every row and button finds its session by key.</summary>
     private List<NamedSession> ReadNamedSessions()
     {
         if (ProgramFocus.NamedSessions is null)
@@ -215,9 +217,14 @@ internal sealed class SettingsFile
                                         Focus.FocusPrograms ?? FocusAllowedPrograms.Migrate(Focus.FocusAllowedPrograms))];
 
         var sessions = ProgramFocus.NamedSessions.Where(n => n is not null).ToList();
+        var keys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var session in sessions)
         {
-            if (string.IsNullOrWhiteSpace(session.Key)) session.Key = NamedSessions.NewKey();
+            if (string.IsNullOrWhiteSpace(session.Key) || !keys.Add(session.Key))
+            {
+                session.Key = NamedSessions.NewKey();
+                keys.Add(session.Key);
+            }
             if (string.IsNullOrWhiteSpace(session.Name)) session.Name = NamedSessions.DefaultName();
             session.Programs ??= [];
         }

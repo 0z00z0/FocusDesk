@@ -90,13 +90,18 @@ internal static class FocusSessionService
     /// kind through its own select instead. A kind chosen here is never stored.</param>
     /// <param name="goal">The goal typed in the start box. Null from Home Assistant, which has none.</param>
     /// <param name="namedSession">The named session chosen in the start box. Null from MQTT, which
-    /// starts the session in use.</param>
+    /// starts the session in use. A key naming no session in the list refuses the start.</param>
     public static FocusArmOutcome Arm(ActionCause cause, int? minutes = null, FocusSessionKind? kind = null,
                                       string? goal = null, string? namedSession = null)
     {
         var (stored, storedKind, screen, input, network, session) = SettingsService.Read(
             s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusDimsScreen, s.FocusBlocksInput,
-                  s.FocusBlocksNetwork, NamedSessions.Find(s, namedSession) ?? NamedSessions.InUse(s)));
+                  s.FocusBlocksNetwork, NamedSessions.ForStart(s, namedSession)));
+        if (session is null)
+        {
+            AppLog.Info($"Focus: the chosen named session is no longer in the list, so nothing started{cause.Clause}.");
+            return FocusArmOutcome.NamedSessionMissing;
+        }
         var plan = FocusSessionPlan.For(kind ?? storedKind, network, screen, input, session.Key);
 
         lock (_armGate)

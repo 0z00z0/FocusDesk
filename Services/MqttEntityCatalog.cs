@@ -142,9 +142,10 @@ internal static class MqttEntityCatalog
                 // refused block leaves the session running, and this reads off while it runs.
                 EntityId = FocusSessionBlocksNetwork, Name = "Focus session blocks network",
                 Group = MqttPublishGroups.Focus,
-                Description = "Sets whether a focus session blocks all network traffic except the MQTT "
-                            + "connection and the programs allowed to use the network; while a session "
-                            + "runs, it shows whether the block is held and a change is refused.",
+                Description = "Sets whether a screen break blocks all network traffic except the MQTT "
+                            + "broker and the programs ticked Can use the network in the named session in "
+                            + "use; while a session runs, it shows whether the block is held and a change "
+                            + "is refused.",
                 Category = MqttEntityCategory.Config, Icon = "mdi:lan-disconnect",
                 Debounce = MqttConnection.ReflectDebounce,
                 Read = () => surface()?.FocusBlocksNetwork,
@@ -163,7 +164,9 @@ internal static class MqttEntityCatalog
                 Debounce = MqttConnection.ReflectDebounce,
                 Options = () => surface()?.NamedSessionOptions ?? [],
                 Read = () => surface()?.NamedSession,
-                Apply = option => MqttCommandVerdict.Accept(() => set.SetFocusNamedSession(option)),
+                Apply = option => surface()?.NamedSessionOptions is { } options && !options.Contains(option)
+                    ? MqttCommandVerdict.NotAnOption($"'{option}' names no named session.")
+                    : MqttCommandVerdict.Accept(() => set.SetFocusNamedSession(option)),
             },
             new MqttSwitch
             {

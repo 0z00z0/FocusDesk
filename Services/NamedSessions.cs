@@ -51,6 +51,14 @@ internal static class NamedSessions
     public static NamedSession InUse(AppSettings s) =>
         Find(s, s.SelectedNamedSession) ?? s.NamedSessions[0];
 
+    /// <summary>The session a start runs on: the one in use where no key was passed, and null where a
+    /// passed key names nothing, so a session deleted or renamed away is refused rather than swapped.</summary>
+    public static NamedSession? ForStart(AppSettings s, string? key)
+    {
+        ArgumentNullException.ThrowIfNull(s);
+        return key is null ? InUse(s) : Find(s, key);
+    }
+
     /// <summary>The session the levers read: the one being armed, else the running one, else the one
     /// in use, so changing the session in use never moves a running session's list.</summary>
     public static NamedSession ForLevers(AppSettings s, string? arming)
@@ -67,16 +75,17 @@ internal static class NamedSessions
         return InUse(s);
     }
 
-    /// <summary>One option per session in list order; a repeated name gets " (2)", " (3)" after its
-    /// first occurrence, so every option names exactly one session.</summary>
+    /// <summary>One option per session in list order; a taken option gets " (2)", " (3)" and onwards
+    /// until it is free, so every option names exactly one session.</summary>
     public static IReadOnlyList<string> Options(IEnumerable<NamedSession> sessions)
     {
-        var seen = new Dictionary<string, int>(StringComparer.Ordinal);
+        var taken = new HashSet<string>(StringComparer.Ordinal);
         var options = new List<string>();
         foreach (var session in sessions)
         {
-            int n = seen[session.Name] = seen.GetValueOrDefault(session.Name) + 1;
-            options.Add(n == 1 ? session.Name : $"{session.Name} ({n})");
+            string option = session.Name;
+            for (int n = 2; !taken.Add(option); n++) option = $"{session.Name} ({n})";
+            options.Add(option);
         }
         return options;
     }
