@@ -482,4 +482,80 @@
     <value>Default</value>
     <comment>Name written for the first named session at first start, stored as data from then on.</comment>
   </data>
+  <data name="NamedSessionsHeading" xml:space="preserve">
+    <value>Named sessions</value>
+    <comment>Section heading on the Program focus page.</comment>
+  </data>
+  <data name="NamedSessionsDescription" xml:space="preserve">
+    <value>Each has its own programs and network block. The one in use is what a Program focus session started over MQTT uses.</value>
+    <comment>Sentence under the Named sessions heading.</comment>
+  </data>
+  <data name="NamedSessionActivate" xml:space="preserve">
+    <value>Activate</value>
+    <comment>Row button that marks a named session in use, verb.</comment>
+  </data>
+  <data name="NamedSessionInUse" xml:space="preserve">
+    <value>In use</value>
+    <comment>Row marker on the named session in use.</comment>
+  </data>
+  <data name="NamedSessionActivateInfo" xml:space="preserve">
+    <value>Makes this the session a Program focus session started over MQTT uses. It starts nothing.</value>
+    <comment>Hover text on the Activate button.</comment>
+  </data>
+  <data name="NamedSessionInUseInfo" xml:space="preserve">
+    <value>A Program focus session started over MQTT uses this session.</value>
+    <comment>Hover text on the In use marker.</comment>
+  </data>
+  <data name="NamedSessionSummaryBlocked" xml:space="preserve">
+    <value>{0} programs, network blocked</value>
+    <comment>Row summary, {0} is the number of programs.</comment>
+  </data>
+  <data name="NamedSessionSummaryOpen" xml:space="preserve">
+    <value>{0} programs, network open</value>
+    <comment>Row summary, {0} is the number of programs.</comment>
+  </data>
+  <data name="NamedSessionSummaryOneBlocked" xml:space="preserve">
+    <value>1 program, network blocked</value>
+    <comment>Row summary for a session with one program.</comment>
+  </data>
+  <data name="NamedSessionSummaryOneOpen" xml:space="preserve">
+    <value>1 program, network open</value>
+    <comment>Row summary for a session with one program.</comment>
+  </data>
+  <data name="NamedSessionNameHeader" xml:space="preserve">
+    <value>Name</value>
+    <comment>Card heading for the name box in an expanded row, noun.</comment>
+  </data>
+  <data name="NamedSessionBlocksNetworkHeader" xml:space="preserve">
+    <value>Blocks the network</value>
+    <comment>Card heading for the network switch in an expanded row.</comment>
+  </data>
+  <data name="NamedSessionBlocksNetworkDescription" xml:space="preserve">
+    <value>Blocks every connection for the length of the session, except to the MQTT broker and the programs allowed below.</value>
+    <comment>Description under Blocks the network.</comment>
+  </data>
+  <data name="NamedSessionBlocksNetworkInfo" xml:space="preserve">
+    <value>Needs administrator rights and a broker set on the MQTT page. Where refused, the session runs without it.</value>
+    <comment>Hover text on the network switch's info bubble.</comment>
+  </data>
+  <data name="NamedSessionDelete" xml:space="preserve">
+    <value>Delete named session</value>
+    <comment>Button under an expanded row.</comment>
+  </data>
+  <data name="NamedSessionDeleteLastInfo" xml:space="preserve">
+    <value>The last named session cannot be deleted.</value>
+    <comment>Hover text on the greyed Delete button of the last session.</comment>
+  </data>
+  <data name="NamedSessionAdd" xml:space="preserve">
+    <value>Add a named session</value>
+    <comment>Button under the list.</comment>
+  </data>
+  <data name="NamedSessionAddFullInfo" xml:space="preserve">
+    <value>Five named sessions is as many as the list takes.</value>
+    <comment>Hover text on the greyed Add button at five sessions.</comment>
+  </data>
+  <data name="NamedSessionNewName" xml:space="preserve">
+    <value>New session</value>
+    <comment>Name given to a newly added named session.</comment>
+  </data>
 </root>

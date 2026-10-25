@@ -22,14 +22,10 @@ public sealed partial class FocusSettingsPanel : UserControl
     public FocusSettingsPanel()
     {
         InitializeComponent();
-        FocusProgramsCard.Header      = AppText.Get("FocusProgramsHeader");
-        FocusProgramsCard.Description = AppText.Get("FocusProgramsDescription");
-        FocusAllowProgramButton.Content = AppText.Get("FocusProgramsAddButton");
         FocusKindCard.Header      = AppText.Get("FocusKindCardHeader");
         FocusKindCard.Description = AppText.Get("FocusKindCardDescription");
         FocusKindProgramFocusRadio.Content = AppText.Get("FocusKindProgramFocusOption");
         FocusKindScreenBreakRadio.Content  = AppText.Get("FocusKindScreenBreakOption");
-        FocusProgramFocusHeader.Heading = AppText.Get("FocusProgramFocusHeading");
         FocusScreenBreakHeader.Heading  = AppText.Get("FocusScreenBreakHeading");
         FocusPointHeader.Heading = AppText.Get("FocusPointHeading");
         FocusPointShownCard.Header      = AppText.Get("FocusPointShownHeader");
@@ -75,8 +71,8 @@ public sealed partial class FocusSettingsPanel : UserControl
         {
             FocusStatusValue.Text = FocusSessionStages.Describe(session, DateTimeOffset.Now);
 
-            var (minutes, kind, network, dims, input, startFromStatus) = SettingsService.Read(
-                s => (s.FocusSessionMinutes, s.FocusSessionKind, NamedSessions.InUse(s).BlocksNetwork, s.FocusDimsScreen,
+            var (minutes, kind, dims, input, startFromStatus) = SettingsService.Read(
+                s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusDimsScreen,
                       s.FocusBlocksInput, s.FocusStartFromDashboard));
 
             FocusLengthChoices.Fill(FocusMinutesCombo, minutes);
@@ -91,11 +87,8 @@ public sealed partial class FocusSettingsPanel : UserControl
 
             // A running session reports the levers it actually holds — a refused input block reads
             // off — and with none running these show the defaults the next session starts from.
-            FocusBlocksNetworkToggle.IsOn = session.IsRunning ? session.BlocksNetwork : network;
             FocusDimsScreenToggle.IsOn   = session.IsRunning ? session.DimsScreen   : dims;
             FocusBlocksInputToggle.IsOn  = session.IsRunning ? session.BlocksInput  : input;
-            FocusBlocksNetworkToggle.IsEnabled = !locked;
-            FocusAllowProgramButton.IsEnabled  = !locked;
             FocusDimsScreenToggle.IsEnabled   = !locked;
             FocusBlocksInputToggle.IsEnabled  = !locked;
 
@@ -109,128 +102,9 @@ public sealed partial class FocusSettingsPanel : UserControl
             // Both describe a focus point that is not shown otherwise.
             FocusPointStartsSessionToggle.IsEnabled = pointShown;
             FocusPointSecondsBox.IsEnabled          = pointShown;
-
-            ShowAllowedPrograms(locked);
         }
         finally { _updating = false; }
     }
-
-    /// <summary>One row per program: its icon and name, what it is beneath, "can run", "can use the
-    /// network" and a way to take it off. A checkbox that does nothing for that kind of program is
-    /// shown disabled, with the reason on hover. Locked for the length of a session, like the lever
-    /// switches.</summary>
-    private void ShowAllowedPrograms(bool locked)
-    {
-        FocusAllowedProgramsPanel.Children.Clear();
-        string windows = WindowsPrograms.Folder;
-
-        foreach (var entry in SettingsService.Read(s => NamedSessions.InUse(s).Programs.ToList()))
-        {
-            var program = entry;
-            var offer = ProgramCatalogue.OfferFor(entry, windows);
-
-            var canRun = new CheckBox
-            {
-                Content   = AppText.Get("FocusProgramCanRun"),
-                IsChecked = offer == ProgramOffer.NetworkOnly || entry.CanRun,
-                IsEnabled = !locked && offer != ProgramOffer.NetworkOnly,
-            };
-            var canUseNetwork = new CheckBox
-            {
-                Content   = AppText.Get("FocusProgramCanUseNetwork"),
-                IsChecked = offer != ProgramOffer.RunOnly && entry.CanUseNetwork,
-                IsEnabled = !locked && offer != ProgramOffer.RunOnly,
-            };
-            // Wired after the initial state is set, so drawing the row changes nothing.
-            canRun.Click += (_, _) => ChangeAllowedPrograms(list => FocusAllowedPrograms.SetCanRun(
-                list, program.Kind, program.Id, canRun.IsChecked == true, FocusSessionService.LeversAreLocked));
-            canUseNetwork.Click += (_, _) => ChangeAllowedPrograms(list => FocusAllowedPrograms.SetCanUseNetwork(
-                list, program.Kind, program.Id, canUseNetwork.IsChecked == true, FocusSessionService.LeversAreLocked));
-
-            var remove = new Button { Content = AppText.Get("FocusProgramRemove"), IsEnabled = !locked };
-            remove.Click += (_, _) => ChangeAllowedPrograms(
-                list => FocusAllowedPrograms.Remove(list, program.Kind, program.Id,
-                                                    FocusSessionService.LeversAreLocked));
-
-            string? runWhy = offer == ProgramOffer.NetworkOnly ? AppText.Get("FocusProgramWindowsRunInfo") : null;
-            string? networkWhy = offer != ProgramOffer.RunOnly ? null
-                : AppText.Get(entry.Kind == FocusProgramKind.WebApp
-                                  ? "FocusProgramWebAppNetworkInfo"
-                                  : "FocusProgramStoreNetworkInfo");
-
-            var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-            controls.Children.Add(WithReason(canRun, runWhy));
-            controls.Children.Add(WithReason(canUseNetwork, networkWhy));
-            controls.Children.Add(remove);
-
-            var icon = new ImageIcon { Width = 24, Height = 24 };
-            ProgramIconLoader.Request(entry.StartEntry ?? entry.Id, image => icon.Source = image);
-
-            FocusAllowedProgramsPanel.Children.Add(new SettingsCard
-            {
-                HeaderIcon  = icon,
-                Header      = ProgramNames.For(entry),
-                Description = ProgramCatalogue.IsPresent(entry)
-                    ? FocusAllowedPrograms.Describe(entry)
-                    : AppText.Get("FocusProgramNotFound"),
-                Content     = controls,
-            });
-        }
-    }
-
-    /// <summary>A disabled control shows no hover text of its own, so the reason sits on a
-    /// transparent frame around it.</summary>
-    private static FrameworkElement WithReason(Control control, string? reason)
-    {
-        if (reason is null) return control;
-        var frame = new Grid { Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent) };
-        frame.Children.Add(control);
-        ToolTipService.SetToolTip(frame, reason);
-        return frame;
-    }
-
-    /// <summary>Opens the picker and puts what comes back on the list, both checkboxes ticked. The
-    /// picker offers the Start menu's own programs, Store apps and web apps included.</summary>
-    private void OnFocusAllowProgram(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            new ProgramPickerWindow(chosen => DispatcherQueue.TryEnqueue(() => ChangeAllowedPrograms(
-                list => FocusAllowedPrograms.Add(list, chosen.ToEntry(), FocusSessionService.LeversAreLocked))))
-                .Activate();
-        }
-        catch (Exception ex) { AppLog.Error("FocusSettingsPanel.OnFocusAllowProgram", ex); }
-    }
-
-    /// <summary>Runs one change against a copy and writes the list back only where it moved, so a
-    /// refusal leaves the document untouched and says why.</summary>
-    private void ChangeAllowedPrograms(Func<IList<FocusProgramEntry>, FocusAllowVerdict> change)
-    {
-        var list = SettingsService.Read(s => NamedSessions.InUse(s).Programs.ToList());
-        var verdict = change(list);
-
-        if (verdict is FocusAllowVerdict.Added or FocusAllowVerdict.Removed or FocusAllowVerdict.Changed)
-            SettingsService.Update(s => NamedSessions.InUse(s).Programs = list);
-
-        FocusAllowRefusalText.Text = Refusal(verdict);
-        FocusAllowRefusalText.Visibility = FocusAllowRefusalText.Text.Length > 0
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        Reload();
-    }
-
-    /// <summary>Why the list did not move, in the words of whoever pressed the button. Nothing for a
-    /// change that landed.</summary>
-    private static string Refusal(FocusAllowVerdict verdict) => verdict switch
-    {
-        FocusAllowVerdict.SessionRunning => AppText.Get("FocusProgramsRefusalSessionRunning"),
-        FocusAllowVerdict.NotAProgram    => AppText.Get("FocusProgramsRefusalNotAProgram"),
-        FocusAllowVerdict.ListFull       => AppText.Format("FocusProgramsRefusalListFull", FocusAllowedPrograms.Maximum),
-        FocusAllowVerdict.AlreadyAllowed => AppText.Get("FocusProgramsRefusalAlreadyAllowed"),
-        FocusAllowVerdict.NotAllowed     => AppText.Get("FocusProgramsRefusalNotAllowed"),
-        FocusAllowVerdict.NotOffered     => AppText.Get("FocusProgramsRefusalNotOffered"),
-        _                                => "",
-    };
 
     private void OnFocusMinutesChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -250,12 +124,6 @@ public sealed partial class FocusSettingsPanel : UserControl
             ? FocusSessionKind.ProgramFocus
             : FocusSessionKind.ScreenBreak;
         SettingsService.Update(s => s.FocusSessionKind = kind);
-    }
-
-    private void OnFocusBlocksNetworkToggled(object sender, RoutedEventArgs e)
-    {
-        if (_updating) return;
-        SettingsService.Update(s => NamedSessions.InUse(s).BlocksNetwork = FocusBlocksNetworkToggle.IsOn);
     }
 
     private void OnFocusDimsScreenToggled(object sender, RoutedEventArgs e)
