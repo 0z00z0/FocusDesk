@@ -36,6 +36,7 @@ public class MqttEntityNamingTests
         "focusdesk_office_x1_focus_session",
         "focusdesk_office_x1_focus_session_minutes",
         "focusdesk_office_x1_focus_session_type",
+        "focusdesk_office_x1_focus_session_named_session",
         "focusdesk_office_x1_focus_session_dims_screen",
         "focusdesk_office_x1_focus_session_blocks_input",
         "focusdesk_office_x1_focus_session_state",
@@ -85,7 +86,7 @@ public class MqttEntityNamingTests
         // Two words, because every entity on the page carries both and the word is the longest form
         // they can all take. The master switch is named exactly that, so it is both the group's word
         // and the prefix the rest sort below.
-        new() { Group = MqttPublishGroups.Focus, Word = "Focus session" },
+        new() { Group = MqttPublishGroups.Focus, Word = "Focus session", Exceptions = ["Named session"] },
     ];
 
     [Fact]
@@ -126,14 +127,15 @@ public class MqttEntityNamingTests
             .ToList();
 
         Assert.Contains("Focus session", focus);
-        Assert.All(focus, name => Assert.StartsWith("Focus session", name, StringComparison.Ordinal));
+        Assert.All(focus.Where(name => name != "Named session"),
+                   name => Assert.StartsWith("Focus session", name, StringComparison.Ordinal));
     }
 
     [Fact]
     public void TheConfigurationRows_SortAsOneUninterruptedBlock()
     {
-        // All four are Configuration, and the receiver sorts a section by display name. Nothing
-        // else in that section leads with the word, so the four stand together.
+        // All five are Configuration, and the receiver sorts a section by display name, so the four
+        // that lead with the word stand together and the named session follows them.
         var configuration = MqttTestBed.Declared().All
             .Where(e => e.Category == MqttEntityCategory.Config)
             .Select(e => e.Name!)
@@ -142,7 +144,7 @@ public class MqttEntityNamingTests
 
         Assert.Equal(
             ["Focus session blocks input", "Focus session dims screen", "Focus session minutes",
-             "Focus session type"],
+             "Focus session type", "Named session"],
             configuration);
     }
 }

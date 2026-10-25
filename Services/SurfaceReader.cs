@@ -14,7 +14,9 @@ internal readonly record struct SurfaceState(
     int FocusSessionMinutes,
     bool FocusDimsScreen,
     bool FocusBlocksInput,
-    FocusSessionKind FocusKind = FocusSessionKind.ScreenBreak);
+    FocusSessionKind FocusKind = FocusSessionKind.ScreenBreak,
+    IReadOnlyList<string>? NamedSessionOptions = null,
+    string? NamedSession = null);
 
 /// <summary>What this machine can actually do. Announcing a control the machine cannot honour would
 /// leave the receiver with an entity that silently does nothing.</summary>
@@ -71,6 +73,11 @@ internal static class SurfaceReader
             FocusBlocksInput:      focus.IsRunning ? focus.BlocksInput : s.FocusBlocksInput,
             // A running session reports the kind it was started as; the stored default is the kind
             // the next session from Home Assistant runs as.
-            FocusKind:             focus.IsRunning ? focus.Kind : s.FocusSessionKind);
+            FocusKind:             focus.IsRunning ? focus.Kind : s.FocusSessionKind,
+            NamedSessionOptions:   NamedSessions.Options(s.NamedSessions),
+            // The running session's own named session while one runs on one, the one in use otherwise.
+            NamedSession:          NamedSessions.OptionOf(s.NamedSessions,
+                                       (focus.IsRunning ? NamedSessions.Find(s, focus.NamedSession) : null)?.Key
+                                       ?? NamedSessions.InUse(s).Key));
     }
 }
