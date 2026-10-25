@@ -28,6 +28,9 @@ internal sealed class NamedSession
 /// it, so every rule here may take the first entry.</summary>
 internal static class NamedSessions
 {
+    /// <summary>What a choice of the session in use came to.</summary>
+    public enum Choice { Chosen, SessionRunning, NotAnOption }
+
     public const int Maximum = 5;
 
     public const int NameLength = 20;
@@ -65,6 +68,38 @@ internal static class NamedSessions
             AppLog.Info("Focus: the running session's named session is no longer in the list, so the "
                       + "session in use is read instead.");
         return InUse(s);
+    }
+
+    /// <summary>One option per session in list order; a repeated name gets " (2)", " (3)" after its
+    /// first occurrence, so every option names exactly one session.</summary>
+    public static IReadOnlyList<string> Options(IEnumerable<NamedSession> sessions)
+    {
+        var seen = new Dictionary<string, int>(StringComparer.Ordinal);
+        var options = new List<string>();
+        foreach (var session in sessions)
+        {
+            int n = seen[session.Name] = seen.GetValueOrDefault(session.Name) + 1;
+            options.Add(n == 1 ? session.Name : $"{session.Name} ({n})");
+        }
+        return options;
+    }
+
+    /// <summary>The option naming the session with <paramref name="key"/>, or null where none does.</summary>
+    public static string? OptionOf(IReadOnlyList<NamedSession> sessions, string? key)
+    {
+        int index = sessions.ToList().FindIndex(n => n.Key == key);
+        return index < 0 ? null : Options(sessions)[index];
+    }
+
+    /// <summary>Marks the session an option names as in use, refused while a session runs.</summary>
+    public static Choice Choose(AppSettings s, string option, bool sessionRunning)
+    {
+        ArgumentNullException.ThrowIfNull(s);
+        if (sessionRunning) return Choice.SessionRunning;
+        int index = Options(s.NamedSessions).ToList().IndexOf(option);
+        if (index < 0) return Choice.NotAnOption;
+        s.SelectedNamedSession = s.NamedSessions[index].Key;
+        return Choice.Chosen;
     }
 
     /// <summary>A name as stored: trimmed, capped, and the previous one where the edit is blank.</summary>

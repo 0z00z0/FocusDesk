@@ -26,6 +26,10 @@ internal interface ISettingsActions
     /// runs.</summary>
     void SetFocusSessionKind(FocusSessionKind kind);
 
+    /// <summary>Which named session the next Program focus session from MQTT runs on, by its published
+    /// option. Refused while one runs.</summary>
+    void SetFocusNamedSession(string option);
+
     /// <summary>Whether the next screen break dims the screen. Refused while one runs.</summary>
     void SetFocusDimsScreen(bool on);
 
@@ -68,6 +72,18 @@ internal sealed class MqttCommandActions : ISettingsActions
 
     public void SetFocusSessionKind(FocusSessionKind kind) => WriteUnlessSessionRunning(
         s => s.FocusSessionKind = kind, "the kind of session");
+
+    public void SetFocusNamedSession(string option)
+    {
+        bool running = FocusSessionService.LeversAreLocked;
+        var choice = NamedSessions.Choice.NotAnOption;
+        SettingsService.Update(s => choice = NamedSessions.Choose(s, option, running));
+        if (choice != NamedSessions.Choice.Chosen)
+            AppLog.Info(choice == NamedSessions.Choice.SessionRunning
+                ? "Focus: the named session cannot change while a session is running."
+                : "Focus: the chosen named session is no longer in the list.");
+        Raise();
+    }
 
     public void SetFocusDimsScreen(bool on) => WriteUnlessSessionRunning(
         s => s.FocusDimsScreen = on, "which lever dims the screen");

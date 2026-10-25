@@ -9,7 +9,7 @@ using ZeroZero.Mqtt.Discovery;
 namespace FocusDesk.Tests;
 
 /// <summary>
-/// The published surface as a declaration: the nine entity ids, the component each is announced
+/// The published surface as a declaration: the ten entity ids, the component each is announced
 /// under, and the discovery keys that decide how a receiver draws it.
 /// </summary>
 /// <remarks>
@@ -43,6 +43,8 @@ public class MqttEntityCatalogTests
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:timer-outline", Unit: "min"),
         new(MqttEntityCatalog.FocusSessionType, "select", "Focus session type",
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:shape-outline"),
+        new(MqttEntityCatalog.FocusSessionNamedSession, "select", "Named session",
+            MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:playlist-check"),
         new(MqttEntityCatalog.FocusSessionDimsScreen, "switch", "Focus session dims screen",
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:brightness-2"),
         new(MqttEntityCatalog.FocusSessionBlocksInput, "switch", "Focus session blocks input",
@@ -79,13 +81,13 @@ public class MqttEntityCatalogTests
                    entity => Assert.False(string.IsNullOrWhiteSpace(entity.Description), entity.EntityId));
 
     [Fact]
-    public void TheTable_HoldsExactlyTheNineEntitiesTheAppPublishes() =>
+    public void TheTable_HoldsExactlyTheTenEntitiesTheAppPublishes() =>
         Assert.Equal(
             _table.Select(r => r.EntityId).Order(StringComparer.Ordinal),
             MqttTestBed.Declared().All.Select(e => e.EntityId).Order(StringComparer.Ordinal));
 
     [Fact]
-    public void TheEntityMix_IsThreeSwitchesTwoSensorsTwoNumbersASelectAndAButton()
+    public void TheEntityMix_IsThreeSwitchesTwoSensorsTwoNumbersTwoSelectsAndAButton()
     {
         var byPlatform = MqttTestBed.Declared().All
             .GroupBy(e => e.Platform)
@@ -94,7 +96,7 @@ public class MqttEntityCatalogTests
         Assert.Equal(
             new Dictionary<string, int>(StringComparer.Ordinal)
             {
-                ["switch"] = 3, ["sensor"] = 2, ["number"] = 2, ["select"] = 1, ["button"] = 1,
+                ["switch"] = 3, ["sensor"] = 2, ["number"] = 2, ["select"] = 2, ["button"] = 1,
             },
             byPlatform);
     }
@@ -129,6 +131,20 @@ public class MqttEntityCatalogTests
         Assert.Equal(["FocusSessionKind=ScreenBreak"], actions.Calls);
         Assert.Equal("Program focus",
                      Assert.IsType<MqttSelect>(set.Find(MqttEntityCatalog.FocusSessionType)).Read());
+    }
+
+    /// <summary>The select's refusal is what keeps a running session on the list it started with.</summary>
+    [Fact]
+    public void TheNamedSessionSelect_RefusesAChangeWhileASessionRuns()
+    {
+        var settings = new AppSettings { NamedSessions = [NamedSession.Create("Writing"), NamedSession.Create("Writing")] };
+        settings.SelectedNamedSession = settings.NamedSessions[0].Key;
+
+        Assert.Equal(NamedSessions.Choice.SessionRunning, NamedSessions.Choose(settings, "Writing (2)", sessionRunning: true));
+        Assert.Equal(settings.NamedSessions[0].Key, settings.SelectedNamedSession);
+
+        Assert.Equal(NamedSessions.Choice.Chosen, NamedSessions.Choose(settings, "Writing (2)", sessionRunning: false));
+        Assert.Equal(settings.NamedSessions[1].Key, settings.SelectedNamedSession);
     }
 
     [Theory]

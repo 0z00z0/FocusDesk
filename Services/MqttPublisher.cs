@@ -108,6 +108,11 @@ internal sealed class MqttPublisher : IDisposable
         FocusSessionService.Changed += PublishSurfaceNow;
         ScreenBrightnessService.Changed += PublishSurfaceNow;
 
+        // The named-session select's options are announced, not published, so a changed list is re-announced.
+        _namedSessionOptions = CurrentNamedSessionOptions();
+        SettingsService.Changed  += RepublishWhenNamedSessionsMove;
+        SettingsService.Reloaded += RepublishWhenNamedSessionsMove;
+
         // Every broker edit the panel commits comes back through here, and Apply is idempotent, so a
         // change that leaves the projection identical costs nothing and never bounces the socket.
         _settings.Changed += OnSettingsChanged;
@@ -192,6 +197,8 @@ internal sealed class MqttPublisher : IDisposable
 
         _surfaceTimer.Dispose();
         _settings.Changed -= OnSettingsChanged;
+        SettingsService.Changed  -= RepublishWhenNamedSessionsMove;
+        SettingsService.Reloaded -= RepublishWhenNamedSessionsMove;
         FocusSessionService.Changed -= PublishSurfaceNow;
         ScreenBrightnessService.Changed -= PublishSurfaceNow;
         if (_ownSettingsActions is { } own) own.Changed -= PublishSurfaceNow;
@@ -210,6 +217,17 @@ internal sealed class MqttPublisher : IDisposable
             : MqttSettings.DefaultDiscoveryPrefix;
 
     private void OnSettingsChanged() => ApplyConnection();
+
+    private string _namedSessionOptions = "";
+
+    private static string CurrentNamedSessionOptions() =>
+        SettingsService.Read(s => string.Join('\n', NamedSessions.Options(s.NamedSessions)));
+
+    private void RepublishWhenNamedSessionsMove()
+    {
+        string options = CurrentNamedSessionOptions();
+        if (Interlocked.Exchange(ref _namedSessionOptions, options) != options) Republish();
+    }
 
     private void OnCommandRefused(MqttCommandRefusal refusal) =>
         AppLog.Info($"MQTT: {Entities.NameOf(refusal.EntityId)} refused ({refusal.Outcome})"

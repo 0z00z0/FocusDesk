@@ -21,7 +21,7 @@ internal sealed record MqttEntitySources
 }
 
 /// <summary>
-/// FocusDesk's published surface: nine entities, their groups, their capability gates and the domain
+/// FocusDesk's published surface: ten entities, their groups, their capability gates and the domain
 /// seam each inbound command lands on. Pure — nothing here touches a broker or a settings singleton,
 /// so the same table composes in a test.
 /// </summary>
@@ -43,6 +43,7 @@ internal static class MqttEntityCatalog
     public const string FocusSession             = "focus_session";
     public const string FocusSessionMinutes      = "focus_session_minutes";
     public const string FocusSessionType         = "focus_session_type";
+    public const string FocusSessionNamedSession = "focus_session_named_session";
     public const string FocusSessionDimsScreen   = "focus_session_dims_screen";
     public const string FocusSessionBlocksInput  = "focus_session_blocks_input";
     public const string FocusSessionState        = "focus_session_state";
@@ -133,6 +134,21 @@ internal static class MqttEntityCatalog
                 Apply = option => FocusSessionKinds.FromOption(option) is { } kind
                     ? MqttCommandVerdict.Accept(() => set.SetFocusSessionKind(kind))
                     : MqttCommandVerdict.NotAnOption($"'{option}' names no kind of session."),
+            },
+            new MqttSelect
+            {
+                // Options follow the named-session list; a write is refused while a session runs and the
+                // running session's name reflects back. It never changes the kind.
+                EntityId = FocusSessionNamedSession, Name = "Named session",
+                Group = MqttPublishGroups.Focus,
+                Description = "Chooses which named session, with its own programs and network block, the "
+                            + "next Program focus session uses; it cannot be changed while a session runs "
+                            + "and then shows the name of the running session.",
+                Category = MqttEntityCategory.Config, Icon = "mdi:playlist-check",
+                Debounce = MqttConnection.ReflectDebounce,
+                Options = () => surface()?.NamedSessionOptions ?? [],
+                Read = () => surface()?.NamedSession,
+                Apply = option => MqttCommandVerdict.Accept(() => set.SetFocusNamedSession(option)),
             },
             new MqttSwitch
             {
