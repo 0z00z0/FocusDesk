@@ -288,11 +288,8 @@ internal sealed partial class StatusWindow : Window
         var shown = offered ? Visibility.Visible : Visibility.Collapsed;
         KindChoices.Visibility = shown;
         StartRow.Visibility = shown;
-        if (!offered)
-        {
-            GoalBox.Visibility = NamedSessionChoices.Visibility = Visibility.Collapsed;
-            return;
-        }
+        SessionDetailCell.Visibility = shown;
+        if (!offered) return;
 
         FocusLengthChoices.Fill(MinutesCombo, minutes);
 
@@ -325,8 +322,25 @@ internal sealed partial class StatusWindow : Window
         bool programFocus = _chosenKind == FocusSessionKind.ProgramFocus;
         ProgramFocusChoice.Style = programFocus ? _accentStyle : null;
         ScreenBreakChoice.Style  = programFocus ? null : _accentStyle;
-        NamedSessionChoices.Visibility = programFocus ? Visibility.Visible : Visibility.Collapsed;
-        GoalBox.Visibility             = programFocus ? Visibility.Collapsed : Visibility.Visible;
+        // Neither is collapsed: the shared cell keeps the taller one's height in both modes.
+        ShowInCell(NamedSessionChoices, programFocus);
+        ShowInCell(GoalBox, !programFocus);
+        foreach (var button in SessionButtons()) Reachable(button, programFocus);
+        Reachable(GoalBox, !programFocus);
+    }
+
+    private static void ShowInCell(UIElement element, bool shown)
+    {
+        element.Opacity          = shown ? 1 : 0;
+        element.IsHitTestVisible = shown;
+    }
+
+    private static void Reachable(Control control, bool shown)
+    {
+        control.IsTabStop = shown;
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAccessibilityView(control,
+            shown ? Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Content
+                  : Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
     }
 
     private IEnumerable<ToggleButton> SessionButtons() =>
@@ -346,6 +360,9 @@ internal sealed partial class StatusWindow : Window
             NamedSessionChoices.RowSpacing    = PresetButtonLayout.Spacing;
             ApplyCheckedChipResources(NamedSessionChoices);
 
+            // The card's control shape, with no side inset: five buttons leave room for eight characters.
+            var shape = RootGrid.Resources;
+            var padding = (Thickness)shape["SessionControlPadding"];
             foreach (var (key, name, runs) in sessions)
             {
                 var button = new ToggleButton
@@ -354,6 +371,11 @@ internal sealed partial class StatusWindow : Window
                     Style               = (Style)Application.Current.Resources["QuickButtonStyle"],
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     VerticalAlignment   = VerticalAlignment.Stretch,
+                    MinHeight           = (double)shape["SessionControlHeight"],
+                    FontSize            = (double)shape["SessionControlFontSize"],
+                    Padding             = new Thickness(0, padding.Top, 0, padding.Bottom),
+                    BorderThickness     = (Thickness)shape["SessionControlBorder"],
+                    CornerRadius        = (CornerRadius)shape["SessionControlCornerRadius"],
                     IsEnabled           = runs && !FocusSessionService.IsRunning,
                     // Wrapped, never cut short: a long name takes another line.
                     Content = new TextBlock { Text = name, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center },
