@@ -409,6 +409,54 @@
     <value>Done — back to work</value>
     <comment>Line on the focus-point cover when the countdown reaches its end, no full stop.</comment>
   </data>
+  <data name="StartingWorking" xml:space="preserve">
+    <value>Applications are starting and being arranged. Please wait until the process is complete.</value>
+    <comment>Line at the top of the starting window while programs open, two whole sentences.</comment>
+  </data>
+  <data name="StartingCompleted" xml:space="preserve">
+    <value>Completed.</value>
+    <comment>First word of the starting window's line once every program is tried, shown in bold, with its full stop.</comment>
+  </data>
+  <data name="StartingAllStarted" xml:space="preserve">
+    <value>All applications are started and arranged.</value>
+    <comment>Follows Completed when no program failed, whole sentence.</comment>
+  </data>
+  <data name="StartingOneFailed" xml:space="preserve">
+    <value>One application could not be started.</value>
+    <comment>Follows Completed when exactly one program failed, whole sentence.</comment>
+  </data>
+  <data name="StartingManyFailed" xml:space="preserve">
+    <value>{0} applications could not be started.</value>
+    <comment>Follows Completed when more than one program failed; {0} is the count, whole sentence.</comment>
+  </data>
+  <data name="StartingClose" xml:space="preserve">
+    <value>Close</value>
+    <comment>Button that closes the starting window and its cover, verb.</comment>
+  </data>
+  <data name="StartingWaiting" xml:space="preserve">
+    <value>waiting</value>
+    <comment>State beside a program in the starting window before it is tried, lower case.</comment>
+  </data>
+  <data name="StartingStarted" xml:space="preserve">
+    <value>started</value>
+    <comment>State beside a program in the starting window once its process appeared, lower case.</comment>
+  </data>
+  <data name="StartingAlreadyOpen" xml:space="preserve">
+    <value>already open</value>
+    <comment>State beside a program that was open before the start and was left alone, lower case.</comment>
+  </data>
+  <data name="StartingNotInStartMenu" xml:space="preserve">
+    <value>not found in the Start menu</value>
+    <comment>Failure beside a program whose Start menu entry is gone, lower case.</comment>
+  </data>
+  <data name="StartingFileMissing" xml:space="preserve">
+    <value>the program file is missing</value>
+    <comment>Failure beside a program whose file is gone, lower case.</comment>
+  </data>
+  <data name="StartingDidNotStart" xml:space="preserve">
+    <value>did not start within 20 seconds</value>
+    <comment>Failure beside a program whose process did not appear within 20 seconds, lower case.</comment>
+  </data>
   <data name="UnattendedUpdatesHeader" xml:space="preserve">
     <value>Install updates by themselves</value>
     <comment>Header of the switch on the About page, imperative phrase.</comment>

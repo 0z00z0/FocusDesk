@@ -95,6 +95,7 @@ public partial class App : Application
             ScreenCoverService.Start(DispatcherQueue.GetForCurrentThread(),
                                      () => FocusSessionService.Current,
                                      () => SettingsService.Read(s => s.FocusCoverVisual));
+            StartingWindow.Start(DispatcherQueue.GetForCurrentThread());
 
             // No window before the shell holds the icon; failing, the report ends without a hold marker so the watchdog probe retries.
             var started = await TrayIconHost.StartAsync(Shutdown);

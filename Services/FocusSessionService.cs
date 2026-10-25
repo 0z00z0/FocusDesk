@@ -126,8 +126,10 @@ internal static class FocusSessionService
                                    string? namedSession)
     {
         if (!ProgramStartRules.Opens(kind, mode, how)) return;
-        ProgramStarter.Run(SettingsService.Read(s =>
-            NamedSessions.Find(s, namedSession)?.Programs.Where(p => p.StartWithSession).ToList() ?? []));
+        if (ProgramStarter.Run(SettingsService.Read(s =>
+                NamedSessions.Find(s, namedSession)?.Programs.Where(p => p.StartWithSession).ToList() ?? []))
+            is { } run)
+            UI.StartingWindow.Show(run);
     }
 
     /// <summary>What the focus-app lever decides against, read when a session arms or resumes: the

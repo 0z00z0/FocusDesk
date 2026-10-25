@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Window
+    x:Class="FocusDesk.UI.StartingWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop Kind="BaseAlt" />
+    </Window.SystemBackdrop>
+
+    <!-- Every text on this window is set from the resource files in code. -->
+    <Grid Padding="20" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" x:Name="MessageText"
+                   FontSize="14" TextWrapping="Wrap"
+                   Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+
+        <ProgressBar Grid.Row="1" x:Name="Progress" Minimum="0"/>
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="ProgramList" Spacing="4"/>
+        </ScrollViewer>
+
+        <Button Grid.Row="3" x:Name="CloseButton"
+                HorizontalAlignment="Right"
+                Visibility="Collapsed"
+                Style="{StaticResource AccentButtonStyle}"
+                Click="OnCloseButton"/>
+    </Grid>
+</Window>
