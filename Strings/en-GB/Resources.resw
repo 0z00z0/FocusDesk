@@ -154,6 +154,10 @@
     <value>open</value>
     <comment>Marks a row whose program is running now, adjective, lower case.</comment>
   </data>
+  <data name="PickerRunningNow" xml:space="preserve">
+    <value>Running now</value>
+    <comment>Heading above the programs open now at the top of the picker's list, short phrase.</comment>
+  </data>
   <data name="PickerCancel" xml:space="preserve">
     <value>Cancel</value>
     <comment>Button that closes the picker without adding, imperative.</comment>
@@ -517,6 +521,14 @@
   <data name="NamedSessionAddFullInfo" xml:space="preserve">
     <value>Five named sessions is as many as the list takes.</value>
     <comment>Hover text on the greyed Add button at five sessions.</comment>
+  </data>
+  <data name="NamedSessionSaveOpen" xml:space="preserve">
+    <value>Save open programs as a new session</value>
+    <comment>Button beside "Add a named session" that makes a session from the programs open now, imperative.</comment>
+  </data>
+  <data name="NamedSessionSaveOpenLeftOut" xml:space="preserve">
+    <value>{0} open programs were left out: a session holds at most 20.</value>
+    <comment>Line on the new session when more than 20 programs were open; {0} is how many were left out, always plural.</comment>
   </data>
   <data name="NamedSessionSummaryStart" xml:space="preserve">
     <value>{0} start with the session</value>

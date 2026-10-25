@@ -13,8 +13,9 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
 {
     private readonly PresetRows.Section _list;
     private readonly List<(Control Control, Func<bool> WhenUnlocked)> _lockables = [];
-    private readonly Dictionary<string, (SettingsExpander Row, TextBox Name)> _rows = [];
+    private readonly Dictionary<string, (SettingsExpander Row, TextBox Name, TextBlock Error)> _rows = [];
     private bool _watching;
+    private bool _saving;
 
     public ProgramFocusSettingsPanel()
     {
@@ -23,6 +24,7 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         NamedSessionsHeader.Heading = AppText.Get("NamedSessionsHeading");
         NamedSessionsDescriptionText.Text = AppText.Get("NamedSessionsDescription");
         AddNamedSessionButton.Content = AppText.Get("NamedSessionAdd");
+        SaveOpenProgramsButton.Content = AppText.Get("NamedSessionSaveOpen");
 
         _list = new PresetRows.Section
         {
@@ -73,6 +75,7 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
 
         bool full = SettingsService.Read(s => s.NamedSessions.Count) >= NamedSessions.Maximum;
         AddNamedSessionButton.IsEnabled = !locked && !full;
+        SaveOpenProgramsButton.IsEnabled = !locked && !full && !_saving;
         ToolTipService.SetToolTip(AddNamedSessionFrame, full ? AppText.Get("NamedSessionAddFullInfo") : null);
         _list.RefreshActivation();
     }
@@ -147,7 +150,7 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         _lockables.Add((addProgram, () => true));
         _lockables.Add((modeBox, () => true));
         _lockables.Add((row.Delete, () => !last));
-        _rows[key] = (row.Expander, nameBox);
+        _rows[key] = (row.Expander, nameBox, row.Error);
         return row.Expander;
     }
 
@@ -276,9 +279,11 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
     {
         try
         {
+            var listed = SettingsService.Read(s => NamedSessions.Find(s, key)?.Programs.Select(p => (p.Kind, p.Id)).ToList()) ?? [];
             new ProgramPickerWindow(chosen => DispatcherQueue.TryEnqueue(() => ChangePrograms(
                 key, verdict => ShowRefusal(row, verdict),
-                list => FocusAllowedPrograms.Add(list, chosen.ToEntry(), FocusSessionService.LeversAreLocked))))
+                list => FocusAllowedPrograms.Add(list, chosen.ToEntry(), FocusSessionService.LeversAreLocked))),
+                listed, Enum.GetValues<FocusProgramKind>())
                 .Activate();
         }
         catch (Exception ex) { AppLog.Error("ProgramFocusSettingsPanel.PickProgram", ex); }
@@ -323,8 +328,46 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         SettingsService.Update(s => added = NamedSessions.Add(s, AppText.Get("NamedSessionNewName"))?.Key);
         if (added is null) { ApplySessionLock(); return; }
 
-        ReloadKeepingOpen(added);
-        if (_rows.TryGetValue(added, out var row))
+        OpenWithNameFocused(added);
+    }
+
+    /// <summary>Adds a session in "Open marked, allow only listed" holding the programs open now, in
+    /// window order, at most a full list.</summary>
+    private async void OnSaveOpenPrograms(object sender, RoutedEventArgs e)
+    {
+        if (FocusSessionService.LeversAreLocked || _saving) { ApplySessionLock(); return; }
+        _saving = true;
+        ApplySessionLock();
+        try
+        {
+            var open = ProgramCatalogue.OpenNow(await ProgramCatalogue.BuildAsync(), ProgramCatalogue.OpenWindows());
+            if (FocusSessionService.LeversAreLocked) return;
+
+            string? added = null;
+            SettingsService.Update(s => added = NamedSessions.AddFrom(
+                s, AppText.Get("NamedSessionNewName"),
+                open.Take(FocusAllowedPrograms.Maximum).Select(c => c.ToEntry()))?.Key);
+            if (added is null) return;
+
+            OpenWithNameFocused(added);
+            if (open.Count > FocusAllowedPrograms.Maximum && _rows.TryGetValue(added, out var row))
+            {
+                row.Error.Text = AppText.Format("NamedSessionSaveOpenLeftOut", open.Count - FocusAllowedPrograms.Maximum);
+                row.Error.Visibility = Visibility.Visible;
+            }
+        }
+        catch (Exception ex) { AppLog.Error("ProgramFocusSettingsPanel.SaveOpenPrograms", ex); }
+        finally
+        {
+            _saving = false;
+            ApplySessionLock();
+        }
+    }
+
+    private void OpenWithNameFocused(string key)
+    {
+        ReloadKeepingOpen(key);
+        if (_rows.TryGetValue(key, out var row))
             row.Name.Loaded += (_, _) => { row.Name.Focus(FocusState.Programmatic); row.Name.SelectAll(); };
     }
 

@@ -52,6 +52,46 @@
                       DoubleTapped="OnListDoubleTapped"
                       SelectionChanged="OnListSelectionChanged"
                       ContainerContentChanging="OnRowComingIntoView">
+                <ListView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <ItemsStackPanel AreStickyGroupHeadersEnabled="False"/>
+                    </ItemsPanelTemplate>
+                </ListView.ItemsPanel>
+                <!-- Open programs come first under their heading; the second group's header is the
+                     divider line before the rest. -->
+                <ListView.GroupStyle>
+                    <GroupStyle>
+                        <GroupStyle.HeaderContainerStyle>
+                            <Style TargetType="ListViewHeaderItem">
+                                <Setter Property="MinHeight" Value="0"/>
+                                <Setter Property="Padding" Value="12,8,12,4"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListViewHeaderItem">
+                                            <ContentPresenter Padding="{TemplateBinding Padding}"
+                                                              Content="{TemplateBinding Content}"
+                                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </GroupStyle.HeaderContainerStyle>
+                        <GroupStyle.HeaderTemplate>
+                            <DataTemplate x:DataType="ui:ProgramPickerGroup">
+                                <Grid>
+                                    <TextBlock Text="{x:Bind Heading}" Visibility="{x:Bind HasHeading}"
+                                               FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <Border Height="1" Visibility="{x:Bind IsDivider}"
+                                            VerticalAlignment="Center"
+                                            Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </GroupStyle.HeaderTemplate>
+                    </GroupStyle>
+                </ListView.GroupStyle>
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="ui:ProgramPickerRow">
                         <Grid Margin="0,2" ColumnSpacing="10">

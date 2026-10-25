@@ -126,6 +126,19 @@ internal static class NamedSessions
         return session;
     }
 
+    /// <summary>Adds a session that opens <paramref name="programs"/> and lets only them run: each
+    /// ticked "can run" and "start with the session", duplicates and anything past
+    /// <see cref="FocusAllowedPrograms.Maximum"/> dropped. Null at <see cref="Maximum"/>.</summary>
+    public static NamedSession? AddFrom(AppSettings s, string baseName, IEnumerable<FocusProgramEntry> programs)
+    {
+        if (Add(s, baseName) is not { } session) return null;
+
+        session.Mode = ProgramFocusMode.OpenMarkedAllowListed;
+        foreach (var program in programs)
+            FocusAllowedPrograms.Add(session.Programs, program with { CanRun = true, StartWithSession = true }, false);
+        return session;
+    }
+
     /// <summary>Removes a session, never the last one; deleting the one in use moves "In use" to the
     /// first remaining.</summary>
     public static bool Delete(AppSettings s, string key)
