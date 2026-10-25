@@ -33,6 +33,10 @@ internal interface ISettingsActions
     /// option. Refused while one runs.</summary>
     void SetFocusNamedSession(string option);
 
+    /// <summary>The mode of the named session in use. While a session runs it changes the running
+    /// session's mode in the grace period and is refused at any other time.</summary>
+    void SetProgramFocusMode(ProgramFocusMode mode, string entityId);
+
     /// <summary>Whether the next screen break dims the screen. Refused while one runs.</summary>
     void SetFocusDimsScreen(bool on);
 
@@ -88,6 +92,19 @@ internal sealed class MqttCommandActions : ISettingsActions
             AppLog.Info(choice == NamedSessions.Choice.SessionRunning
                 ? "Focus: the named session cannot change while a session is running."
                 : "Focus: the chosen named session is no longer in the list.");
+        Raise();
+    }
+
+    // While a session runs the engine decides: it accepts a change only in the grace period.
+    public void SetProgramFocusMode(ProgramFocusMode mode, string entityId)
+    {
+        if (FocusSessionService.LeversAreLocked)
+        {
+            var outcome = FocusSessionService.ChangeMode(mode, ActionCause.HomeAssistant(entityId));
+            if (outcome is not (FocusGraceChange.Changed or FocusGraceChange.Unchanged))
+                AppLog.Info($"Focus: the mode could not change while a session is running ({outcome}).");
+        }
+        else SettingsService.Update(s => NamedSessions.InUse(s).Mode = mode);
         Raise();
     }
 

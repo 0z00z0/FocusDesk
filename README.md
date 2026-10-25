@@ -48,8 +48,8 @@ was started by hand or by itself.
 ## Home Assistant
 
 FocusDesk connects to an MQTT server and appears in Home Assistant as one device carrying the
-session switch, its length, the kind of session it starts, a switch per optional lever, the
-session's state, its remaining time and the screen brightness. The server is set on the MQTT page in
+session switch, its length, the kind of session it starts, the named session and the mode Program
+focus runs in, a switch per optional lever, the session's state, its remaining time and the screen brightness. The server is set on the MQTT page in
 Settings. Each entity carries a one-sentence help text, in English, which a dashboard shows under the
 entity's name with `secondary_info: description` on an entities card or `state_content: description`
 on a tile card.
@@ -59,6 +59,12 @@ English whatever language FocusDesk runs in. The select "Named session" picks th
 Program focus runs on, and refuses a change while a session runs. Starting a Screen break is two
 calls in order: set "Focus session type", then turn the session switch on. Starting Program focus
 sets "Named session" between the two.
+
+The select "Program focus mode" shows and sets the mode of the named session in use, with the options
+"Allow only listed programs", "Open marked, allow only listed" and "Open marked, allow all others" in English
+whatever language FocusDesk runs in. A mode set while no session runs is the mode Settings shows. In the grace
+period after a start it changes the running session's mode only, and opens programs as the dashboard
+does; at any other time a change while a session runs is refused.
 
 ## Build
 

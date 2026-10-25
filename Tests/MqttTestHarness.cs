@@ -60,6 +60,9 @@ internal sealed class FakeSettingsActions : ISettingsActions
 
     public void SetFocusNamedSession(string option) => Calls.Add($"FocusNamedSession={option}");
 
+    public void SetProgramFocusMode(ProgramFocusMode mode, string entityId) =>
+        Record($"ProgramFocusMode={mode}", entityId);
+
     public void SetFocusDimsScreen(bool on) => Calls.Add($"FocusDimsScreen={on}");
 
     public void SetFocusBlocksInput(bool on) => Calls.Add($"FocusBlocksInput={on}");

@@ -38,6 +38,7 @@ public class MqttEntityNamingTests
         "focusdesk_office_x1_focus_session_type",
         "focusdesk_office_x1_focus_session_blocks_network",
         "focusdesk_office_x1_focus_session_named_session",
+        "focusdesk_office_x1_program_focus_mode",
         "focusdesk_office_x1_focus_session_dims_screen",
         "focusdesk_office_x1_focus_session_blocks_input",
         "focusdesk_office_x1_focus_session_state",
@@ -87,7 +88,7 @@ public class MqttEntityNamingTests
         // Two words, because every entity on the page carries both and the word is the longest form
         // they can all take. The master switch is named exactly that, so it is both the group's word
         // and the prefix the rest sort below.
-        new() { Group = MqttPublishGroups.Focus, Word = "Focus session", Exceptions = ["Named session"] },
+        new() { Group = MqttPublishGroups.Focus, Word = "Focus session", Exceptions = ["Named session", "Program focus mode"] },
     ];
 
     [Fact]
@@ -128,15 +129,15 @@ public class MqttEntityNamingTests
             .ToList();
 
         Assert.Contains("Focus session", focus);
-        Assert.All(focus.Where(name => name != "Named session"),
+        Assert.All(focus.Where(name => name is not ("Named session" or "Program focus mode")),
                    name => Assert.StartsWith("Focus session", name, StringComparison.Ordinal));
     }
 
     [Fact]
     public void TheConfigurationRows_SortAsOneUninterruptedBlock()
     {
-        // All six are Configuration, and the receiver sorts a section by display name, so the five
-        // that lead with the word stand together and the named session follows them.
+        // All seven are Configuration, and the receiver sorts a section by display name, so the five
+        // that lead with the word stand together and the named session and the mode follow them.
         var configuration = MqttTestBed.Declared().All
             .Where(e => e.Category == MqttEntityCategory.Config)
             .Select(e => e.Name!)
@@ -145,7 +146,7 @@ public class MqttEntityNamingTests
 
         Assert.Equal(
             ["Focus session blocks input", "Focus session blocks network", "Focus session dims screen",
-             "Focus session minutes", "Focus session type", "Named session"],
+             "Focus session minutes", "Focus session type", "Named session", "Program focus mode"],
             configuration);
     }
 }
