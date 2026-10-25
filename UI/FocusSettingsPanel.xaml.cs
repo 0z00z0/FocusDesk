@@ -28,6 +28,8 @@ public sealed partial class FocusSettingsPanel : UserControl
         FocusStatusCard.Description = AppText.Get("FocusStatusDescription");
         FocusLengthCard.Header = AppText.Get("FocusLengthHeader");
         FocusLengthCard.Description = AppText.Get("FocusLengthDescription");
+        FocusGraceCard.Header = AppText.Get("FocusGraceHeader");
+        FocusGraceCard.Description = AppText.Get("FocusGraceDescription");
         AutomaticSessionHeader.Heading = AppText.Get("AutomaticSessionSectionLabel");
         GuideCard.Header = AppText.Get("AutomaticSessionGuideHeader");
         GuideCard.Description = AppText.Get("AutomaticSessionGuideDescription");
@@ -91,6 +93,13 @@ public sealed partial class FocusSettingsPanel : UserControl
 
             FocusLengthChoices.Fill(FocusMinutesCombo, minutes);
 
+            FocusGraceCombo.Items.Clear();
+            foreach (int seconds in SettingsFile.FocusGraceChoices)
+                FocusGraceCombo.Items.Add(new ComboBoxItem { Content = AppText.Get($"FocusGraceChoice{seconds}"), Tag = seconds });
+            FocusGraceCombo.SelectedIndex = Array.IndexOf(SettingsFile.FocusGraceChoices,
+                SettingsService.Read(s => s.FocusGraceSeconds));
+            FocusGraceCombo.IsEnabled = !locked;
+
             // A running session shows the kind it was started as, which may not be the stored one:
             // the status window starts either kind without storing it.
             var shownKind = session.IsRunning ? session.Kind : kind;
@@ -117,6 +126,16 @@ public sealed partial class FocusSettingsPanel : UserControl
         if (FocusLengthChoices.Selected(FocusMinutesCombo) is not { } minutes) return;
 
         SettingsService.Update(s => s.FocusSessionMinutes = minutes);
+    }
+
+    private void OnFocusGraceChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updating) return;
+        if (FocusGraceCombo.SelectedItem is not ComboBoxItem { Tag: int seconds }) return;
+        // Checked at the moment of the write, as the kind is.
+        if (FocusSessionService.LeversAreLocked) { Reload(); return; }
+
+        SettingsService.Update(s => s.FocusGraceSeconds = seconds);
     }
 
     private void OnFocusKindChecked(object sender, RoutedEventArgs e)

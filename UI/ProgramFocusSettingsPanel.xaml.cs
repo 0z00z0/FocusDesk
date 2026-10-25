@@ -85,9 +85,17 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
             (running.IsRunning ? NamedSessions.Find(s, running.NamedSession) : null)?.Key ?? NamedSessions.InUse(s).Key);
     }
 
-    private static string Summary(NamedSession session) => session.Programs.Count == 1
-        ? AppText.Get("NamedSessionSummaryOne")
-        : AppText.Format("NamedSessionSummary", session.Programs.Count);
+    private static string Summary(NamedSession session)
+    {
+        int starts = session.Programs.Count(p => p.StartWithSession);
+        return string.Join(", ",
+            session.Programs.Count == 1
+                ? AppText.Get("NamedSessionSummaryOne")
+                : AppText.Format("NamedSessionSummary", session.Programs.Count),
+            starts == 1
+                ? AppText.Get("NamedSessionSummaryStartOne")
+                : AppText.Format("NamedSessionSummaryStart", starts));
+    }
 
     /// <summary>One session's row. Every commit looks the session up by its key, so a reload cannot
     /// leave a closure editing an orphaned copy.</summary>
@@ -98,9 +106,20 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         var nameBox = new TextBox { Text = session.Name, MinWidth = 220, MaxLength = NamedSessions.NameLength };
         var addProgram = new Button { Content = AppText.Get("FocusProgramsAddButton") };
 
+        var modeBox = new ComboBox { MinWidth = 260 };
+        foreach (var mode in ProgramFocusText.Modes)
+            modeBox.Items.Add(new ComboBoxItem { Content = ProgramFocusText.ModeName(mode), Tag = mode });
+        modeBox.SelectedIndex = Array.IndexOf(ProgramFocusText.Modes, session.Mode);
+        // Attached after the selection is set, so building the row writes nothing.
+        modeBox.SelectionChanged += (_, _) =>
+        {
+            if (modeBox.SelectedItem is ComboBoxItem { Tag: ProgramFocusMode chosen }) CommitMode(key, chosen);
+        };
+
         List<SettingsCard> cards =
         [
             new SettingsCard { Header = AppText.Get("NamedSessionNameHeader"), Content = nameBox },
+            new SettingsCard { Header = AppText.Get("NamedSessionModeHeader"), Content = modeBox },
             new SettingsCard
             {
                 Header      = AppText.Get("FocusProgramsHeader"),
@@ -126,20 +145,30 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         ToolTipService.SetToolTip(row.DeleteFrame, last ? AppText.Get("NamedSessionDeleteLastInfo") : null);
         _lockables.Add((nameBox, () => true));
         _lockables.Add((addProgram, () => true));
+        _lockables.Add((modeBox, () => true));
         _lockables.Add((row.Delete, () => !last));
         _rows[key] = (row.Expander, nameBox);
         return row.Expander;
     }
 
-    /// <summary>One card per program of the session: its icon and name, "can run" and Remove. For a
-    /// Windows program "can run" is disabled, with the reason on hover.</summary>
+    /// <summary>One card per program of the session: its icon and name, "can run", "start with the
+    /// session" and Remove. A tick the session's mode does not use is disabled and keeps its value, and
+    /// so is "can run" for a Windows program, each with the reason on hover.</summary>
     private IEnumerable<SettingsCard> ProgramCards(string key, Action<FocusAllowVerdict> refused)
     {
         string windows = WindowsPrograms.Folder;
-        foreach (var entry in SettingsService.Read(s => NamedSessions.Find(s, key)!.Programs.ToList()))
+        var (mode, programs) = SettingsService.Read(s =>
+        {
+            var session = NamedSessions.Find(s, key)!;
+            return (session.Mode, session.Programs.ToList());
+        });
+
+        foreach (var entry in programs)
         {
             var program = entry;
             var offer = ProgramCatalogue.OfferFor(entry, windows);
+            bool canRunUsed = mode != ProgramFocusMode.OpenMarkedAllowAll;
+            bool startUsed  = mode != ProgramFocusMode.AllowListed;
 
             var canRun = new CheckBox
             {
@@ -149,17 +178,29 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
             canRun.Click += (_, _) => ChangePrograms(key, refused, list => FocusAllowedPrograms.SetCanRun(
                 list, program.Kind, program.Id, canRun.IsChecked == true, FocusSessionService.LeversAreLocked));
 
+            var start = new CheckBox
+            {
+                Content   = AppText.Get("FocusProgramStartWithSession"),
+                IsChecked = entry.StartWithSession,
+            };
+            start.Click += (_, _) => ChangePrograms(key, refused, list => FocusAllowedPrograms.SetStartWithSession(
+                list, program.Kind, program.Id, start.IsChecked == true, FocusSessionService.LeversAreLocked));
+
             var remove = new Button { Content = AppText.Get("FocusProgramRemove") };
             remove.Click += (_, _) => ChangePrograms(key, refused, list => FocusAllowedPrograms.Remove(
                 list, program.Kind, program.Id, FocusSessionService.LeversAreLocked));
 
-            _lockables.Add((canRun, () => offer == ProgramOffer.Limitable));
+            _lockables.Add((canRun, () => canRunUsed && offer == ProgramOffer.Limitable));
+            _lockables.Add((start, () => startUsed));
             _lockables.Add((remove, () => true));
 
-            string? runWhy = offer == ProgramOffer.AlwaysUsable ? AppText.Get("FocusProgramWindowsRunInfo") : null;
+            string? runWhy = !canRunUsed ? AppText.Get("FocusProgramCanRunUnusedInfo")
+                : offer == ProgramOffer.AlwaysUsable ? AppText.Get("FocusProgramWindowsRunInfo") : null;
+            string? startWhy = startUsed ? null : AppText.Get("FocusProgramStartUnusedInfo");
 
             var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
             controls.Children.Add(WithReason(canRun, runWhy));
+            controls.Children.Add(WithReason(start, startWhy));
             controls.Children.Add(remove);
 
             var icon = new ImageIcon { Width = 24, Height = 24 };
@@ -202,6 +243,20 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         nameBox.Text = name;
         if (name == previous) return;
         Write(key, s => NamedSessions.Find(s, key)!.Name = name, row);
+    }
+
+    /// <summary>Saves the session's mode and builds its row again, so the ticks the mode does not use grey.</summary>
+    private void CommitMode(string key, ProgramFocusMode mode)
+    {
+        if (FocusSessionService.LeversAreLocked || SettingsService.Read(s => NamedSessions.Find(s, key)) is null)
+        {
+            DispatcherQueue.TryEnqueue(() => ReloadKeepingOpen(key));
+            return;
+        }
+        if (SettingsService.Read(s => NamedSessions.Find(s, key)!.Mode) == mode) return;
+
+        SettingsService.Update(s => { if (NamedSessions.Find(s, key) is { } session) session.Mode = mode; });
+        DispatcherQueue.TryEnqueue(() => ReloadKeepingOpen(key));
     }
 
     /// <summary>One write to one session, refused while a session runs, then the row's header and
@@ -284,6 +339,17 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
 /// <summary>Texts and brushes the program rows share.</summary>
 internal static class ProgramFocusText
 {
+    /// <summary>The modes in the order the list offers them.</summary>
+    public static readonly ProgramFocusMode[] Modes =
+        [ProgramFocusMode.AllowListed, ProgramFocusMode.OpenMarkedAllowListed, ProgramFocusMode.OpenMarkedAllowAll];
+
+    public static string ModeName(ProgramFocusMode mode) => mode switch
+    {
+        ProgramFocusMode.OpenMarkedAllowListed => AppText.Get("ProgramFocusModeOpenMarkedAllowListed"),
+        ProgramFocusMode.OpenMarkedAllowAll    => AppText.Get("ProgramFocusModeOpenMarkedAllowAll"),
+        _                                      => AppText.Get("ProgramFocusModeAllowListed"),
+    };
+
     /// <summary>Why the list did not move, in the words of whoever pressed the button.</summary>
     public static string Refusal(FocusAllowVerdict verdict) => verdict switch
     {

@@ -23,6 +23,12 @@
                       SelectionChanged="OnFocusMinutesChanged"/>
         </controls:SettingsCard>
 
+        <!-- Locked while a session runs. -->
+        <controls:SettingsCard x:Name="FocusGraceCard">
+            <ComboBox x:Name="FocusGraceCombo" MinWidth="110"
+                      SelectionChanged="OnFocusGraceChanged"/>
+        </controls:SettingsCard>
+
         <!-- The kind the session switch over MQTT starts, locked and showing the running kind while
              a session runs. -->
         <controls:SettingsCard x:Name="FocusKindCard">
