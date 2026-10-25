@@ -46,10 +46,6 @@ internal sealed class AppSettings
     /// input.</summary>
     public bool FocusBlocksInput { get; set; } = true;
 
-    /// <summary>Whether the status window offers a control that starts a session. It never offers one
-    /// that ends a session, whatever this holds: nothing on the machine ends one.</summary>
-    public bool FocusStartFromDashboard { get; set; } = true;
-
     /// <summary>Whether the status window's Start button opens the focus-point window first. Off, it
     /// arms the chosen session at once. Read when Start is pressed.</summary>
     public bool FocusPointShown { get; set; } = true;

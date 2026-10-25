@@ -574,14 +574,6 @@
     <value>Hvor lenge neste økt varer. Endres dette mens en økt kjører, gjelder det bare den neste.</value>
     <comment>Description under Length.</comment>
   </data>
-  <data name="FocusStartFromStatusHeader" xml:space="preserve">
-    <value>Start en økt fra statusvinduet</value>
-    <comment>Card heading for the switch that adds a Start button to the status window.</comment>
-  </data>
-  <data name="FocusStartFromStatusDescription" xml:space="preserve">
-    <value>Legger til en Start-knapp i statusvinduet. Den starter en økt; å avslutte en krever fortsatt en MQTT-kommando.</value>
-    <comment>Description under Start a session from the status window.</comment>
-  </data>
   <data name="FocusStuckHeading" xml:space="preserve">
     <value>Hvis en økt ikke vil slutte</value>
     <comment>Section heading above the published way out.</comment>

@@ -39,7 +39,6 @@ public class SettingsFileShapeTests : IDisposable
         "ConfigVersion",
         "Focus",
         "Focus.FocusSessionMinutes",
-        "Focus.FocusStartFromDashboard",
         "Focus.FocusPointShown",
         "Focus.FocusPointStartsSession",
         "Focus.FocusPointSeconds",
@@ -273,7 +272,7 @@ public class SettingsFileShapeTests : IDisposable
         s.FocusProgramsDefaultAction, s.FocusSessionBlockedNetwork,
         s.FocusDimsScreen, s.FocusCoverVisual, s.FocusSessionKind, s.FocusSessionRunningKind,
         s.FocusSessionLimitedPrograms,
-        s.FocusBlocksInput, s.FocusStartFromDashboard, s.FocusSessionStartedAt, s.FocusSessionEndsAt,
+        s.FocusBlocksInput, s.FocusSessionStartedAt, s.FocusSessionEndsAt,
         s.FocusSessionDimmedScreen, s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput,
         s.InstallUpdatesUnattended, s.FocusPointShown, s.FocusPointStartsSession, s.FocusPointSeconds,
         s.FocusSessionGoal);
