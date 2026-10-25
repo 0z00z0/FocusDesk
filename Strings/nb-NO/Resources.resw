@@ -651,8 +651,8 @@
     <comment>Second line under the MQTT page heading, whole sentence on one line.</comment>
   </data>
   <data name="MqttPublishDescription" xml:space="preserve">
-    <value>Publiserer fokusøkten og skjermen over MQTT.</value>
-    <comment>Description under the Publish to MQTT switch on the MQTT page.</comment>
+    <value>Publiserer fokusøkten og skjermen til en fjernstyringsserver.</value>
+    <comment>Description under the Remote control (MQTT) switch on the MQTT page.</comment>
   </data>
   <data name="ScreenBrightnessHeading" xml:space="preserve">
     <value>Lysstyrke</value>
