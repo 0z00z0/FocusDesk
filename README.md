@@ -5,13 +5,11 @@ A Windows tray application that holds the machine in a chosen state for a chosen
 
 A focus session runs for one duration and is one of two kinds, chosen when it starts:
 
-- **Program focus.** Only the programs ticked "Can run" can be worked in; every other program's
-  window is minimised.
+- **Program focus.** Runs on one of up to five named sessions. Only the programs the session ticks
+  "Can run" can be worked in; every other program's window is minimised. A named session can also
+  block every network connection except the MQTT broker and the programs it allows the network.
 - **Screen break.** Every display is covered with a black window. The mouse and keyboard can be
   blocked and the screen dimmed as well.
-
-Either kind can also block every network connection except the MQTT broker and a named list of
-programs.
 
 A session ends when its time runs out, or early from Home Assistant through a staged cancel. The
 machine itself offers no way to end one. FocusDesk does not defend against a determined
@@ -40,8 +38,10 @@ entity's name with `secondary_info: description` on an entities card or `state_c
 on a tile card.
 
 The kind is the select "Focus session type", with the options "Program focus" and "Screen break" in
-English whatever language FocusDesk runs in. Starting a given kind is two calls in order: set the
-select, then turn the session switch on.
+English whatever language FocusDesk runs in. The select "Named session" picks the named session
+Program focus runs on, and refuses a change while a session runs. Starting a Screen break is two
+calls in order: set "Focus session type", then turn the session switch on. Starting Program focus
+sets "Named session" between the two.
 
 ## Build
 
