@@ -21,7 +21,7 @@ internal sealed record MqttEntitySources
 }
 
 /// <summary>
-/// FocusDesk's published surface: eleven entities, their groups, their capability gates and the domain
+/// FocusDesk's published surface: twelve entities, their groups, their capability gates and the domain
 /// seam each inbound command lands on. Pure — nothing here touches a broker or a settings singleton,
 /// so the same table composes in a test.
 /// </summary>
@@ -45,6 +45,7 @@ internal static class MqttEntityCatalog
     public const string FocusSessionType         = "focus_session_type";
     public const string FocusSessionBlocksNetwork = "focus_session_blocks_network";
     public const string FocusSessionNamedSession = "focus_session_named_session";
+    public const string ProgramFocusModeId       = "program_focus_mode";
     public const string FocusSessionDimsScreen   = "focus_session_dims_screen";
     public const string FocusSessionBlocksInput  = "focus_session_blocks_input";
     public const string FocusSessionState        = "focus_session_state";
@@ -166,6 +167,24 @@ internal static class MqttEntityCatalog
                 Apply = option => surface()?.NamedSessionOptions is { } options && !options.Contains(option)
                     ? MqttCommandVerdict.NotAnOption($"'{option}' names no named session.")
                     : MqttCommandVerdict.Accept(() => set.SetFocusNamedSession(option)),
+            },
+            new MqttSelect
+            {
+                // Option words are fixed English. A write sets the saved mode with no session running,
+                // the running mode in the grace period, and is otherwise refused and reflected back.
+                EntityId = ProgramFocusModeId, Name = "Program focus mode",
+                Group = MqttPublishGroups.Focus,
+                Description = "Chooses whether Program focus opens the marked programs and whether it limits "
+                            + "the others, for the named session in use; during the grace period after a start "
+                            + "it changes the running session, and at any other time while one runs a change "
+                            + "is refused.",
+                Category = MqttEntityCategory.Config, Icon = "mdi:application-cog-outline",
+                Debounce = MqttConnection.ReflectDebounce,
+                Options = () => ProgramFocusModes.Options,
+                Read = () => surface() is { } v ? ProgramFocusModes.Option(v.ProgramFocusMode) : null,
+                Apply = option => ProgramFocusModes.FromOption(option) is { } mode
+                    ? MqttCommandVerdict.Accept(() => set.SetProgramFocusMode(mode, ProgramFocusModeId))
+                    : MqttCommandVerdict.NotAnOption($"'{option}' names no mode."),
             },
             new MqttSwitch
             {

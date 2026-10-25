@@ -9,7 +9,7 @@ using ZeroZero.Mqtt.Discovery;
 namespace FocusDesk.Tests;
 
 /// <summary>
-/// The published surface as a declaration: the eleven entity ids, the component each is announced
+/// The published surface as a declaration: the twelve entity ids, the component each is announced
 /// under, and the discovery keys that decide how a receiver draws it.
 /// </summary>
 /// <remarks>
@@ -47,6 +47,8 @@ public class MqttEntityCatalogTests
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:lan-disconnect"),
         new(MqttEntityCatalog.FocusSessionNamedSession, "select", "Named session",
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:playlist-check"),
+        new(MqttEntityCatalog.ProgramFocusModeId, "select", "Program focus mode",
+            MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:application-cog-outline"),
         new(MqttEntityCatalog.FocusSessionDimsScreen, "switch", "Focus session dims screen",
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:brightness-2"),
         new(MqttEntityCatalog.FocusSessionBlocksInput, "switch", "Focus session blocks input",
@@ -83,13 +85,13 @@ public class MqttEntityCatalogTests
                    entity => Assert.False(string.IsNullOrWhiteSpace(entity.Description), entity.EntityId));
 
     [Fact]
-    public void TheTable_HoldsExactlyTheElevenEntitiesTheAppPublishes() =>
+    public void TheTable_HoldsExactlyTheTwelveEntitiesTheAppPublishes() =>
         Assert.Equal(
             _table.Select(r => r.EntityId).Order(StringComparer.Ordinal),
             MqttTestBed.Declared().All.Select(e => e.EntityId).Order(StringComparer.Ordinal));
 
     [Fact]
-    public void TheEntityMix_IsFourSwitchesTwoSensorsTwoNumbersTwoSelectsAndAButton()
+    public void TheEntityMix_IsFourSwitchesTwoSensorsTwoNumbersThreeSelectsAndAButton()
     {
         var byPlatform = MqttTestBed.Declared().All
             .GroupBy(e => e.Platform)
@@ -98,7 +100,7 @@ public class MqttEntityCatalogTests
         Assert.Equal(
             new Dictionary<string, int>(StringComparer.Ordinal)
             {
-                ["switch"] = 4, ["sensor"] = 2, ["number"] = 2, ["select"] = 2, ["button"] = 1,
+                ["switch"] = 4, ["sensor"] = 2, ["number"] = 2, ["select"] = 3, ["button"] = 1,
             },
             byPlatform);
     }

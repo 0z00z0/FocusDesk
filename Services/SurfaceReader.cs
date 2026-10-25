@@ -17,7 +17,8 @@ internal readonly record struct SurfaceState(
     bool FocusBlocksInput,
     FocusSessionKind FocusKind = FocusSessionKind.ScreenBreak,
     IReadOnlyList<string>? NamedSessionOptions = null,
-    string? NamedSession = null);
+    string? NamedSession = null,
+    ProgramFocusMode ProgramFocusMode = ProgramFocusMode.AllowListed);
 
 /// <summary>What this machine can actually do. Announcing a control the machine cannot honour would
 /// leave the receiver with an entity that silently does nothing.</summary>
@@ -80,6 +81,10 @@ internal static class SurfaceReader
             // The running session's own named session while one runs on one, the one in use otherwise.
             NamedSession:          NamedSessions.OptionOf(s.NamedSessions,
                                        (focus.IsRunning ? NamedSessions.Find(s, focus.NamedSession) : null)?.Key
-                                       ?? NamedSessions.InUse(s).Key));
+                                       ?? NamedSessions.InUse(s).Key),
+            // A running Program focus session reports its own mode, which the grace period may have
+            // changed; otherwise the saved mode of the session in use.
+            ProgramFocusMode:      focus is { IsRunning: true, Kind: FocusSessionKind.ProgramFocus }
+                                       ? focus.Mode : NamedSessions.InUse(s).Mode);
     }
 }
