@@ -9,7 +9,7 @@ using ZeroZero.Mqtt.Discovery;
 namespace FocusDesk.Tests;
 
 /// <summary>
-/// The published surface as a declaration: the ten entity ids, the component each is announced
+/// The published surface as a declaration: the nine entity ids, the component each is announced
 /// under, and the discovery keys that decide how a receiver draws it.
 /// </summary>
 /// <remarks>
@@ -43,8 +43,6 @@ public class MqttEntityCatalogTests
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:timer-outline", Unit: "min"),
         new(MqttEntityCatalog.FocusSessionType, "select", "Focus session type",
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:shape-outline"),
-        new(MqttEntityCatalog.FocusSessionBlocksNetwork, "switch", "Focus session blocks network",
-            MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:lan-disconnect"),
         new(MqttEntityCatalog.FocusSessionDimsScreen, "switch", "Focus session dims screen",
             MqttPublishGroups.Focus, MqttEntityCategory.Config, Icon: "mdi:brightness-2"),
         new(MqttEntityCatalog.FocusSessionBlocksInput, "switch", "Focus session blocks input",
@@ -81,13 +79,13 @@ public class MqttEntityCatalogTests
                    entity => Assert.False(string.IsNullOrWhiteSpace(entity.Description), entity.EntityId));
 
     [Fact]
-    public void TheTable_HoldsExactlyTheTenEntitiesTheAppPublishes() =>
+    public void TheTable_HoldsExactlyTheNineEntitiesTheAppPublishes() =>
         Assert.Equal(
             _table.Select(r => r.EntityId).Order(StringComparer.Ordinal),
             MqttTestBed.Declared().All.Select(e => e.EntityId).Order(StringComparer.Ordinal));
 
     [Fact]
-    public void TheEntityMix_IsFourSwitchesTwoSensorsTwoNumbersASelectAndAButton()
+    public void TheEntityMix_IsThreeSwitchesTwoSensorsTwoNumbersASelectAndAButton()
     {
         var byPlatform = MqttTestBed.Declared().All
             .GroupBy(e => e.Platform)
@@ -96,7 +94,7 @@ public class MqttEntityCatalogTests
         Assert.Equal(
             new Dictionary<string, int>(StringComparer.Ordinal)
             {
-                ["switch"] = 4, ["sensor"] = 2, ["number"] = 2, ["select"] = 1, ["button"] = 1,
+                ["switch"] = 3, ["sensor"] = 2, ["number"] = 2, ["select"] = 1, ["button"] = 1,
             },
             byPlatform);
     }
@@ -115,6 +113,7 @@ public class MqttEntityCatalogTests
         var ids = MqttTestBed.Declared().All.Select(e => e.EntityId).ToList();
         Assert.DoesNotContain("focus_session_covers_screen", ids);
         Assert.DoesNotContain("focus_session_limits_programs", ids);
+        Assert.DoesNotContain("focus_session_blocks_network", ids);
     }
 
     [Fact]

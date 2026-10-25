@@ -478,4 +478,8 @@
     <value>Oppsettsveiledningen kunne ikke vises.</value>
     <comment>Line in the guide window when the embedded browser fails, whole sentence.</comment>
   </data>
+  <data name="NamedSessionDefaultName" xml:space="preserve">
+    <value>Standard</value>
+    <comment>Name written for the first named session at first start, stored as data from then on.</comment>
+  </data>
 </root>

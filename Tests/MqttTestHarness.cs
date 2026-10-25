@@ -56,8 +56,6 @@ internal sealed class FakeSettingsActions : ISettingsActions
 
     public void SetFocusSessionKind(FocusSessionKind kind) => Calls.Add($"FocusSessionKind={kind}");
 
-    public void SetFocusBlocksNetwork(bool on) => Calls.Add($"FocusBlocksNetwork={on}");
-
     public void SetFocusDimsScreen(bool on) => Calls.Add($"FocusDimsScreen={on}");
 
     public void SetFocusBlocksInput(bool on) => Calls.Add($"FocusBlocksInput={on}");
@@ -71,9 +69,9 @@ internal static class MqttTestBed
         int? screenBrightness = 70,
         FocusSessionStage focusStage = FocusSessionStage.Off, int? focusRemaining = null,
         int focusSessionMinutes = 60, bool focusDimsScreen = true,
-        bool focusBlocksInput = false, bool focusBlocksNetwork = false,
+        bool focusBlocksInput = false,
         FocusSessionKind focusKind = FocusSessionKind.ScreenBreak) =>
-        new(screenBrightness, focusStage, focusRemaining, focusSessionMinutes, focusBlocksNetwork,
+        new(screenBrightness, focusStage, focusRemaining, focusSessionMinutes,
             focusDimsScreen, focusBlocksInput, focusKind);
 
     /// <summary>The sources, with every reader answering the same snapshot every time.</summary>

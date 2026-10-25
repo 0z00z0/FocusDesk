@@ -36,7 +36,6 @@ public class MqttEntityNamingTests
         "focusdesk_office_x1_focus_session",
         "focusdesk_office_x1_focus_session_minutes",
         "focusdesk_office_x1_focus_session_type",
-        "focusdesk_office_x1_focus_session_blocks_network",
         "focusdesk_office_x1_focus_session_dims_screen",
         "focusdesk_office_x1_focus_session_blocks_input",
         "focusdesk_office_x1_focus_session_state",

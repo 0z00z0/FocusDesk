@@ -21,7 +21,7 @@ internal sealed record MqttEntitySources
 }
 
 /// <summary>
-/// FocusDesk's published surface: ten entities, their groups, their capability gates and the domain
+/// FocusDesk's published surface: nine entities, their groups, their capability gates and the domain
 /// seam each inbound command lands on. Pure — nothing here touches a broker or a settings singleton,
 /// so the same table composes in a test.
 /// </summary>
@@ -43,7 +43,6 @@ internal static class MqttEntityCatalog
     public const string FocusSession             = "focus_session";
     public const string FocusSessionMinutes      = "focus_session_minutes";
     public const string FocusSessionType         = "focus_session_type";
-    public const string FocusSessionBlocksNetwork = "focus_session_blocks_network";
     public const string FocusSessionDimsScreen   = "focus_session_dims_screen";
     public const string FocusSessionBlocksInput  = "focus_session_blocks_input";
     public const string FocusSessionState        = "focus_session_state";
@@ -85,7 +84,7 @@ internal static class MqttEntityCatalog
             },
 
             // ── Focus session ────────────────────────────────────────────────────────────────────
-            // The only way out. Nothing on the machine ends a session, so these six are the whole of
+            // The only way out. Nothing on the machine ends a session, so these are the whole of
             // the feature's remote surface and the only surface that ends one.
             new MqttSwitch
             {
@@ -134,20 +133,6 @@ internal static class MqttEntityCatalog
                 Apply = option => FocusSessionKinds.FromOption(option) is { } kind
                     ? MqttCommandVerdict.Accept(() => set.SetFocusSessionKind(kind))
                     : MqttCommandVerdict.NotAnOption($"'{option}' names no kind of session."),
-            },
-            new MqttSwitch
-            {
-                // Not gated: whether the firewall accepts the block is decided at arming time. A
-                // refused block leaves the session running, and this reads off while it runs.
-                EntityId = FocusSessionBlocksNetwork, Name = "Focus session blocks network",
-                Group = MqttPublishGroups.Focus,
-                Description = "Sets whether a focus session blocks all network traffic except the MQTT "
-                            + "connection and the programs allowed to use the network; while a session "
-                            + "runs, it shows whether the block is held and a change is refused.",
-                Category = MqttEntityCategory.Config, Icon = "mdi:lan-disconnect",
-                Debounce = MqttConnection.ReflectDebounce,
-                Read = () => surface()?.FocusBlocksNetwork,
-                Apply = on => MqttCommandVerdict.Accept(() => set.SetFocusBlocksNetwork(on)),
             },
             new MqttSwitch
             {

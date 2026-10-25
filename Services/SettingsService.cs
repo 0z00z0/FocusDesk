@@ -18,15 +18,11 @@ internal sealed class AppSettings
     /// that has never chosen.</summary>
     public FocusSessionKind FocusSessionKind { get; set; } = FocusSessionKind.ScreenBreak;
 
-    /// <summary>Whether the next focus session blocks every network connection but the broker and
-    /// the allowed programs, whichever kind it is. Off by default: it rewrites the machine's firewall.
-    /// Where the firewall refuses the block the session runs on without it.</summary>
-    public bool FocusBlocksNetwork { get; set; }
+    /// <summary>The named sessions for Program focus, in the order they were created. Never empty.</summary>
+    public List<NamedSession> NamedSessions { get; set; } = [NamedSession.Create(Services.NamedSessions.DefaultName())];
 
-    /// <summary>The one program list: each program by its stable identifier, with "can run", "can use
-    /// the network" and what happens to it while it may not run. With no program-file row ticked for
-    /// the network, a network block leaves nothing open but the broker.</summary>
-    public List<FocusProgramEntry> FocusPrograms { get; set; } = [];
+    /// <summary>The key of the session in use; one that names no session reads as the first.</summary>
+    public string? SelectedNamedSession { get; set; }
 
     /// <summary>What happens to a program with no row while a session limits programs. Read as
     /// Minimise in this version, whatever it holds.</summary>
@@ -96,6 +92,9 @@ internal sealed class AppSettings
     /// <summary>The goal typed for the running session, so a session resumed after a restart keeps
     /// it. Null where none was set or none is running.</summary>
     public string? FocusSessionGoal { get; set; }
+
+    /// <summary>The key of the named session the running Program focus session runs on.</summary>
+    public string? FocusSessionNamedSession { get; set; }
 
     /// <summary>The firewall profile settings displaced by a network block, saved before anything
     /// changes so a crash cannot lose them. Null means nothing is displaced.</summary>

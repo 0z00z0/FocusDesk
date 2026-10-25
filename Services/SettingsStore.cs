@@ -79,8 +79,16 @@ internal sealed class SettingsStore
             return null;
         }
 
+        RaiseVersion();
+
         var (file, conflict) = ReadSections();
-        if (conflict is null) return file.ToSettings();
+        if (conflict is null)
+        {
+            var settings = file.ToSettings();
+            if (file.NamedSessionsNeedWriting && Write(settings))
+                AppLog.Info("settings.json: the named sessions were written for the first time.");
+            return settings;
+        }
 
         AppLog.Error($"settings.json carries a section this build cannot bind: {conflict}. It is left "
                    + "untouched and not written to, because binding it would load defaults over the "
@@ -112,6 +120,37 @@ internal sealed class SettingsStore
         catch (Exception ex) { AppLog.Error("SettingsStore: the settings folder could not be created", ex); }
 
         return WriteSections(_document, SettingsFile.From(settings));
+    }
+
+    /// <summary>Raises a version 1 document to this build's version, so a version 1 build sharing the
+    /// roaming file leaves it alone. The store refuses to raise a version itself, so the migration
+    /// writes a copy beside it that replaces it; where that fails the document stays at version 1.</summary>
+    private void RaiseVersion()
+    {
+        if (_document.DocumentVersion is not { } version || version >= SettingsFile.CurrentVersion) return;
+
+        string raised = _path + ".raise.tmp";
+        try
+        {
+            File.Delete(raised);
+            var result = SettingsMigration.Run(new SettingsMigrationRequest(_path, raised)
+            {
+                Version = SettingsFile.CurrentVersion,
+            });
+            if (result.Outcome != SettingsMigrationOutcome.Migrated)
+            {
+                AppLog.Error($"settings.json stays at version {version}: {result.Outcome}",
+                             result.Error ?? new IOException(result.Outcome.ToString()));
+                return;
+            }
+            File.Move(raised, _path, overwrite: true);
+            _document.Reload();
+            AppLog.Info($"settings.json raised from version {version} to {SettingsFile.CurrentVersion}.");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("SettingsStore.RaiseVersion", ex);
+        }
     }
 
     /// <summary>Why the document must be neither read nor written, or null when it may be. Both
@@ -175,6 +214,7 @@ internal sealed class SettingsStore
         var file = new SettingsFile
         {
             Focus      = Bind<SettingsFile.FocusGroup>(SettingsFile.FocusKey),
+            ProgramFocus = Bind<SettingsFile.ProgramFocusGroup>(SettingsFile.ProgramFocusKey),
             Screen     = Bind<SettingsFile.ScreenGroup>(SettingsFile.ScreenKey),
             Appearance = Bind<SettingsFile.AppearanceGroup>(SettingsFile.AppearanceKey),
             About      = Bind<SettingsFile.AboutGroup>(SettingsFile.AboutKey),
@@ -202,6 +242,7 @@ internal sealed class SettingsStore
         }
 
         Put(SettingsFile.FocusKey,      file.Focus);
+        Put(SettingsFile.ProgramFocusKey, file.ProgramFocus);
         Put(SettingsFile.ScreenKey,     file.Screen);
         Put(SettingsFile.AppearanceKey, file.Appearance);
         Put(SettingsFile.AboutKey,      file.About);
