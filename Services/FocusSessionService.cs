@@ -94,8 +94,11 @@ internal static class FocusSessionService
     /// <param name="namedSession">The named session chosen in the start box. Null from MQTT, which
     /// starts the session in use. A key naming no session in the list refuses the start.</param>
     /// <param name="mode">The mode chosen for this start only; the session's saved mode otherwise.</param>
+    /// <param name="openedAhead">The focus point window already opened the marked programs behind it,
+    /// so they are not started again.</param>
     public static FocusArmOutcome Arm(ActionCause cause, int? minutes = null, FocusSessionKind? kind = null,
-                                      string? goal = null, string? namedSession = null, ProgramFocusMode? mode = null)
+                                      string? goal = null, string? namedSession = null, ProgramFocusMode? mode = null,
+                                      bool openedAhead = false)
     {
         var (stored, storedKind, screen, input, network, session) = SettingsService.Read(
             s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusDimsScreen, s.FocusBlocksInput,
@@ -116,21 +119,32 @@ internal static class FocusSessionService
             finally { _arming = null; }
         }
 
-        if (outcome == FocusArmOutcome.Armed)
+        if (outcome == FocusArmOutcome.Armed && !openedAhead)
             OpenMarked(plan.Kind, plan.Mode, ProgramStartTrigger.Start, plan.NamedSession);
         return outcome;
+    }
+
+    /// <summary>Opens the marked programs of a start not armed yet, behind the focus point window; the
+    /// same rule and the same session as the arm that follows. Null where this start opens nothing.</summary>
+    public static ProgramStartRun? OpenAhead(FocusSessionKind kind, string? namedSession, ProgramFocusMode? mode)
+    {
+        var session = SettingsService.Read(s => NamedSessions.ForStart(s, namedSession));
+        return session is null ? null : RunMarked(kind, mode ?? session.Mode, ProgramStartTrigger.Start, session.Key);
     }
 
     /// <summary>Opens the named session's marked programs where the rules say this moment does.</summary>
     private static void OpenMarked(FocusSessionKind kind, ProgramFocusMode mode, ProgramStartTrigger how,
                                    string? namedSession)
     {
-        if (!ProgramStartRules.Opens(kind, mode, how)) return;
-        if (ProgramStarter.Run(SettingsService.Read(s =>
-                NamedSessions.Find(s, namedSession)?.Programs.Where(p => p.StartWithSession).ToList() ?? []))
-            is { } run)
-            UI.StartingWindow.Show(run);
+        if (RunMarked(kind, mode, how, namedSession) is { } run) UI.StartingWindow.Show(run);
     }
+
+    private static ProgramStartRun? RunMarked(FocusSessionKind kind, ProgramFocusMode mode, ProgramStartTrigger how,
+                                              string? namedSession) =>
+        ProgramStartRules.Opens(kind, mode, how)
+            ? ProgramStarter.Run(SettingsService.Read(s =>
+                  NamedSessions.Find(s, namedSession)?.Programs.Where(p => p.StartWithSession).ToList() ?? []))
+            : null;
 
     /// <summary>What the focus-app lever decides against, read when a session arms or resumes: the
     /// list, the lever-wide action, and the exemptions on this machine. Null where the list cannot be

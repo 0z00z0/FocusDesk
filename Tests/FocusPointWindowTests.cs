@@ -102,7 +102,7 @@ public class FocusPointWindowTests
         Assert.Equal(new[] { (minutes, kind) }, arms.Calls);
 
         // The window hands both on to the same arm the pop-out's Start button used, under its own cause.
-        Assert.Matches(new Regex(@"FocusSessionService\.Arm\(ActionCause\.FocusPointWindow\(\), minutes, kind, _goal, _namedSession\)"), Window);
+        Assert.Matches(new Regex(@"FocusSessionService\.Arm\(ActionCause\.FocusPointWindow\(\), minutes, kind, _goal, _namedSession, _mode, openedAhead: _run is not null\)"), Window);
     }
 
     /// <summary>Where the window starts the session itself, the end of the time arms once and only

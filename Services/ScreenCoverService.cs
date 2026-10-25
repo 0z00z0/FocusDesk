@@ -215,13 +215,14 @@ internal sealed class PerDisplayWindows<T>(string owner, Func<RectInt32, T> crea
 
     /// <summary>Torn down and built again rather than moved: a rebuild is rare and reusing a window
     /// across a display change is what leaves a strip uncovered.</summary>
-    internal void Rebuild()
+    internal void Rebuild(RectInt32? except = null)
     {
         var displays = NativeMethods.AllDisplayBounds();
         Clear($"{owner}.Rebuild close");
 
         foreach (var bounds in displays)
         {
+            if (bounds.Equals(except)) continue;
             try { _windows.Add(create(bounds)); }
             catch (Exception ex) { AppLog.Error($"{owner}.Rebuild create", ex); }
         }

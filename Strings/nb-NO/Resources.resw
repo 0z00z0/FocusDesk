@@ -794,4 +794,16 @@
     <value>Merk minst ett program som Kan kjøre for denne økten på Programfokus-siden</value>
     <comment>Hover text on a greyed named-session button in the status window.</comment>
   </data>
+  <data name="PopOutNamedSessionNothingToOpenInfo" xml:space="preserve">
+    <value>Merk minst ett program som Start med økten for denne økten på Programfokus-siden</value>
+    <comment>Hover text on a named-session button greyed because the mode chosen opens programs and none is ticked Start with the session.</comment>
+  </data>
+  <data name="PopOutRefusalNothingToOpen" xml:space="preserve">
+    <value>Ingenting å åpne: ingen programmer i denne økten er merket Start med økten.</value>
+    <comment>Line under the start buttons when "Open marked, allow all others" has no program to open, whole sentence.</comment>
+  </data>
+  <data name="PopOutSaveOpenPrograms" xml:space="preserve">
+    <value>Lagre åpne programmer som økt</value>
+    <comment>Full-width button in the status window that makes a new named session from the programs open now and shows it in Settings, imperative.</comment>
+  </data>
 </root>

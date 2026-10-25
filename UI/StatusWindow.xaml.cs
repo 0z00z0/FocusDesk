@@ -74,6 +74,14 @@ internal sealed partial class StatusWindow : Window
     /// the session in use, and pressing a button makes that one the session in use.</summary>
     private string? _chosenSession;
 
+    /// <summary>The mode picked from the Start button's menu for this start only; null leaves each
+    /// session on its saved mode. Cleared each time the window is shown.</summary>
+    private ProgramFocusMode? _chosenMode;
+
+    private readonly Dictionary<string, ProgramFocusMode> _savedModes = [];
+    private bool _sessionsFull;
+    private bool _saving;
+
     // The named-session buttons, copied from ChargeKeeper's Smart Charge preset buttons (5727ea5).
     // Rebuilt only when the set changes, so a tick never replaces a button under the pointer.
     private IReadOnlyList<string> _sessionButtonsShown = [];
@@ -132,6 +140,15 @@ internal sealed partial class StatusWindow : Window
         ProgramFocusChoice.Content = AppText.Get("PopOutStartProgramFocus");
         ScreenBreakChoice.Content  = AppText.Get("PopOutStartScreenBreak");
         StartButton.Content        = AppText.Get("PopOutStart");
+        SaveOpenProgramsButton.Content = AppText.Get("PopOutSaveOpenPrograms");
+        foreach (var mode in ProgramFocusText.Modes)
+        {
+            var item = new RadioMenuFlyoutItem { Text = ProgramFocusText.ModeName(mode), Tag = mode, GroupName = "Mode" };
+            item.Click += OnChooseMode;
+            ModeMenu.Items.Add(item);
+        }
+        // The menu part is a template part, reachable only once the template is applied.
+        StartButton.Loaded += (_, _) => ShowChosenKind();
         GoalBox.PlaceholderText    = AppText.Get("PopOutGoalPlaceholder");
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(GoalBox, GoalBox.PlaceholderText);
         GoalBox.MaxLength          = FocusSessionGoal.MaxLength;
@@ -182,6 +199,7 @@ internal sealed partial class StatusWindow : Window
     {
         _idleClose.Stop();
         (_chosenKind, _chosenSession) = SettingsService.Read(s => (s.FocusSessionKind, NamedSessions.InUse(s).Key));
+        _chosenMode = null;
         GoalBox.Text = "";
         RefusalText.Visibility = Visibility.Collapsed;
         Reload();
@@ -267,40 +285,55 @@ internal sealed partial class StatusWindow : Window
         StartButton.IsEnabled        = !session.IsRunning;
         MinutesCombo.IsEnabled       = !session.IsRunning;
         GoalBox.IsEnabled            = !session.IsRunning;
+        SaveOpenProgramsButton.IsEnabled = !session.IsRunning && !_sessionsFull && !_saving;
         foreach (var button in SessionButtons())
             button.IsEnabled = !session.IsRunning && button.Tag is string key && _runnableSessions.Contains(key);
         if (session.IsRunning) RefusalText.Visibility = Visibility.Collapsed;
     }
 
-    /// <summary>Whether any named session has a row ticked "Can run" that keeps a program usable, read
-    /// with the start box. Program focus is refused without one, so its button says so beforehand.</summary>
+    /// <summary>Whether any named session can run in some mode, read with the start box. Program focus
+    /// is refused without one, so its button says so beforehand.</summary>
     private bool _programFocusPossible;
 
     /// <summary>The start box: the length, the Start button, and a button per kind with the chosen one
     /// in the accent.</summary>
     private void ShowStartBox()
     {
-        var (minutes, stored) = SettingsService.Read(
+        var (minutes, stored, count) = SettingsService.Read(
             s => (s.FocusSessionMinutes,
-                  s.NamedSessions.Take(NamedSessions.Maximum).Select(n => (n.Key, n.Name, Programs: n.Programs.ToList())).ToList()));
+                  s.NamedSessions.Take(NamedSessions.Maximum).Select(n => (n.Key, n.Name, n.Mode, Programs: n.Programs.ToList())).ToList(),
+                  s.NamedSessions.Count));
 
         FocusLengthChoices.Fill(MinutesCombo, minutes);
+        _sessionsFull = count >= NamedSessions.Maximum;
 
-        var sessions = stored.Select(n => (n.Key, n.Name,
-                                           Runs: FocusProgramLever.KeepsAProgramUsable(n.Programs, WindowsPrograms.Folder)))
-                             .ToList();
+        // Read against the mode this start would run in: a limiting mode needs a program kept usable,
+        // "Open marked, allow all others" needs a program to open.
+        _savedModes.Clear();
+        _programFocusPossible = false;
+        var sessions = new List<(string Key, string Name, string? CannotRun)>(stored.Count);
+        foreach (var n in stored)
+        {
+            _savedModes[n.Key] = n.Mode;
+            bool usable = FocusProgramLever.KeepsAProgramUsable(n.Programs, WindowsPrograms.Folder);
+            bool marks = n.Programs.Any(p => p.StartWithSession);
+            _programFocusPossible |= usable || marks;
+            string? cannotRun = ProgramStartRules.LimitsPrograms(_chosenMode ?? n.Mode)
+                ? (usable ? null : "PopOutNamedSessionCannotRunInfo")
+                : (marks ? null : "PopOutNamedSessionNothingToOpenInfo");
+            sessions.Add((n.Key, n.Name, cannotRun));
+        }
         _runnableSessions.Clear();
-        _runnableSessions.UnionWith(sessions.Where(n => n.Runs).Select(n => n.Key));
-
-        _programFocusPossible = _runnableSessions.Count > 0;
+        _runnableSessions.UnionWith(sessions.Where(n => n.CannotRun is null).Select(n => n.Key));
         ToolTipService.SetToolTip(ProgramFocusFrame,
             _programFocusPossible ? null : AppText.Get("PopOutStartProgramFocusInfo"));
         ProgramFocusChoice.IsEnabled = _programFocusPossible && !FocusSessionService.IsRunning;
 
         // A session or kind whose button is greyed cannot stay chosen, or Start would arm what the
         // window says cannot run.
-        if (_chosenSession is null || !_runnableSessions.Contains(_chosenSession))
-            _chosenSession = sessions.FirstOrDefault(n => n.Runs).Key;
+        if ((_chosenSession is null || !_runnableSessions.Contains(_chosenSession))
+            && sessions.FirstOrDefault(n => n.CannotRun is null).Key is { } first)
+            _chosenSession = first;
         if (!_programFocusPossible && _chosenKind == FocusSessionKind.ProgramFocus)
             _chosenKind = FocusSessionKind.ScreenBreak;
 
@@ -320,6 +353,43 @@ internal sealed partial class StatusWindow : Window
         ShowInCell(GoalBox, !programFocus);
         foreach (var button in SessionButtons()) Reachable(button, programFocus);
         Reachable(GoalBox, !programFocus);
+
+        // The modes belong to Program focus, so the menu part greys for a screen break.
+        if (Descendant(StartButton, "SecondaryButton") is Control menuPart) menuPart.IsEnabled = programFocus;
+        foreach (var item in ModeMenu.Items) item.IsEnabled = programFocus;
+        MarkChosenMode();
+    }
+
+    /// <summary>Marks the mode this start would run in: the one picked, or the chosen session's saved one.</summary>
+    private void MarkChosenMode()
+    {
+        var mode = _chosenMode
+                   ?? (_chosenSession is not null && _savedModes.TryGetValue(_chosenSession, out var saved)
+                           ? saved : ProgramFocusMode.AllowListed);
+        foreach (var item in ModeMenu.Items.OfType<RadioMenuFlyoutItem>())
+            item.IsChecked = (ProgramFocusMode)item.Tag == mode;
+    }
+
+    /// <summary>Picks the mode for this start only; nothing is stored, and the session buttons are
+    /// read against it again.</summary>
+    private void OnChooseMode(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioMenuFlyoutItem { Tag: ProgramFocusMode mode }) return;
+        _chosenMode = mode;
+        RefusalText.Visibility = Visibility.Collapsed;
+        ShowStartBox();
+        ShowSession();
+    }
+
+    private static DependencyObject? Descendant(DependencyObject root, string name)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is FrameworkElement element && element.Name == name) return child;
+            if (Descendant(child, name) is { } deeper) return deeper;
+        }
+        return null;
     }
 
     private static void ShowInCell(UIElement element, bool shown)
@@ -341,9 +411,9 @@ internal sealed partial class StatusWindow : Window
 
     /// <summary>One button per named session, up to five, on the quick-button chrome. A session that
     /// cannot run is greyed with the reason on hover, on a frame since a disabled button shows none.</summary>
-    private void BuildSessionButtons(IReadOnlyList<(string Key, string Name, bool Runs)> sessions)
+    private void BuildSessionButtons(IReadOnlyList<(string Key, string Name, string? CannotRun)> sessions)
     {
-        var wanted = sessions.Select(n => $"{n.Key}|{n.Runs}|{n.Name}").ToList();
+        var wanted = sessions.Select(n => $"{n.Key}|{n.CannotRun}|{n.Name}").ToList();
         if (!wanted.SequenceEqual(_sessionButtonsShown))
         {
             _sessionButtonsShown = wanted;
@@ -356,8 +426,9 @@ internal sealed partial class StatusWindow : Window
             // The card's control shape, with no side inset: five buttons leave room for eight characters.
             var shape = RootGrid.Resources;
             var padding = (Thickness)shape["SessionControlPadding"];
-            foreach (var (key, name, runs) in sessions)
+            foreach (var (key, name, cannotRun) in sessions)
             {
+                bool runs = cannotRun is null;
                 var button = new ToggleButton
                 {
                     Tag                 = key,
@@ -378,7 +449,7 @@ internal sealed partial class StatusWindow : Window
 
                 var frame = new Grid { Background = new SolidColorBrush(Colors.Transparent) };
                 frame.Children.Add(button);
-                if (!runs) ToolTipService.SetToolTip(frame, AppText.Get("PopOutNamedSessionCannotRunInfo"));
+                if (cannotRun is not null) ToolTipService.SetToolTip(frame, AppText.Get(cannotRun));
                 NamedSessionChoices.Children.Add(frame);
             }
             LayoutSessionButtons();
@@ -458,6 +529,7 @@ internal sealed partial class StatusWindow : Window
         // A toggle checks itself before Click is raised, so the pick is marked at once.
         _chosenSession = key;
         MarkChosenSession();
+        MarkChosenMode();
         RefusalText.Visibility = Visibility.Collapsed;
         if (FocusSessionService.LeversAreLocked) return;
         SettingsService.Update(s => { if (NamedSessions.Find(s, key) is not null) s.SelectedNamedSession = key; });
@@ -552,7 +624,7 @@ internal sealed partial class StatusWindow : Window
     /// <summary>Opens the focus-point window for the chosen kind and length, which starts the session
     /// after its time. Where the Focus page turns the focus point off, arms the session here at once.
     /// The focus-point rows are read now, so a window already open keeps what it opened with.</summary>
-    private void OnStart(object sender, RoutedEventArgs e)
+    private void OnStart(SplitButton sender, SplitButtonClickEventArgs e)
     {
         if (FocusLengthChoices.Selected(MinutesCombo) is not { } minutes) return;
 
@@ -561,18 +633,19 @@ internal sealed partial class StatusWindow : Window
         bool programFocus = _chosenKind == FocusSessionKind.ProgramFocus;
         string goal = programFocus ? "" : FocusSessionGoal.Clean(GoalBox.Text);
         string? named = programFocus ? _chosenSession : null;
+        ProgramFocusMode? mode = programFocus ? _chosenMode : null;
         var (shown, startsItself, seconds) = SettingsService.Read(
             s => (s.FocusPointShown, s.FocusPointStartsSession, s.FocusPointSeconds));
         if (shown)
         {
-            FocusPointWindow.Open(_chosenKind, named, minutes, seconds, startsItself, goal);
+            FocusPointWindow.Open(_chosenKind, named, minutes, seconds, startsItself, goal, mode);
             return;
         }
 
         // The chosen length is what the next session runs for from wherever it is started, so it is
         // stored rather than held for this one start.
         SettingsService.Update(s => s.FocusSessionMinutes = minutes);
-        var outcome = FocusSessionService.Arm(ActionCause.StatusWindow("Start button"), minutes, _chosenKind, goal, named);
+        var outcome = FocusSessionService.Arm(ActionCause.StatusWindow("Start button"), minutes, _chosenKind, goal, named, mode);
         if (outcome == FocusArmOutcome.Armed)
         {
             GoalBox.Text = "";
@@ -591,8 +664,31 @@ internal sealed partial class StatusWindow : Window
         FocusArmOutcome.AlreadyRunning => "PopOutRefusalAlreadyRunning",
         FocusArmOutcome.LeverRefused   => "PopOutRefusalLeverRefused",
         FocusArmOutcome.NamedSessionMissing => "PopOutRefusalNamedSessionMissing",
+        FocusArmOutcome.NothingToOpen  => "PopOutRefusalNothingToOpen",
         _                             => "PopOutRefusalLeverFailed",
     });
+
+    /// <summary>The Program focus page's own save: a new session from the programs open now, shown in
+    /// Settings with its name box focused.</summary>
+    private async void OnSaveOpenPrograms(object sender, RoutedEventArgs e)
+    {
+        if (FocusSessionService.LeversAreLocked || _saving) return;
+        _saving = true;
+        ShowSession();
+        try
+        {
+            var (key, leftOut) = await ProgramFocusSettingsPanel.SaveOpenProgramsAsync();
+            if (key is null) return;
+            ProgramFocusSettingsPanel.ShowSaved(key, leftOut);
+            Dismiss();
+        }
+        catch (Exception ex) { AppLog.Error("StatusWindow.SaveOpenPrograms", ex); }
+        finally
+        {
+            _saving = false;
+            Reload();
+        }
+    }
 
     /// <summary>Opens the Settings window, and stands down behind it.</summary>
     private void OnSettings(object sender, RoutedEventArgs e)

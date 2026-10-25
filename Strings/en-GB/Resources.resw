@@ -794,4 +794,16 @@
     <value>Tick at least one program as Can run for this session on the Program focus page</value>
     <comment>Hover text on a greyed named-session button in the status window.</comment>
   </data>
+  <data name="PopOutNamedSessionNothingToOpenInfo" xml:space="preserve">
+    <value>Tick at least one program as Start with the session for this session on the Program focus page</value>
+    <comment>Hover text on a named-session button greyed because the mode chosen opens programs and none is ticked Start with the session.</comment>
+  </data>
+  <data name="PopOutRefusalNothingToOpen" xml:space="preserve">
+    <value>Nothing to open: no program in this session is ticked Start with the session.</value>
+    <comment>Line under the start buttons when "Open marked, allow all others" has no program to open, whole sentence.</comment>
+  </data>
+  <data name="PopOutSaveOpenPrograms" xml:space="preserve">
+    <value>Save open programs as session</value>
+    <comment>Full-width button in the status window that makes a new named session from the programs open now and shows it in Settings, imperative.</comment>
+  </data>
 </root>
