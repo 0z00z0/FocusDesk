@@ -102,6 +102,34 @@ internal static class NamedSessions
         return Choice.Chosen;
     }
 
+    /// <summary>Adds a session named <paramref name="baseName"/>, numbered from 2 where the name is
+    /// taken; null at <see cref="Maximum"/>.</summary>
+    public static NamedSession? Add(AppSettings s, string baseName)
+    {
+        ArgumentNullException.ThrowIfNull(s);
+        if (s.NamedSessions.Count >= Maximum) return null;
+
+        string name = baseName;
+        for (int n = 2; s.NamedSessions.Any(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)); n++)
+            name = CleanName($"{baseName} {n}", baseName);
+        var session = NamedSession.Create(name);
+        s.NamedSessions.Add(session);
+        return session;
+    }
+
+    /// <summary>Removes a session, never the last one; deleting the one in use moves "In use" to the
+    /// first remaining.</summary>
+    public static bool Delete(AppSettings s, string key)
+    {
+        ArgumentNullException.ThrowIfNull(s);
+        if (s.NamedSessions.Count <= 1 || Find(s, key) is not { } session) return false;
+
+        bool wasInUse = InUse(s) == session;
+        s.NamedSessions.Remove(session);
+        if (wasInUse) s.SelectedNamedSession = s.NamedSessions[0].Key;
+        return true;
+    }
+
     /// <summary>A name as stored: trimmed, capped, and the previous one where the edit is blank.</summary>
     public static string CleanName(string? typed, string previous)
     {

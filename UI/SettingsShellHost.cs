@@ -17,6 +17,7 @@ namespace FocusDesk.UI;
 internal static class SettingsShellHost
 {
     public const string FocusTag  = "focus";
+    public const string ProgramFocusTag = "program-focus";
     public const string AutomaticSessionTag = "automatic";
     public const string ScreenTag = "screen";
     public const string MqttTag       = "mqtt";
@@ -37,6 +38,7 @@ internal static class SettingsShellHost
         }
 
         FocusSettingsPanel? focus = null;
+        ProgramFocusSettingsPanel? programFocus = null;
         ScreenSettingsPanel? screen = null;
         MqttSettingsPage? mqtt = null;
         AppearanceSettingsPanel? appearance = null;
@@ -62,6 +64,14 @@ internal static class SettingsShellHost
                     // the one on screen.
                     Enter = () => focus?.Watch(),
                     Leave = () => focus?.Unwatch(),
+                },
+                new SettingsSection
+                {
+                    Tag = ProgramFocusTag, Label = AppText.Get("FocusProgramFocusHeading"),
+                    Icon = NavIcon("program-focus"),
+                    Build = () => programFocus = new ProgramFocusSettingsPanel(),
+                    Enter = () => programFocus?.Watch(),
+                    Leave = () => programFocus?.Unwatch(),
                 },
                 new SettingsSection
                 {
@@ -137,6 +147,7 @@ internal static class SettingsShellHost
         var dispatcher = DispatcherQueue.GetForCurrentThread();
         void FollowSession() => dispatcher.TryEnqueue(() =>
         {
+            programFocus?.ApplySessionLock();
             screen?.ApplySessionLock();
             about?.ApplySessionLock();
             diagnostics?.ApplySessionLock();

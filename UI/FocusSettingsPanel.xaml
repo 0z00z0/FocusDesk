@@ -67,36 +67,6 @@
             </StackPanel>
         </controls:SettingsCard>
 
-        <!-- One switch per lever, settable here or from Home Assistant — both write through the same
-             settings value, so the two stay one. Locked for the length of a session once it starts:
-             a lever turned off part-way through would leave its record parked with nothing owning
-             it. The network and input blocks fail safe: where one is refused the session runs on
-             without it, and while a session runs its switch shows what is actually held. The network
-             block sits above both kinds because either can hold it. -->
-        <controls:SettingsCard Header="Blocks the network"
-                               Description="Blocks every connection for the length of a session, except to the MQTT broker and the programs allowed below.">
-            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                <zz:InfoIcon Subject="the network block"
-                             Info="Needs administrator rights and a broker set on the MQTT page. Where refused, the session runs without it."/>
-                <ToggleSwitch x:Name="FocusBlocksNetworkToggle" OnContent="" OffContent=""
-                              MinWidth="0" Toggled="OnFocusBlocksNetworkToggled"/>
-            </StackPanel>
-        </controls:SettingsCard>
-
-        <!-- Program focus. The list stays editable whatever the stored kind: the status window can
-             start either kind. -->
-        <zz:SettingsSectionHeader x:Name="FocusProgramFocusHeader"/>
-
-        <!-- The one program list, one row per program beneath the button, each with "can run" and
-             "can use the network". Empty is the whole of what an installation that has chosen no
-             program carries. The texts come from the resource files. -->
-        <controls:SettingsCard x:Name="FocusProgramsCard">
-            <Button x:Name="FocusAllowProgramButton" Click="OnFocusAllowProgram"/>
-        </controls:SettingsCard>
-        <StackPanel x:Name="FocusAllowedProgramsPanel" Spacing="4"/>
-        <TextBlock x:Name="FocusAllowRefusalText" Visibility="Collapsed"
-                   TextWrapping="Wrap" FontSize="12" Margin="16,0,16,4"/>
-
         <!-- Screen break: the cover is the kind itself, so only the two optional levers remain. -->
         <zz:SettingsSectionHeader x:Name="FocusScreenBreakHeader"/>
 
