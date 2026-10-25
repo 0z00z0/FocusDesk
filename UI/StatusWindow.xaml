@@ -77,7 +77,6 @@
                     <TextBlock x:Name="SessionHeading" Style="{StaticResource CardHeadingStyle}"
                                Margin="0,0,0,-2"/>
 
-                    <!-- Shown only where the Focus settings page has turned the start box on. -->
                     <Grid x:Name="StartRow" ColumnSpacing="{StaticResource SessionControlGap}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>

@@ -277,19 +277,12 @@ internal sealed partial class StatusWindow : Window
     private bool _programFocusPossible;
 
     /// <summary>The start box: the length, the Start button, and a button per kind with the chosen one
-    /// in the accent. Hidden altogether where the Focus settings page has not turned it on: a machine
-    /// that is only ever set going from Home Assistant has no use for it.</summary>
+    /// in the accent.</summary>
     private void ShowStartBox()
     {
-        var (offered, minutes, stored) = SettingsService.Read(
-            s => (s.FocusStartFromDashboard, s.FocusSessionMinutes,
+        var (minutes, stored) = SettingsService.Read(
+            s => (s.FocusSessionMinutes,
                   s.NamedSessions.Take(NamedSessions.Maximum).Select(n => (n.Key, n.Name, Programs: n.Programs.ToList())).ToList()));
-
-        var shown = offered ? Visibility.Visible : Visibility.Collapsed;
-        KindChoices.Visibility = shown;
-        StartRow.Visibility = shown;
-        SessionDetailCell.Visibility = shown;
-        if (!offered) return;
 
         FocusLengthChoices.Fill(MinutesCombo, minutes);
 

@@ -79,7 +79,6 @@ internal sealed class SettingsFile
         // defaults rather than zero minutes and two levers switched off — a session that could
         // never be armed.
         [JsonPropertyOrder(1)] public int?  FocusSessionMinutes     { get; set; }
-        [JsonPropertyOrder(2)] public bool? FocusStartFromDashboard { get; set; }
         [JsonPropertyOrder(3)] public bool? FocusPointShown         { get; set; }
         [JsonPropertyOrder(4)] public bool? FocusPointStartsSession { get; set; }
         [JsonPropertyOrder(5)] public int?  FocusPointSeconds       { get; set; }
@@ -181,7 +180,6 @@ internal sealed class SettingsFile
                 FocusDimsScreen           = s.FocusDimsScreen,
                 FocusCoverVisual          = CoverAppearance.NameOf(s.FocusCoverVisual),
                 FocusBlocksInput          = s.FocusBlocksInput,
-                FocusStartFromDashboard   = s.FocusStartFromDashboard,
                 FocusPointShown           = s.FocusPointShown,
                 FocusPointStartsSession   = s.FocusPointStartsSession,
                 FocusPointSeconds         = s.FocusPointSeconds,
@@ -244,7 +242,6 @@ internal sealed class SettingsFile
         FocusDimsScreen           = Focus.FocusDimsScreen ?? true,
         FocusCoverVisual          = CoverAppearance.ParseVisual(Focus.FocusCoverVisual),
         FocusBlocksInput          = Focus.FocusBlocksInput ?? true,
-        FocusStartFromDashboard   = Focus.FocusStartFromDashboard ?? true,
         FocusPointShown           = Focus.FocusPointShown ?? true,
         FocusPointStartsSession   = Focus.FocusPointStartsSession ?? false,
         FocusPointSeconds         = FocusPointStart.SecondsOrDefault(Focus.FocusPointSeconds),

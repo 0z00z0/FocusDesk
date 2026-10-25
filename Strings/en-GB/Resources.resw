@@ -574,14 +574,6 @@
     <value>How long the next session runs. Changing this while one runs changes the next one only.</value>
     <comment>Description under Length.</comment>
   </data>
-  <data name="FocusStartFromStatusHeader" xml:space="preserve">
-    <value>Start a session from the status window</value>
-    <comment>Card heading for the switch that adds a Start button to the status window.</comment>
-  </data>
-  <data name="FocusStartFromStatusDescription" xml:space="preserve">
-    <value>Adds a Start button to the status window. It starts a session; ending one still needs an MQTT command.</value>
-    <comment>Description under Start a session from the status window.</comment>
-  </data>
   <data name="FocusStuckHeading" xml:space="preserve">
     <value>If a session will not end</value>
     <comment>Section heading above the published way out.</comment>

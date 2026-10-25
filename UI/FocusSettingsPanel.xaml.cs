@@ -28,8 +28,6 @@ public sealed partial class FocusSettingsPanel : UserControl
         FocusStatusCard.Description = AppText.Get("FocusStatusDescription");
         FocusLengthCard.Header = AppText.Get("FocusLengthHeader");
         FocusLengthCard.Description = AppText.Get("FocusLengthDescription");
-        FocusStartFromStatusCard.Header = AppText.Get("FocusStartFromStatusHeader");
-        FocusStartFromStatusCard.Description = AppText.Get("FocusStartFromStatusDescription");
         AutomaticSessionHeader.Heading = AppText.Get("AutomaticSessionSectionLabel");
         GuideCard.Header = AppText.Get("AutomaticSessionGuideHeader");
         GuideCard.Description = AppText.Get("AutomaticSessionGuideDescription");
@@ -88,8 +86,8 @@ public sealed partial class FocusSettingsPanel : UserControl
         {
             FocusStatusValue.Text = FocusSessionStages.Describe(session, DateTimeOffset.Now);
 
-            var (minutes, kind, startFromStatus) = SettingsService.Read(
-                s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusStartFromDashboard));
+            var (minutes, kind) = SettingsService.Read(
+                s => (s.FocusSessionMinutes, s.FocusSessionKind));
 
             FocusLengthChoices.Fill(FocusMinutesCombo, minutes);
 
@@ -100,8 +98,6 @@ public sealed partial class FocusSettingsPanel : UserControl
             FocusKindScreenBreakRadio.IsChecked  = shownKind == FocusSessionKind.ScreenBreak;
             FocusKindProgramFocusRadio.IsEnabled = !locked;
             FocusKindScreenBreakRadio.IsEnabled  = !locked;
-
-            FocusStartFromStatusToggle.IsOn = startFromStatus;
 
             var (pointShown, pointStarts, pointSeconds) = SettingsService.Read(
                 s => (s.FocusPointShown, s.FocusPointStartsSession, s.FocusPointSeconds));
@@ -133,12 +129,6 @@ public sealed partial class FocusSettingsPanel : UserControl
             ? FocusSessionKind.ProgramFocus
             : FocusSessionKind.ScreenBreak;
         SettingsService.Update(s => s.FocusSessionKind = kind);
-    }
-
-    private void OnFocusStartFromStatusToggled(object sender, RoutedEventArgs e)
-    {
-        if (_updating) return;
-        SettingsService.Update(s => s.FocusStartFromDashboard = FocusStartFromStatusToggle.IsOn);
     }
 
     private void OnFocusPointShownToggled(object sender, RoutedEventArgs e)

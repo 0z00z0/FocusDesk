@@ -34,11 +34,6 @@
             </StackPanel>
         </controls:SettingsCard>
 
-        <controls:SettingsCard x:Name="FocusStartFromStatusCard">
-            <ToggleSwitch x:Name="FocusStartFromStatusToggle" OnContent="" OffContent=""
-                          MinWidth="0" Toggled="OnFocusStartFromStatusToggled"/>
-        </controls:SettingsCard>
-
         <!-- Read when Start is pressed, so a window already open keeps what it opened with. -->
         <zz:SettingsSectionHeader x:Name="FocusPointHeader"/>
 
