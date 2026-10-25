@@ -8,11 +8,13 @@ using Windows.System;
 namespace FocusDesk.UI;
 
 /// <summary>The Program focus page: the named sessions, built from ChargeKeeper's Smart Charge Presets
-/// section (commit 5727ea5). Every control greys while a session runs, and every write checks again.</summary>
+/// section (commit 5727ea5). Every control greys while a session runs, and every write checks again;
+/// only the running session's program rows open during its grace period.</summary>
 public sealed partial class ProgramFocusSettingsPanel : UserControl
 {
     private readonly PresetRows.Section _list;
-    private readonly List<(Control Control, Func<bool> WhenUnlocked)> _lockables = [];
+    // A control with a key opens for that named session's grace period.
+    private readonly List<(Control Control, Func<bool> WhenUnlocked, string? GraceKey)> _lockables = [];
     private readonly Dictionary<string, (SettingsExpander Row, TextBox Name, TextBlock Error)> _rows = [];
     private bool _watching;
     private bool _saving;
@@ -78,7 +80,8 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
     public void ApplySessionLock()
     {
         bool locked = FocusSessionService.LeversAreLocked;
-        foreach (var (control, whenUnlocked) in _lockables) control.IsEnabled = !locked && whenUnlocked();
+        foreach (var (control, whenUnlocked, graceKey) in _lockables)
+            control.IsEnabled = (!locked || (graceKey is not null && FocusSessionService.RowsOpenInGrace(graceKey))) && whenUnlocked();
 
         bool full = SettingsService.Read(s => s.NamedSessions.Count) >= NamedSessions.Maximum;
         AddNamedSessionButton.IsEnabled = !locked && !full;
@@ -153,10 +156,10 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
 
         bool last = SettingsService.Read(s => s.NamedSessions.Count) <= 1;
         ToolTipService.SetToolTip(row.DeleteFrame, last ? AppText.Get("NamedSessionDeleteLastInfo") : null);
-        _lockables.Add((nameBox, () => true));
-        _lockables.Add((addProgram, () => true));
-        _lockables.Add((modeBox, () => true));
-        _lockables.Add((row.Delete, () => !last));
+        _lockables.Add((nameBox, () => true, null));
+        _lockables.Add((addProgram, () => true, key));
+        _lockables.Add((modeBox, () => true, null));
+        _lockables.Add((row.Delete, () => !last, null));
         _rows[key] = (row.Expander, nameBox, row.Error);
         return row.Expander;
     }
@@ -186,7 +189,7 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
                 IsChecked = offer == ProgramOffer.AlwaysUsable || entry.CanRun,
             };
             canRun.Click += (_, _) => ChangePrograms(key, refused, list => FocusAllowedPrograms.SetCanRun(
-                list, program.Kind, program.Id, canRun.IsChecked == true, FocusSessionService.LeversAreLocked));
+                list, program.Kind, program.Id, canRun.IsChecked == true, Locked(key)));
 
             var start = new CheckBox
             {
@@ -194,15 +197,15 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
                 IsChecked = entry.StartWithSession,
             };
             start.Click += (_, _) => ChangePrograms(key, refused, list => FocusAllowedPrograms.SetStartWithSession(
-                list, program.Kind, program.Id, start.IsChecked == true, FocusSessionService.LeversAreLocked));
+                list, program.Kind, program.Id, start.IsChecked == true, Locked(key)));
 
             var remove = new Button { Content = AppText.Get("FocusProgramRemove") };
             remove.Click += (_, _) => ChangePrograms(key, refused, list => FocusAllowedPrograms.Remove(
-                list, program.Kind, program.Id, FocusSessionService.LeversAreLocked));
+                list, program.Kind, program.Id, Locked(key)));
 
-            _lockables.Add((canRun, () => canRunUsed && offer == ProgramOffer.Limitable));
-            _lockables.Add((start, () => startUsed));
-            _lockables.Add((remove, () => true));
+            _lockables.Add((canRun, () => canRunUsed && offer == ProgramOffer.Limitable, key));
+            _lockables.Add((start, () => startUsed, key));
+            _lockables.Add((remove, () => true, key));
 
             string? runWhy = !canRunUsed ? AppText.Get("FocusProgramCanRunUnusedInfo")
                 : offer == ProgramOffer.AlwaysUsable ? AppText.Get("FocusProgramWindowsRunInfo") : null;
@@ -289,7 +292,7 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
             var listed = SettingsService.Read(s => NamedSessions.Find(s, key)?.Programs.Select(p => (p.Kind, p.Id)).ToList()) ?? [];
             new ProgramPickerWindow(chosen => DispatcherQueue.TryEnqueue(() => ChangePrograms(
                 key, verdict => ShowRefusal(row, verdict),
-                list => FocusAllowedPrograms.Add(list, chosen.ToEntry(), FocusSessionService.LeversAreLocked))),
+                list => FocusAllowedPrograms.Add(list, chosen.ToEntry(), Locked(key)))),
                 listed, Enum.GetValues<FocusProgramKind>())
                 .Activate();
         }
@@ -306,13 +309,25 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
 
         if (verdict is FocusAllowVerdict.Added or FocusAllowVerdict.Removed or FocusAllowVerdict.Changed)
         {
-            SettingsService.Update(s => { if (NamedSessions.Find(s, key) is { } session) session.Programs = list; });
-            ReloadKeepingOpen(key);
-            return;
+            // The running session's rows go through the engine, which checks the grace period again.
+            var outcome = FocusSessionService.IsRunning
+                ? FocusSessionService.ChangeRunningPrograms(key, list, ActionCause.SettingsPage("Program focus"))
+                : WriteIdle(key, list);
+            if (outcome == FocusGraceChange.Changed) { ReloadKeepingOpen(key); return; }
+            verdict = outcome == FocusGraceChange.LeverRefused ? FocusAllowVerdict.NothingKeptUsable : FocusAllowVerdict.SessionRunning;
         }
         refused(verdict);
         if (verdict == FocusAllowVerdict.SessionRunning) ApplySessionLock();
     }
+
+    private static FocusGraceChange WriteIdle(string key, List<FocusProgramEntry> list)
+    {
+        SettingsService.Update(s => { if (NamedSessions.Find(s, key) is { } session) session.Programs = list; });
+        return FocusGraceChange.Changed;
+    }
+
+    private static bool Locked(string key) =>
+        FocusSessionService.LeversAreLocked && !FocusSessionService.RowsOpenInGrace(key);
 
     private static void ShowRefusal(PresetRows.Parts row, FocusAllowVerdict verdict)
     {
@@ -429,6 +444,7 @@ internal static class ProgramFocusText
         FocusAllowVerdict.ListFull       => AppText.Format("FocusProgramsRefusalListFull", FocusAllowedPrograms.Maximum),
         FocusAllowVerdict.AlreadyAllowed => AppText.Get("FocusProgramsRefusalAlreadyAllowed"),
         FocusAllowVerdict.NotAllowed     => AppText.Get("FocusProgramsRefusalNotAllowed"),
+        FocusAllowVerdict.NothingKeptUsable => AppText.Get("PopOutRefusalLeverRefused"),
         _                                => "",
     };
 

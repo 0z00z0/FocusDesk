@@ -96,16 +96,23 @@ internal static class FocusSessionStages
 /// running.</param>
 /// <param name="Goal">The goal typed for the session, empty where none was. For the cover only:
 /// nothing published, logged or shown on the tray reads it.</param>
+/// <param name="GraceEndsAt">When the grace period of a fresh start ends; null outside it, and always
+/// for a resumed session.</param>
 internal readonly record struct FocusSnapshot(
     FocusSessionStage Stage, DateTimeOffset? StartedAt, DateTimeOffset? EndsAt,
     bool DimsScreen, bool CoversScreen, bool BlocksInput = false, bool BlocksNetwork = false,
     bool LimitsPrograms = false, FocusSessionKind Kind = FocusSessionKind.ScreenBreak, string Goal = "",
-    string? NamedSession = null, ProgramFocusMode Mode = ProgramFocusMode.AllowListed)
+    string? NamedSession = null, ProgramFocusMode Mode = ProgramFocusMode.AllowListed,
+    DateTimeOffset? GraceEndsAt = null)
 {
     public static readonly FocusSnapshot None =
         new(FocusSessionStage.Off, null, null, false, false);
 
     public bool IsRunning => Stage != FocusSessionStage.Off;
+
+    /// <summary>The grace period left, or null outside it.</summary>
+    public TimeSpan? GraceLeft(DateTimeOffset now) =>
+        GraceEndsAt is { } end && end > now ? end - now : null;
 
     /// <summary>Whole minutes until the session ends, never negative, and null when none is running.
     /// Rounded up, so a session with seconds left still reads as a minute rather than as none.</summary>
@@ -136,5 +143,16 @@ internal enum FocusArmOutcome
     NamedSessionMissing,
 
     /// <summary>Mode 3 with no program ticked to start: the session would do nothing.</summary>
+    NothingToOpen,
+}
+
+/// <summary>What became of a grace-period change; only <see cref="Changed"/> changed anything.</summary>
+internal enum FocusGraceChange
+{
+    Changed,
+    Unchanged,
+    OutsideGrace,
+    LeverRefused,
+    LeverFailed,
     NothingToOpen,
 }

@@ -23,8 +23,13 @@ A focus session runs for one duration and is one of two kinds, chosen when it st
   server and the programs on the Screen break exception list. The list is kept on the Screen break
   page, under "Blocks the network", and holds program files only.
 
-A session ends when its time runs out, or early from Home Assistant through a staged cancel. The
-machine itself offers no way to end one. FocusDesk does not defend against a determined
+A session ends when its time runs out, or early from Home Assistant through a staged cancel. For a
+grace period after a fresh start (30 seconds, 1, 2 or 5 minutes, set on the Focus session page; 2
+minutes by default) the dashboard shows Cancel counting down, which ends the session at once. In
+Program focus the same period lets the mode change on the dashboard and the session's programs
+change in Settings; a change from "Allow only listed programs" to a mode that opens programs opens
+them then. A resumed session has no grace period. After it, the machine itself offers no way to end
+a session. FocusDesk does not defend against a determined
 administrator, never closes a program, and does not block per site.
 
 ## Install

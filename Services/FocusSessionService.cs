@@ -6,7 +6,7 @@ namespace FocusDesk.Services;
 /// The focus session as one mechanism: the levers, the record on disk and the clock that ends it.
 /// The Settings page and an MQTT command both resolve through here.
 /// </summary>
-/// <remarks>Nothing on the machine can end a session, by design. The only ways out are Home
+/// <remarks>After the grace period nothing on the machine can end a session, by design. The only ways out are Home
 /// Assistant's staged cancel and the session's own duration; the firewall console is the published
 /// way out of the network block alone.</remarks>
 internal static class FocusSessionService
@@ -100,9 +100,9 @@ internal static class FocusSessionService
                                       string? goal = null, string? namedSession = null, ProgramFocusMode? mode = null,
                                       bool openedAhead = false)
     {
-        var (stored, storedKind, screen, input, network, session) = SettingsService.Read(
+        var (stored, storedKind, screen, input, network, session, grace) = SettingsService.Read(
             s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusDimsScreen, s.FocusBlocksInput,
-                  s.FocusBlocksNetwork, NamedSessions.ForStart(s, namedSession)));
+                  s.FocusBlocksNetwork, NamedSessions.ForStart(s, namedSession), s.FocusGraceSeconds));
         if (session is null)
         {
             AppLog.Info($"Focus: the chosen named session is no longer in the list, so nothing started{cause.Clause}.");
@@ -115,7 +115,7 @@ internal static class FocusSessionService
         lock (_armGate)
         {
             _arming = plan.NamedSession;
-            try { outcome = _engine.Arm(FocusStartRequest.Minutes(minutes, stored), plan, cause, goal); }
+            try { outcome = _engine.Arm(FocusStartRequest.Minutes(minutes, stored), plan, cause, goal, TimeSpan.FromSeconds(grace)); }
             finally { _arming = null; }
         }
 
@@ -172,6 +172,32 @@ internal static class FocusSessionService
     }
 
     public static void RequestCancel(ActionCause cause) => _engine.RequestCancel(cause);
+
+    public static bool CancelInGrace(ActionCause cause) => _engine.CancelInGrace(cause);
+
+    /// <summary>Programs open only on a change from a mode that opened nothing.</summary>
+    public static FocusGraceChange ChangeMode(ProgramFocusMode mode, ActionCause cause)
+    {
+        var before = Current;
+        bool marks = SettingsService.Read(s => NamedSessions.Find(s, before.NamedSession)?.Programs.Any(p => p.StartWithSession) ?? false);
+        var outcome = _engine.ChangeMode(mode, marks, cause);
+        if (outcome == FocusGraceChange.Changed && !ProgramStartRules.OpensMarked(before.Mode))
+            OpenMarked(before.Kind, mode, ProgramStartTrigger.GraceChange, before.NamedSession);
+        return outcome;
+    }
+
+    public static bool RowsOpenInGrace(string? key) =>
+        Current is { Kind: FocusSessionKind.ProgramFocus } running && running.GraceLeft(DateTimeOffset.Now) is not null
+        && running.NamedSession == key;
+
+    /// <summary>A list keeping nothing usable in a limiting mode is refused.</summary>
+    public static FocusGraceChange ChangeRunningPrograms(string key, List<FocusProgramEntry> list, ActionCause cause) =>
+        _engine.ProgramsChanged(key, limits =>
+        {
+            if (limits && !FocusProgramLever.KeepsAProgramUsable(list, WindowsPrograms.Folder)) return false;
+            SettingsService.Update(s => { if (NamedSessions.Find(s, key) is { } session) session.Programs = list; });
+            return true;
+        }, cause);
 
     /// <summary>Whether a lever switch may be changed. Refused while a session runs: a lever turned
     /// off part-way through would leave its record parked with nothing owning it.</summary>

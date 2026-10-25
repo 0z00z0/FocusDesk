@@ -10,8 +10,8 @@ namespace FocusDesk.Tests;
 
 /// <summary>
 /// The feature's central property, held against the source: a person at the keyboard can start a
-/// focus session and cannot end one. Ending is Home Assistant's, after a five-minute wait and a
-/// second request, or the session's own clock.
+/// focus session and cannot end one once its grace period has passed. Ending is then Home Assistant's,
+/// after a five-minute wait and a second request, or the session's own clock.
 /// </summary>
 /// <remarks>Source text and the engine's own surface rather than behaviour: the windows are WinUI
 /// code-behind that cannot be driven without a display, and what must never appear there is a call,
@@ -22,7 +22,7 @@ public class FocusNoLocalWayOutTests
     /// the staged cancel and the clock. A method added beside these could be a second route, and the
     /// wait and the second request would guard neither.</summary>
     private static readonly string[] EngineMethods =
-        ["Snapshot", "Start", "Arm", "RequestCancel", "Tick", "KeepRecord"];
+        ["Snapshot", "Start", "Arm", "RequestCancel", "CancelInGrace", "ChangeMode", "ProgramsChanged", "Tick", "KeepRecord"];
 
     [Fact]
     public void TheEngineOffersNoWayToEndASessionBesideTheStagedCancelAndTheClock()
@@ -100,6 +100,24 @@ public class FocusNoLocalWayOutTests
 
         Assert.Equal(FocusSessionStage.Ending, engine.Snapshot().Stage);
         Assert.Equal(0, screen.Lifts);
+    }
+
+    [Fact]
+    public void TheGraceCancelIsRefusedOnceTheGracePeriodHasPassed()
+    {
+        // The only local end: whatever calls it after the period, the session runs on.
+        var now = new DateTimeOffset(2026, 9, 20, 12, 0, 0, TimeSpan.Zero);
+        var engine = new FocusSessionEngine(
+            new FakeFocusLever(), new FakeFocusLever(), new FakeFocusLever(), new FakeFocusLever(),
+            new FakeFocusSessionRecord(), () => now, (_, _) => { });
+        engine.Arm(60, FocusSessionPlan.For(FocusSessionKind.ScreenBreak, blocksNetwork: false,
+                                            dimsScreen: false, blocksInput: false), "a test",
+                   grace: TimeSpan.FromSeconds(30));
+
+        now = now.AddSeconds(30);
+
+        Assert.False(engine.CancelInGrace("a test"));
+        Assert.True(engine.Snapshot().IsRunning);
     }
 
     // ── Leaving the application ─────────────────────────────────────────────────────────────────

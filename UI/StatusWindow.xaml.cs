@@ -26,7 +26,8 @@ namespace FocusDesk.UI;
 /// <para>One window at a time. Clicking away or pressing Escape hides it rather than closing it, so
 /// the next click re-shows the same window; a long idle spell destroys it and the click after that
 /// builds it again.</para>
-/// <para>Nothing here ends a session. The start box starts one: the two kind buttons only choose,
+/// <para>Nothing here ends a session but Cancel, shown only in the grace period after a fresh start.
+/// The start box starts one: the two kind buttons only choose,
 /// and the Start button opens the focus-point window with the chosen kind and length, which arms the
 /// session after its time, or arms it at once where the Focus page turns the focus point off. The way out is Home Assistant's staged cancel and the
 /// session's own clock, and the window says so while one runs.</para>
@@ -149,6 +150,13 @@ internal sealed partial class StatusWindow : Window
         }
         // The menu part is a template part, reachable only once the template is applied.
         StartButton.Loaded += (_, _) => ShowChosenKind();
+        GraceModeHeading.Text = AppText.Get("PopOutGraceModeHeading");
+        foreach (var mode in ProgramFocusText.Modes)
+        {
+            var choice = new RadioButton { Content = ProgramFocusText.ModeName(mode), Tag = mode, GroupName = "GraceMode", FontSize = 12 };
+            choice.Click += OnGraceMode;
+            GraceModeChoices.Children.Add(choice);
+        }
         GoalBox.PlaceholderText    = AppText.Get("PopOutGoalPlaceholder");
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(GoalBox, GoalBox.PlaceholderText);
         GoalBox.MaxLength          = FocusSessionGoal.MaxLength;
@@ -276,7 +284,22 @@ internal sealed partial class StatusWindow : Window
         }
 
         StatusText.Text = FocusSessionStages.Describe(session, DateTimeOffset.Now);
-        WayOutText.Visibility = session.IsRunning ? Visibility.Visible : Visibility.Collapsed;
+        var graceLeft = session.GraceLeft(DateTimeOffset.Now);
+        bool inGrace = graceLeft is not null;
+        WayOutText.Visibility = session.IsRunning && !inGrace ? Visibility.Visible : Visibility.Collapsed;
+        StartButton.Visibility  = inGrace ? Visibility.Collapsed : Visibility.Visible;
+        CancelButton.Visibility = inGrace ? Visibility.Visible : Visibility.Collapsed;
+        if (graceLeft is { } left)
+        {
+            int seconds = (int)Math.Ceiling(left.TotalSeconds);
+            CancelButton.Content = AppText.Format("PopOutCancel",
+                string.Format(CultureInfo.CurrentCulture, "{0}:{1:00}", seconds / 60, seconds % 60));
+        }
+        bool modeOpen = inGrace && session.Kind == FocusSessionKind.ProgramFocus;
+        GraceModePanel.Visibility = modeOpen ? Visibility.Visible : Visibility.Collapsed;
+        if (modeOpen)
+            foreach (var choice in GraceModeChoices.Children.OfType<RadioButton>())
+                choice.IsChecked = (ProgramFocusMode)choice.Tag == session.Mode;
 
         // A second session cannot be armed over a running one, so the buttons say nothing they cannot
         // do. The refusal line from an earlier attempt goes with them.
@@ -288,7 +311,30 @@ internal sealed partial class StatusWindow : Window
         SaveOpenProgramsButton.IsEnabled = !session.IsRunning && !_sessionsFull && !_saving;
         foreach (var button in SessionButtons())
             button.IsEnabled = !session.IsRunning && button.Tag is string key && _runnableSessions.Contains(key);
-        if (session.IsRunning) RefusalText.Visibility = Visibility.Collapsed;
+        if (session.IsRunning && !inGrace) RefusalText.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>Ends the session inside its grace period; the engine refuses it after.</summary>
+    private void OnCancel(object sender, RoutedEventArgs e)
+    {
+        FocusSessionService.CancelInGrace(ActionCause.StatusWindow("Cancel button"));
+        Reload();
+    }
+
+    /// <summary>Changes the running Program focus session's mode inside its grace period.</summary>
+    private void OnGraceMode(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton { Tag: ProgramFocusMode mode }) return;
+        string? refusal = FocusSessionService.ChangeMode(mode, ActionCause.StatusWindow("mode choice")) switch
+        {
+            FocusGraceChange.LeverRefused  => "PopOutRefusalLeverRefused",
+            FocusGraceChange.LeverFailed   => "PopOutRefusalLeverFailed",
+            FocusGraceChange.NothingToOpen => "PopOutRefusalNothingToOpen",
+            _                              => null,
+        };
+        RefusalText.Visibility = refusal is null ? Visibility.Collapsed : Visibility.Visible;
+        if (refusal is not null) RefusalText.Text = AppText.Get(refusal);
+        Reload();
     }
 
     /// <summary>Whether any named session can run in some mode, read with the start box. Program focus

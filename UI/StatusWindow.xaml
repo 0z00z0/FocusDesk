@@ -69,8 +69,8 @@
                 </Button>
             </Grid>
 
-            <!-- The session. No control here ends a session — that is the feature's central
-                 property, not an omission. -->
+            <!-- The session. Only Cancel, inside the grace period, ends a session here — that is the
+                 feature's central property, not an omission. -->
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="{StaticResource SessionControlGap}">
                     <!-- Four units above the first row, as under the other cards' headings. -->
@@ -102,7 +102,24 @@
                                 <MenuFlyout x:Name="ModeMenu" Placement="Bottom"/>
                             </SplitButton.Flyout>
                         </SplitButton>
+                        <!-- Takes the Start button's place for the grace period only, counting down. -->
+                        <Button Grid.Column="1" x:Name="CancelButton" Visibility="Collapsed"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                MinHeight="{StaticResource SessionControlHeight}"
+                                FontSize="{StaticResource SessionControlFontSize}"
+                                Padding="{StaticResource SessionControlPadding}"
+                                BorderThickness="{StaticResource SessionControlBorder}"
+                                CornerRadius="{StaticResource SessionControlCornerRadius}"
+                                Style="{StaticResource AccentButtonStyle}"
+                                Click="OnCancel"/>
                     </Grid>
+
+                    <!-- A Program focus session's mode, changeable for the grace period only. -->
+                    <StackPanel x:Name="GraceModePanel" Spacing="2" Visibility="Collapsed">
+                        <TextBlock x:Name="GraceModeHeading" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                        <StackPanel x:Name="GraceModeChoices"/>
+                    </StackPanel>
 
                     <!-- Both kinds, every time. Pressing one only chooses it, and the chosen kind
                          carries the accent; the Start button above opens the focus-point window, and

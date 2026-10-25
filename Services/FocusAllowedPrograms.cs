@@ -28,6 +28,9 @@ internal enum FocusAllowVerdict
 
     /// <summary>Not on the list, so there was nothing to take off or change.</summary>
     NotAllowed,
+
+    /// <summary>A grace-period change that would leave the running session no usable program.</summary>
+    NothingKeptUsable,
 }
 
 /// <summary>How a program is identified. The member names are stored, so they never change.</summary>

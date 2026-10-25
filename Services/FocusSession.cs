@@ -64,7 +64,8 @@ internal interface IFocusLever
 }
 
 /// <summary>
-/// A focus session: one duration, the levers it owns, and no way out from the machine itself.
+/// A focus session: one duration, the levers it owns, and no way out from the machine itself once its
+/// grace period has passed.
 /// </summary>
 /// <remarks>
 /// <para>Pure but for the seams handed in, so every rule here — the refusals, the staged cancel, the
@@ -112,6 +113,9 @@ internal sealed class FocusSessionEngine(
 
     private FocusSessionRecord? _session;
     private DateTimeOffset? _cancelRequestedAt;
+
+    // Held in memory only: a session resumed after a restart has no grace period.
+    private DateTimeOffset? _graceEndsAt;
     private FocusSessionStage _published = FocusSessionStage.Off;
 
     // Set when a lever is dropped from a running session, so the change is raised although the
@@ -171,7 +175,9 @@ internal sealed class FocusSessionEngine(
     /// <summary>Starts a session for <paramref name="minutes"/> holding the levers the plan names.
     /// Nothing is armed unless the lever the plan's kind always holds can be.</summary>
     /// <param name="goal">The goal typed for the session, kept with it and never logged.</param>
-    public FocusArmOutcome Arm(int minutes, FocusSessionPlan plan, ActionCause cause, string? goal = null)
+    /// <param name="grace">How long after the arm the session can be cancelled or changed.</param>
+    public FocusArmOutcome Arm(int minutes, FocusSessionPlan plan, ActionCause cause, string? goal = null,
+                               TimeSpan grace = default)
     {
         ArgumentNullException.ThrowIfNull(plan);
         FocusArmOutcome outcome;
@@ -180,12 +186,107 @@ internal sealed class FocusSessionEngine(
         lock (_gate)
         {
             outcome = ArmLocked(minutes, plan, cause, FocusSessionGoal.Clean(goal));
+            if (outcome == FocusArmOutcome.Armed && grace > TimeSpan.Zero) _graceEndsAt = now() + grace;
             changed = Sync();
         }
 
         if (changed) Raise();
         return outcome;
     }
+
+    /// <summary>The only local end: inside the grace period it ends the session at once, and after it
+    /// it is refused, whatever calls it.</summary>
+    public bool CancelInGrace(ActionCause cause)
+    {
+        bool ended;
+        bool changed;
+        lock (_gate)
+        {
+            ended = InGrace();
+            if (ended) Finish(cause, FocusSessionOutcome.EndedEarly);
+            else if (_session is not null) log("Focus session cancel refused: the grace period has passed", cause);
+            changed = Sync();
+        }
+        if (changed) Raise();
+        return ended;
+    }
+
+    /// <summary>Changes a Program focus session's mode inside its grace period, engaging or lifting the
+    /// program limit to match.</summary>
+    public FocusGraceChange ChangeMode(ProgramFocusMode mode, bool marksAProgram, ActionCause cause)
+    {
+        FocusGraceChange outcome;
+        bool changed;
+        lock (_gate)
+        {
+            outcome = ChangeModeLocked(mode, marksAProgram, cause);
+            changed = Sync();
+        }
+        if (changed) Raise();
+        return outcome;
+    }
+
+    /// <summary>Runs <paramref name="write"/> on the running Program focus session's rows inside its
+    /// grace period, then arms the program limit again on the new list.</summary>
+    /// <param name="write">Told whether the session limits programs; false refuses the change.</param>
+    public FocusGraceChange ProgramsChanged(string? namedSession, Func<bool, bool> write, ActionCause cause)
+    {
+        ArgumentNullException.ThrowIfNull(write);
+        bool changed;
+        lock (_gate)
+        {
+            if (!InGrace() || _session is not { Kind: FocusSessionKind.ProgramFocus } session
+                || session.NamedSession != namedSession)
+                return FocusGraceChange.OutsideGrace;
+            if (!write(session.LimitsPrograms)) return FocusGraceChange.LeverRefused;
+
+            if (session.LimitsPrograms && !_programs.Engage(cause))
+                DropPrograms("the window watch could not be started again on the changed list", cause);
+            log("Focus session's programs changed in the grace period", cause);
+            _leversMoved = true;
+            changed = Sync();
+        }
+        if (changed) Raise();
+        return FocusGraceChange.Changed;
+    }
+
+    private FocusGraceChange ChangeModeLocked(ProgramFocusMode mode, bool marksAProgram, ActionCause cause)
+    {
+        if (!InGrace() || _session is not { Kind: FocusSessionKind.ProgramFocus } session)
+        {
+            log("Focus session mode change refused: no grace period is running", cause);
+            return FocusGraceChange.OutsideGrace;
+        }
+        if (session.Mode == mode) return FocusGraceChange.Unchanged;
+
+        bool limits = ProgramStartRules.LimitsPrograms(mode);
+        if (!limits && !marksAProgram) return FocusGraceChange.NothingToOpen;
+        if (limits && !session.LimitsPrograms && _programs.Refusal() is { } refusal)
+        {
+            log($"Focus session mode change refused: {refusal}", cause);
+            return FocusGraceChange.LeverRefused;
+        }
+
+        // The record first, as at an arm, so a crash leaves a session the next start can read.
+        var changed = session with { Mode = mode, LimitsPrograms = limits };
+        if (!record.Save(changed)) return FocusGraceChange.LeverFailed;
+        _session = changed;
+
+        if (limits && !session.LimitsPrograms && !_programs.Engage(cause))
+        {
+            _session = session;
+            record.Save(session);
+            return FocusGraceChange.LeverFailed;
+        }
+        if (!limits && session.LimitsPrograms) _programs.Lift(cause);
+
+        _leversMoved = true;
+        log($"Focus session mode changed in the grace period to {mode}", cause);
+        return FocusGraceChange.Changed;
+    }
+
+    /// <summary>Called with the lock held.</summary>
+    private bool InGrace() => _session is not null && _graceEndsAt is { } end && now() < end;
 
     /// <summary>A cancel request. The first opens the wait, a repeat during it changes nothing, and
     /// one inside the confirm window ends the session.</summary>
@@ -234,6 +335,13 @@ internal sealed class FocusSessionEngine(
                     Finish("the session ran its length", FocusSessionOutcome.RanToTime);
                 else
                 {
+                    if (_graceEndsAt is { } graceEnd && now() >= graceEnd)
+                    {
+                        _graceEndsAt = null;
+                        _leversMoved = true;
+                        log("The focus session's grace period ended", "the session's own clock");
+                    }
+
                     if (_cancelRequestedAt is not null && Compose().Stage == FocusSessionStage.Active)
                     {
                         _cancelRequestedAt = null;
@@ -416,6 +524,7 @@ internal sealed class FocusSessionEngine(
         record.Clear();
         _session = null;
         _cancelRequestedAt = null;
+        _graceEndsAt = null;
 
         // After the levers and the record, so a history write that throws cannot leave a session
         // still holding them.
@@ -480,7 +589,7 @@ internal sealed class FocusSessionEngine(
         return new FocusSnapshot(stage, session.StartedAt, session.EndsAt,
                                  session.DimsScreen, session.CoversScreen, session.BlocksInput,
                                  session.BlocksNetwork, session.LimitsPrograms, session.Kind, session.Goal,
-                                 session.NamedSession, session.Mode);
+                                 session.NamedSession, session.Mode, InGrace() ? _graceEndsAt : null);
     }
 
     /// <summary>Brings the stage last reported into line with the stage now, and says whether it
