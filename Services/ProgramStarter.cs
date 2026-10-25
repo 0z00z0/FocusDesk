@@ -101,14 +101,10 @@ internal static class ProgramStarter
         var (target, missing) = TargetOf(entry);
         if (target is null) return missing;
 
-        try { ShellLaunch.Open(target); }
-        catch (Exception ex)
-        {
-            AppLog.Error($"ProgramStarter: {entry.Id}", ex);
-            return ProgramStartResult.DidNotStart;
-        }
-
+        // The limit covers the shell call too: Explorer holds the call while it shows a box.
         var clock = Stopwatch.StartNew();
+        if (!OpenWithin(target, entry.Id, StartWait)) return ProgramStartResult.DidNotStart;
+
         while (clock.Elapsed < StartWait)
         {
             Thread.Sleep(PollInterval);
@@ -128,9 +124,47 @@ internal static class ProgramStarter
             && (start.StartsWith(AppsFolderEntry.ShellPrefix, StringComparison.OrdinalIgnoreCase)
                     ? AppsFolderHas(start)
                     : File.Exists(start)))
-            return (start, default);
+        {
+            // Explorer answers a shortcut whose target is gone with a box that holds the call and
+            // offers to repoint the shortcut, so such a shortcut is never opened.
+            if (!ShortcutTargetGone(start)) return (start, default);
+            return file ? (entry.Id, default) : (null, ProgramStartResult.FileMissing);
+        }
 
         return file ? (entry.Id, default) : (null, ProgramStartResult.NotInStartMenu);
+    }
+
+    /// <summary>True for a shortcut naming a file or folder that does not exist. A shortcut naming no
+    /// file, such as an installer-advertised one, is not judged. Read without resolving, so no search
+    /// and no box.</summary>
+    internal static bool ShortcutTargetGone(string shortcut)
+    {
+        if (!shortcut.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase)) return false;
+        string target = ShellLink.Target(shortcut);
+        return target.Length > 0 && !File.Exists(target) && !Directory.Exists(target);
+    }
+
+    /// <summary>Makes the shell call on a thread of its own and waits at most the limit. A call still
+    /// held is left to return by itself; nothing is closed.</summary>
+    private static bool OpenWithin(string target, string id, TimeSpan limit)
+    {
+        bool opened = false;
+        var call = new Thread(() =>
+        {
+            try
+            {
+                ShellLaunch.Open(target);
+                opened = true;
+            }
+            catch (Exception ex) { AppLog.Error($"ProgramStarter: {id}", ex); }
+        })
+        { IsBackground = true, Name = "FocusDesk shell call" };
+        call.SetApartmentState(ApartmentState.STA);
+        call.Start();
+
+        if (call.Join(limit)) return opened;
+        AppLog.Info($"Focus: the shell call for {id} had not returned within the limit; left to finish");
+        return false;
     }
 
     private static bool AppsFolderHas(string parsingName)
