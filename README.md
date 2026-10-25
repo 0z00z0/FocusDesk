@@ -12,7 +12,9 @@ A focus session runs for one duration and is one of two kinds, chosen when it st
     opened when the session starts.
   - "Open marked, allow all others": the marked programs are opened and nothing is limited.
 
-  A program already open is left alone, and a session resumed after a restart opens nothing. Program
+  A program already open is left alone, and a session resumed after a restart opens nothing. While
+  programs open, a window lists each one over a see-through cover on every display, then reads
+  "Completed" with any program that could not be started and why; closing it closes the cover. Program
   focus never blocks the network.
 - **Screen break.** Every display is covered with a black window. The mouse and keyboard can be
   blocked and the screen dimmed as well, and every network connection can be blocked except the MQTT

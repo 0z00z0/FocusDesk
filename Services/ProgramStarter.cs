@@ -13,6 +13,43 @@ internal enum ProgramStartResult
     DidNotStart,
 }
 
+/// <summary>One start's programs and what became of each, read by the starting window. Results
+/// arrive on the starter's thread.</summary>
+internal sealed class ProgramStartRun
+{
+    private readonly Lock _gate = new();
+    private readonly ProgramStartResult?[] _results;
+
+    internal ProgramStartRun(IReadOnlyList<FocusProgramEntry> programs)
+    {
+        Programs = programs;
+        _results = new ProgramStartResult?[programs.Count];
+    }
+
+    public IReadOnlyList<FocusProgramEntry> Programs { get; }
+
+    /// <summary>Raised on the starter's thread after each program is tried.</summary>
+    public event Action? Changed;
+
+    /// <summary>One result per program in list order, null while it waits.</summary>
+    public ProgramStartResult?[] Results()
+    {
+        lock (_gate) return (ProgramStartResult?[])_results.Clone();
+    }
+
+    internal void Record(int index, ProgramStartResult result)
+    {
+        lock (_gate) _results[index] = result;
+        try { Changed?.Invoke(); }
+        catch (Exception ex) { AppLog.Error("ProgramStartRun.Changed", ex); }
+    }
+
+    /// <summary>An open program left alone is not a failure.</summary>
+    public static bool Failed(ProgramStartResult result) =>
+        result is ProgramStartResult.NotInStartMenu or ProgramStartResult.FileMissing
+                  or ProgramStartResult.DidNotStart;
+}
+
 /// <summary>Opens a session's marked programs in list order, leaving open ones alone. Nothing is ever
 /// closed.</summary>
 internal static class ProgramStarter
@@ -21,25 +58,38 @@ internal static class ProgramStarter
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
 
-    /// <summary>Returns at once; the run goes on a thread of its own, in the apartment the shell needs.</summary>
-    public static void Run(IReadOnlyList<FocusProgramEntry> marked)
+    /// <summary>Returns at once with the run, or null when nothing is marked; the run goes on a thread
+    /// of its own, in the apartment the shell needs.</summary>
+    public static ProgramStartRun? Run(IReadOnlyList<FocusProgramEntry> marked)
     {
-        if (marked.Count == 0) return;
+        if (marked.Count == 0) return null;
+        var run = new ProgramStartRun(marked);
         var thread = new Thread(() =>
         {
+            int next = 0;
             try
             {
                 var inspector = new WindowInspector();
                 string windows = WindowsPrograms.Folder;
                 var skip = GateContext.MachineSkipFolders();
-                foreach (var entry in marked)
-                    AppLog.Info($"Focus: starting {entry.Id} with the session: {StartOne(entry, inspector, windows, skip)}");
+                for (; next < marked.Count; next++)
+                {
+                    var result = StartOne(marked[next], inspector, windows, skip);
+                    AppLog.Info($"Focus: starting {marked[next].Id} with the session: {result}");
+                    run.Record(next, result);
+                }
             }
-            catch (Exception ex) { AppLog.Error("ProgramStarter.Run", ex); }
+            catch (Exception ex)
+            {
+                AppLog.Error("ProgramStarter.Run", ex);
+                // The starting window waits for every program, so a run that broke off still ends.
+                for (; next < marked.Count; next++) run.Record(next, ProgramStartResult.DidNotStart);
+            }
         })
         { IsBackground = true, Name = "FocusDesk program starter" };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
+        return run;
     }
 
     private static ProgramStartResult StartOne(FocusProgramEntry entry, IWindowInspector inspector,

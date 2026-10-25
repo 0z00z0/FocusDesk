@@ -39,8 +39,16 @@ internal static class ScreenCoverService
     /// building it again, and the choice belongs to the session that was armed.</summary>
     private static CoverVisual _visual = CoverVisual.Ring;
 
-    private static readonly List<ScreenCoverWindow> _windows = [];
-    private static IReadOnlyList<RectInt32> _covering = [];
+    private static readonly PerDisplayWindows<ScreenCoverWindow> _covers = new(
+        "ScreenCoverService",
+        bounds =>
+        {
+            var window = new ScreenCoverWindow(_visual);
+            window.Cover(bounds);
+            return window;
+        },
+        window => window.Dismiss(),
+        window => window.IsGone);
 
     /// <summary>True from the moment a cover is asked for until it is taken down, whether or not the
     /// windows have been built yet — the build is marshalled onto the UI thread.</summary>
@@ -109,13 +117,7 @@ internal static class ScreenCoverService
         try
         {
             _tick?.Stop();
-            foreach (var window in _windows)
-            {
-                try { window.Dismiss(); }
-                catch (Exception ex) { AppLog.Error("ScreenCoverService.Close", ex); }
-            }
-            _windows.Clear();
-            _covering = [];
+            _covers.Clear("ScreenCoverService.Close");
         }
         catch (Exception ex) { AppLog.Error("ScreenCoverService.Drop", ex); }
     }
@@ -132,8 +134,7 @@ internal static class ScreenCoverService
             // A display added, removed, moved or re-resolved while a session runs changes this list,
             // and the covers are rebuilt against it. A cover that is gone is rebuilt too: whatever
             // took it down, it is back within a second, and this does not depend on knowing how.
-            var displays = NativeMethods.AllDisplayBounds();
-            if (!SameDisplays(displays, _covering)) Rebuild();
+            if (_covers.DisplaysChanged()) Rebuild();
             else if (AnyCoverIsGone()) { AppLog.Info("Focus: a screen cover had gone, and is put back."); Rebuild(); }
 
             var reading = FocusCoverCountdown.For(session, DateTimeOffset.Now);
@@ -144,7 +145,7 @@ internal static class ScreenCoverService
             // never becomes the brightest thing on a screen nobody asked to have changed.
             var appearance = CoverAppearance.For(_visual, session.DimsScreen);
 
-            foreach (var window in _windows)
+            foreach (var window in _covers.Windows)
             {
                 window.KeepOnTop();
                 window.Apply(reading, levers, revealed, appearance, session.Goal);
@@ -158,28 +159,8 @@ internal static class ScreenCoverService
     /// display change is what leaves a strip uncovered.</summary>
     private static void Rebuild()
     {
-        var displays = NativeMethods.AllDisplayBounds();
-
-        foreach (var window in _windows)
-        {
-            try { window.Dismiss(); }
-            catch (Exception ex) { AppLog.Error("ScreenCoverService.Rebuild close", ex); }
-        }
-        _windows.Clear();
-
-        foreach (var bounds in displays)
-        {
-            try
-            {
-                var window = new ScreenCoverWindow(_visual);
-                window.Cover(bounds);
-                _windows.Add(window);
-            }
-            catch (Exception ex) { AppLog.Error("ScreenCoverService.Rebuild create", ex); }
-        }
-
-        _covering = displays;
-        AppLog.Info($"Focus: the screen cover is over {_windows.Count} display(s).");
+        _covers.Rebuild();
+        AppLog.Info($"Focus: the screen cover is over {_covers.Windows.Count} display(s).");
     }
 
     /// <summary>Whether the last input was recent enough for the ring to draw brighter. Pure so the
@@ -197,21 +178,7 @@ internal static class ScreenCoverService
 
     /// <summary>Whether any cover has been taken down under the service. A cover with no window
     /// left is a display showing whatever is behind it, which the rebuild puts right.</summary>
-    private static bool AnyCoverIsGone()
-    {
-        foreach (var window in _windows) if (window.IsGone) return true;
-        return false;
-    }
-
-    private static bool SameDisplays(IReadOnlyList<RectInt32> a, IReadOnlyList<RectInt32> b)
-    {
-        if (a.Count != b.Count) return false;
-        for (int i = 0; i < a.Count; i++)
-            if (a[i].X != b[i].X || a[i].Y != b[i].Y ||
-                a[i].Width != b[i].Width || a[i].Height != b[i].Height)
-                return false;
-        return true;
-    }
+    private static bool AnyCoverIsGone() => _covers.AnyIsGone();
 
     /// <summary>What the session is doing, for the panel. The cover says it rather than leaving the
     /// machine looking broken to whoever is sitting at it.</summary>
@@ -224,6 +191,63 @@ internal static class ScreenCoverService
         if (session.BlocksInput)  levers.Add("the mouse and keyboard are blocked");
         if (session.LimitsPrograms) levers.Add(AppText.Get("CoverProgramsLimited"));
         return levers.Count == 0 ? "" : $"While it runs, {string.Join(", ", levers)}.";
+    }
+}
+
+/// <summary>One window per attached display, shared by the session's cover and the starting
+/// window's see-through cover. UI thread only; <paramref name="owner"/> names the log entries.</summary>
+internal sealed class PerDisplayWindows<T>(string owner, Func<RectInt32, T> create, Action<T> dismiss,
+                                           Func<T, bool> isGone)
+{
+    private readonly List<T> _windows = [];
+    private IReadOnlyList<RectInt32> _covering = [];
+
+    internal IReadOnlyList<T> Windows => _windows;
+
+    /// <summary>Whether a display was added, removed, moved or re-resolved since the last build.</summary>
+    internal bool DisplaysChanged() => !SameDisplays(NativeMethods.AllDisplayBounds(), _covering);
+
+    internal bool AnyIsGone()
+    {
+        foreach (var window in _windows) if (isGone(window)) return true;
+        return false;
+    }
+
+    /// <summary>Torn down and built again rather than moved: a rebuild is rare and reusing a window
+    /// across a display change is what leaves a strip uncovered.</summary>
+    internal void Rebuild()
+    {
+        var displays = NativeMethods.AllDisplayBounds();
+        Clear($"{owner}.Rebuild close");
+
+        foreach (var bounds in displays)
+        {
+            try { _windows.Add(create(bounds)); }
+            catch (Exception ex) { AppLog.Error($"{owner}.Rebuild create", ex); }
+        }
+
+        _covering = displays;
+    }
+
+    internal void Clear(string where)
+    {
+        foreach (var window in _windows)
+        {
+            try { dismiss(window); }
+            catch (Exception ex) { AppLog.Error(where, ex); }
+        }
+        _windows.Clear();
+        _covering = [];
+    }
+
+    private static bool SameDisplays(IReadOnlyList<RectInt32> a, IReadOnlyList<RectInt32> b)
+    {
+        if (a.Count != b.Count) return false;
+        for (int i = 0; i < a.Count; i++)
+            if (a[i].X != b[i].X || a[i].Y != b[i].Y ||
+                a[i].Width != b[i].Width || a[i].Height != b[i].Height)
+                return false;
+        return true;
     }
 }
 
