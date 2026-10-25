@@ -26,9 +26,6 @@ internal interface ISettingsActions
     /// runs.</summary>
     void SetFocusSessionKind(FocusSessionKind kind);
 
-    /// <summary>Whether the next session blocks the network. Refused while one runs.</summary>
-    void SetFocusBlocksNetwork(bool on);
-
     /// <summary>Whether the next screen break dims the screen. Refused while one runs.</summary>
     void SetFocusDimsScreen(bool on);
 
@@ -71,9 +68,6 @@ internal sealed class MqttCommandActions : ISettingsActions
 
     public void SetFocusSessionKind(FocusSessionKind kind) => WriteUnlessSessionRunning(
         s => s.FocusSessionKind = kind, "the kind of session");
-
-    public void SetFocusBlocksNetwork(bool on) => WriteUnlessSessionRunning(
-        s => s.FocusBlocksNetwork = on, "which lever blocks the network");
 
     public void SetFocusDimsScreen(bool on) => WriteUnlessSessionRunning(
         s => s.FocusDimsScreen = on, "which lever dims the screen");

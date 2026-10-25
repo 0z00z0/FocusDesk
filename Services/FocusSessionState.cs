@@ -99,7 +99,8 @@ internal static class FocusSessionStages
 internal readonly record struct FocusSnapshot(
     FocusSessionStage Stage, DateTimeOffset? StartedAt, DateTimeOffset? EndsAt,
     bool DimsScreen, bool CoversScreen, bool BlocksInput = false, bool BlocksNetwork = false,
-    bool LimitsPrograms = false, FocusSessionKind Kind = FocusSessionKind.ScreenBreak, string Goal = "")
+    bool LimitsPrograms = false, FocusSessionKind Kind = FocusSessionKind.ScreenBreak, string Goal = "",
+    string? NamedSession = null)
 {
     public static readonly FocusSnapshot None =
         new(FocusSessionStage.Off, null, null, false, false);

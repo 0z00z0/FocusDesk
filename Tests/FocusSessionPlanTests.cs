@@ -26,10 +26,10 @@ public class FocusSessionPlanTests
     [InlineData(false, false, false, true,  false, true, true,  false, false)]
     [InlineData(false, false, true,  false, false, true, false, true,  false)]
     [InlineData(false, false, true,  true,  false, true, true,  true,  false)]
-    [InlineData(false, true,  false, false, false, true, false, false, true)]
-    [InlineData(false, true,  false, true,  false, true, true,  false, true)]
-    [InlineData(false, true,  true,  false, false, true, false, true,  true)]
-    [InlineData(false, true,  true,  true,  false, true, true,  true,  true)]
+    [InlineData(false, true,  false, false, false, true, false, false, false)]
+    [InlineData(false, true,  false, true,  false, true, true,  false, false)]
+    [InlineData(false, true,  true,  false, false, true, false, true,  false)]
+    [InlineData(false, true,  true,  true,  false, true, true,  true,  false)]
     public void EachKindHoldsTheLeversItsTableRowNames(
         bool programFocus, bool networkSwitch, bool dimSwitch, bool inputSwitch,
         bool limits, bool covers, bool blocksInput, bool dims, bool blocksNetwork)

@@ -76,7 +76,7 @@ public sealed partial class FocusSettingsPanel : UserControl
             FocusStatusValue.Text = FocusSessionStages.Describe(session, DateTimeOffset.Now);
 
             var (minutes, kind, network, dims, input, startFromStatus) = SettingsService.Read(
-                s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusBlocksNetwork, s.FocusDimsScreen,
+                s => (s.FocusSessionMinutes, s.FocusSessionKind, NamedSessions.InUse(s).BlocksNetwork, s.FocusDimsScreen,
                       s.FocusBlocksInput, s.FocusStartFromDashboard));
 
             FocusLengthChoices.Fill(FocusMinutesCombo, minutes);
@@ -124,7 +124,7 @@ public sealed partial class FocusSettingsPanel : UserControl
         FocusAllowedProgramsPanel.Children.Clear();
         string windows = WindowsPrograms.Folder;
 
-        foreach (var entry in SettingsService.Read(s => s.FocusPrograms.ToList()))
+        foreach (var entry in SettingsService.Read(s => NamedSessions.InUse(s).Programs.ToList()))
         {
             var program = entry;
             var offer = ProgramCatalogue.OfferFor(entry, windows);
@@ -206,11 +206,11 @@ public sealed partial class FocusSettingsPanel : UserControl
     /// refusal leaves the document untouched and says why.</summary>
     private void ChangeAllowedPrograms(Func<IList<FocusProgramEntry>, FocusAllowVerdict> change)
     {
-        var list = SettingsService.Read(s => s.FocusPrograms.ToList());
+        var list = SettingsService.Read(s => NamedSessions.InUse(s).Programs.ToList());
         var verdict = change(list);
 
         if (verdict is FocusAllowVerdict.Added or FocusAllowVerdict.Removed or FocusAllowVerdict.Changed)
-            SettingsService.Update(s => s.FocusPrograms = list);
+            SettingsService.Update(s => NamedSessions.InUse(s).Programs = list);
 
         FocusAllowRefusalText.Text = Refusal(verdict);
         FocusAllowRefusalText.Visibility = FocusAllowRefusalText.Text.Length > 0
@@ -255,7 +255,7 @@ public sealed partial class FocusSettingsPanel : UserControl
     private void OnFocusBlocksNetworkToggled(object sender, RoutedEventArgs e)
     {
         if (_updating) return;
-        SettingsService.Update(s => s.FocusBlocksNetwork = FocusBlocksNetworkToggle.IsOn);
+        SettingsService.Update(s => NamedSessions.InUse(s).BlocksNetwork = FocusBlocksNetworkToggle.IsOn);
     }
 
     private void OnFocusDimsScreenToggled(object sender, RoutedEventArgs e)

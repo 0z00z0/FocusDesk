@@ -19,10 +19,11 @@ namespace FocusDesk.Services;
 /// screen break.</param>
 /// <param name="Goal">The goal typed for the session, empty where none was. Never logged; a record
 /// written before goals existed reads as empty.</param>
+/// <param name="NamedSession">The key of the named session a Program focus session runs on.</param>
 internal readonly record struct FocusSessionRecord(
     DateTimeOffset StartedAt, DateTimeOffset EndsAt, bool DimsScreen, bool CoversScreen,
     bool BlocksInput = false, bool BlocksNetwork = false, bool LimitsPrograms = false,
-    FocusSessionKind Kind = FocusSessionKind.ScreenBreak, string Goal = "");
+    FocusSessionKind Kind = FocusSessionKind.ScreenBreak, string Goal = "", string? NamedSession = null);
 
 /// <summary>Where a running session is kept so nothing but the clock can end it.</summary>
 internal interface IFocusSessionRecord
@@ -306,7 +307,8 @@ internal sealed class FocusSessionEngine(
         var started = now();
         var session = new FocusSessionRecord(
             started, started.AddMinutes(Math.Clamp(minutes, MinMinutes, MaxMinutes)),
-            dimsScreen, plan.CoversScreen, blocksInput, blocksNetwork, plan.LimitsPrograms, plan.Kind, goal);
+            dimsScreen, plan.CoversScreen, blocksInput, blocksNetwork, plan.LimitsPrograms, plan.Kind, goal,
+            plan.NamedSession);
 
         // The record reaches disk before a lever moves: a crash between the two has to leave a
         // session the next start can end, never a lever nothing owns.
@@ -469,7 +471,8 @@ internal sealed class FocusSessionEngine(
 
         return new FocusSnapshot(stage, session.StartedAt, session.EndsAt,
                                  session.DimsScreen, session.CoversScreen, session.BlocksInput,
-                                 session.BlocksNetwork, session.LimitsPrograms, session.Kind, session.Goal);
+                                 session.BlocksNetwork, session.LimitsPrograms, session.Kind, session.Goal,
+                                 session.NamedSession);
     }
 
     /// <summary>Brings the stage last reported into line with the stage now, and says whether it

@@ -500,7 +500,7 @@ public class FocusSessionTests
         var bed = new Bed();
         bed.Network.RefusalText = "no MQTT broker is configured";
 
-        var outcome = bed.Engine.Arm(60, ScreenBreak(network: true), "a test");
+        var outcome = bed.Engine.Arm(60, ProgramFocus(network: true), "a test");
 
         Assert.Equal(FocusArmOutcome.Armed, outcome);
         Assert.Equal(0, bed.Network.Engagements);
@@ -513,10 +513,10 @@ public class FocusSessionTests
         var bed = new Bed();
         bed.Network.EngageSucceeds = false;
 
-        var outcome = bed.Engine.Arm(60, ScreenBreak(dims: true, network: true), "a test");
+        var outcome = bed.Engine.Arm(60, ProgramFocus(network: true), "a test");
 
         Assert.Equal(FocusArmOutcome.Armed, outcome);
-        Assert.Equal(0, bed.Screen.Lifts);
+        Assert.Equal(0, bed.Programs.Lifts);
         Assert.False(bed.Engine.Snapshot().BlocksNetwork);
         Assert.False(bed.Record.Held!.Value.BlocksNetwork);
     }

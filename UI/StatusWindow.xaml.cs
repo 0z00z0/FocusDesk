@@ -265,7 +265,7 @@ internal sealed partial class StatusWindow : Window
     private void ShowStartBox()
     {
         var (offered, minutes, programs) = SettingsService.Read(
-            s => (s.FocusStartFromDashboard, s.FocusSessionMinutes, s.FocusPrograms.ToList()));
+            s => (s.FocusStartFromDashboard, s.FocusSessionMinutes, NamedSessions.InUse(s).Programs.ToList()));
 
         var shown = offered ? Visibility.Visible : Visibility.Collapsed;
         KindChoices.Visibility = shown;

@@ -37,7 +37,8 @@ internal static class FocusSessionService
         new FocusNetworkLever(_firewall, new LiveFocusNetworkTargets(Broker),
                               FocusNetworkLever.ElevationRefusal,
                               (what, cause) => AppLog.Info($"{what}{cause.Clause}"),
-                              () => SettingsService.Read(s => FocusAllowedPrograms.NetworkPaths(s.FocusPrograms))),
+                              () => SettingsService.Read(s => FocusAllowedPrograms.NetworkPaths(
+                                  NamedSessions.ForLevers(s, _arming).Programs))),
         new SettingsFocusSessionRecord(),
         () => DateTimeOffset.Now,
         (what, cause) => AppLog.Info($"{what}{cause.Clause}"),
@@ -45,6 +46,10 @@ internal static class FocusSessionService
         new FocusProgramLever(_programGate, ProgramGateContext));
 
     private static Timer? _timer;
+
+    // The named session being armed, so the levers' refusal reads it before the record names it.
+    private static readonly Lock _armGate = new();
+    private static string? _arming;
 
     /// <summary>Raised after the session or its stage moves.</summary>
     public static event Action? Changed
@@ -84,14 +89,22 @@ internal static class FocusSessionService
     /// <param name="kind">The kind chosen in the start box. Null from Home Assistant, which sets the
     /// kind through its own select instead. A kind chosen here is never stored.</param>
     /// <param name="goal">The goal typed in the start box. Null from Home Assistant, which has none.</param>
+    /// <param name="namedSession">The named session chosen in the start box. Null from MQTT, which
+    /// starts the session in use.</param>
     public static FocusArmOutcome Arm(ActionCause cause, int? minutes = null, FocusSessionKind? kind = null,
-                                      string? goal = null)
+                                      string? goal = null, string? namedSession = null)
     {
-        var (stored, storedKind, screen, input, network) = SettingsService.Read(
+        var (stored, storedKind, screen, input, session) = SettingsService.Read(
             s => (s.FocusSessionMinutes, s.FocusSessionKind, s.FocusDimsScreen, s.FocusBlocksInput,
-                  s.FocusBlocksNetwork));
-        var plan = FocusSessionPlan.For(kind ?? storedKind, network, screen, input);
-        return _engine.Arm(FocusStartRequest.Minutes(minutes, stored), plan, cause, goal);
+                  NamedSessions.Find(s, namedSession) ?? NamedSessions.InUse(s)));
+        var plan = FocusSessionPlan.For(kind ?? storedKind, session.BlocksNetwork, screen, input, session.Key);
+
+        lock (_armGate)
+        {
+            _arming = plan.NamedSession;
+            try { return _engine.Arm(FocusStartRequest.Minutes(minutes, stored), plan, cause, goal); }
+            finally { _arming = null; }
+        }
     }
 
     /// <summary>What the focus-app lever decides against, read when a session arms or resumes: the
@@ -102,7 +115,7 @@ internal static class FocusSessionService
         try
         {
             var (entries, defaultAction) = SettingsService.Read(
-                s => (s.FocusPrograms.ToList(), s.FocusProgramsDefaultAction));
+                s => (NamedSessions.ForLevers(s, _arming).Programs.ToList(), s.FocusProgramsDefaultAction));
             string windows = WindowsPrograms.Folder;
             var skip = GateContext.MachineSkipFolders();
             var signed = new System.Collections.Concurrent.ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
@@ -175,17 +188,17 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
 {
     public FocusSessionRecord? Read()
     {
-        var (startedAt, endsAt, screen, cover, input, network, programs, kind, goal) = SettingsService.Read(
+        var (startedAt, endsAt, screen, cover, input, network, programs, kind, goal, named) = SettingsService.Read(
             s => (s.FocusSessionStartedAt, s.FocusSessionEndsAt, s.FocusSessionDimmedScreen,
                   s.FocusSessionCoveredScreen, s.FocusSessionBlockedInput,
                   s.FocusSessionBlockedNetwork, s.FocusSessionLimitedPrograms,
-                  s.FocusSessionRunningKind, s.FocusSessionGoal));
+                  s.FocusSessionRunningKind, s.FocusSessionGoal, s.FocusSessionNamedSession));
         // A document written before the start time was recorded falls back to the end time, which
         // reads as a session with no length. Only the cover's ring uses it, and such a document
         // carries no cover lever, so nothing draws from the fallback.
         return endsAt is { } ends
             ? new FocusSessionRecord(startedAt ?? ends, ends, screen, cover, input, network, programs, kind,
-                                     FocusSessionGoal.Clean(goal))
+                                     FocusSessionGoal.Clean(goal), named)
             : null;
     }
 
@@ -200,6 +213,7 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
         s.FocusSessionLimitedPrograms = session.LimitsPrograms;
         s.FocusSessionRunningKind = session.Kind;
         s.FocusSessionGoal = session.Goal.Length > 0 ? session.Goal : null;
+        s.FocusSessionNamedSession = session.NamedSession;
     });
 
     public void Clear() => SettingsService.Update(s =>
@@ -208,6 +222,7 @@ internal sealed class SettingsFocusSessionRecord : IFocusSessionRecord
         s.FocusSessionEndsAt = null;
         s.FocusSessionRunningKind = FocusSessionKind.ScreenBreak;
         s.FocusSessionGoal = null;
+        s.FocusSessionNamedSession = null;
         s.FocusSessionDimmedScreen = false;
         s.FocusSessionCoveredScreen = false;
         s.FocusSessionBlockedInput = false;

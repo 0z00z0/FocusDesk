@@ -18,14 +18,16 @@ internal enum FocusLever
 /// <para>Pure, and built only through <see cref="For"/>, so no plan can hold the cover and the program
 /// limit together, or leave out the lever its kind always holds.</para>
 /// <para>Program focus always limits the programs, never covers, dims or blocks input, and blocks the
-/// network where the switch says so. A screen break always covers, never limits the programs, and
-/// dims, blocks input and blocks the network where their switches say so.</para>
+/// network where its named session says so. A screen break always covers, never limits the programs
+/// and never blocks the network, and dims and blocks input where their switches say so.</para>
 /// </remarks>
 internal sealed class FocusSessionPlan
 {
     private FocusSessionPlan(FocusSessionKind kind, bool dimsScreen, bool coversScreen,
-                             bool blocksInput, bool blocksNetwork, bool limitsPrograms)
+                             bool blocksInput, bool blocksNetwork, bool limitsPrograms,
+                             string? namedSession = null)
     {
+        NamedSession = namedSession;
         Kind = kind;
         DimsScreen = dimsScreen;
         CoversScreen = coversScreen;
@@ -46,20 +48,25 @@ internal sealed class FocusSessionPlan
 
     public bool LimitsPrograms { get; }
 
+    /// <summary>The key of the named session a Program focus session runs on; null for a screen break.</summary>
+    public string? NamedSession { get; }
+
     /// <summary>The lever the kind always holds. Where it cannot arm, the session is refused with that
     /// lever's own reason.</summary>
     public FocusLever Required =>
         Kind == FocusSessionKind.ProgramFocus ? FocusLever.Programs : FocusLever.Cover;
 
-    /// <param name="blocksNetwork">The one network switch, shared by both kinds.</param>
+    /// <param name="blocksNetwork">The named session's network switch, read only by Program focus.</param>
     /// <param name="dimsScreen">Read only by a screen break.</param>
     /// <param name="blocksInput">Read only by a screen break.</param>
+    /// <param name="namedSession">The named session's key, read only by Program focus.</param>
     public static FocusSessionPlan For(FocusSessionKind kind, bool blocksNetwork, bool dimsScreen,
-                                       bool blocksInput) => kind switch
+                                       bool blocksInput, string? namedSession = null) => kind switch
     {
         FocusSessionKind.ProgramFocus => new(kind, dimsScreen: false, coversScreen: false,
-                                             blocksInput: false, blocksNetwork, limitsPrograms: true),
+                                             blocksInput: false, blocksNetwork, limitsPrograms: true,
+                                             namedSession),
         _ => new(FocusSessionKind.ScreenBreak, dimsScreen, coversScreen: true, blocksInput,
-                 blocksNetwork, limitsPrograms: false),
+                 blocksNetwork: false, limitsPrograms: false),
     };
 }

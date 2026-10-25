@@ -18,10 +18,12 @@ namespace FocusDesk.Services;
 /// </remarks>
 internal sealed class SettingsFile
 {
-    public const int CurrentVersion = 1;
+    /// <summary>2 since the named sessions, so a version 1 build leaves a document it cannot read alone.</summary>
+    public const int CurrentVersion = 2;
 
     public const string VersionKey    = "Version";
     public const string FocusKey      = "Focus";
+    public const string ProgramFocusKey = "ProgramFocus";
     public const string ScreenKey     = "Screen";
     public const string AppearanceKey = "Appearance";
     public const string AboutKey      = "About";
@@ -30,7 +32,8 @@ internal sealed class SettingsFile
     /// <summary>The section names, in the order the document carries them. The store binds a section
     /// by its exact spelling, and one spelled in another case binds nothing and hands back
     /// defaults.</summary>
-    public static readonly string[] SectionNames = [FocusKey, ScreenKey, AppearanceKey, AboutKey, WindowKey];
+    public static readonly string[] SectionNames =
+        [FocusKey, ProgramFocusKey, ScreenKey, AppearanceKey, AboutKey, WindowKey];
 
     /// <summary>First key in the file, so the shape is read rather than inferred.</summary>
     [JsonPropertyName(VersionKey), JsonPropertyOrder(0)]
@@ -39,19 +42,29 @@ internal sealed class SettingsFile
     [JsonPropertyName(FocusKey), JsonPropertyOrder(1)]
     public FocusGroup Focus { get; set; } = new();
 
-    [JsonPropertyName(ScreenKey), JsonPropertyOrder(2)]
+    [JsonPropertyName(ProgramFocusKey), JsonPropertyOrder(2)]
+    public ProgramFocusGroup ProgramFocus { get; set; } = new();
+
+    [JsonPropertyName(ScreenKey), JsonPropertyOrder(3)]
     public ScreenGroup Screen { get; set; } = new();
 
-    [JsonPropertyName(AppearanceKey), JsonPropertyOrder(3)]
+    [JsonPropertyName(AppearanceKey), JsonPropertyOrder(4)]
     public AppearanceGroup Appearance { get; set; } = new();
 
-    [JsonPropertyName(AboutKey), JsonPropertyOrder(4)]
+    [JsonPropertyName(AboutKey), JsonPropertyOrder(5)]
     public AboutGroup About { get; set; } = new();
 
     /// <summary>Not a page: where the Settings window was last left. It trails the pages for that
     /// reason.</summary>
-    [JsonPropertyName(WindowKey), JsonPropertyOrder(5)]
+    [JsonPropertyName(WindowKey), JsonPropertyOrder(6)]
     public WindowGroup Window { get; set; } = new();
+
+    internal sealed class ProgramFocusGroup
+    {
+        // Null only before the named sessions existed, which is what carries the Focus list into "Default".
+        [JsonPropertyOrder(1)] public List<NamedSession>? NamedSessions { get; set; }
+        [JsonPropertyOrder(2)] public string? SelectedNamedSession { get; set; }
+    }
 
     internal sealed class ScreenGroup
     {
@@ -71,11 +84,11 @@ internal sealed class SettingsFile
         [JsonPropertyOrder(4)] public bool? FocusPointStartsSession { get; set; }
         [JsonPropertyOrder(5)] public int?  FocusPointSeconds       { get; set; }
         [JsonPropertyOrder(6)] public FocusSessionKind? FocusSessionKind { get; set; }
-        [JsonPropertyOrder(7)] public bool? FocusBlocksNetwork      { get; set; }
-        // Null only in a document written before the list existed, which is what lets its path list
-        // migrate. Written as an empty list rather than null, because the store never deletes a key:
-        // the earlier list stays in the file and must never migrate a second time.
-        [JsonPropertyOrder(8)] public List<FocusProgramEntry>? FocusPrograms { get; set; }
+        // Read once into "Default" and never written; the store keeps the earlier bytes where they stand.
+        [JsonPropertyOrder(7), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? FocusBlocksNetwork { get; set; }
+        [JsonPropertyOrder(8), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<FocusProgramEntry>? FocusPrograms { get; set; }
         [JsonPropertyOrder(9)] public FocusProgramAction? FocusProgramsDefaultAction { get; set; }
         [JsonPropertyOrder(10)] public bool? FocusDimsScreen        { get; set; }
         // The cover's visual, written as its name rather than as a number: a document a person opens
@@ -93,17 +106,22 @@ internal sealed class SettingsFile
         [JsonPropertyOrder(19)] public bool FocusSessionBlockedInput   { get; set; }
         [JsonPropertyOrder(20)] public bool FocusSessionLimitedPrograms { get; set; }
         [JsonPropertyOrder(21)] public string? FocusSessionGoal { get; set; }
-        [JsonPropertyOrder(22)] public List<FirewallProfileSetting>? FocusSavedFirewall { get; set; }
+        [JsonPropertyOrder(22)] public string? FocusSessionNamedSession { get; set; }
+        [JsonPropertyOrder(23)] public List<FirewallProfileSetting>? FocusSavedFirewall { get; set; }
 
         // An earlier document's path list, read to migrate and never written: null on every write,
         // and a null key is left out. The store keeps the earlier bytes where they stand.
-        [JsonPropertyOrder(23), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyOrder(24), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<string>? FocusAllowedPrograms { get; set; }
     }
 
     /// <summary>Keys read from an earlier document and never written. They sit in a group so the
     /// store binds them, and no setting carries them.</summary>
-    public static readonly string[] ReadOnlyKeys = [nameof(FocusGroup.FocusAllowedPrograms)];
+    public static readonly string[] ReadOnlyKeys =
+    [
+        nameof(FocusGroup.FocusAllowedPrograms), nameof(FocusGroup.FocusPrograms),
+        nameof(FocusGroup.FocusBlocksNetwork),
+    ];
 
     internal sealed class AppearanceGroup
     {
@@ -136,6 +154,11 @@ internal sealed class SettingsFile
         ArgumentNullException.ThrowIfNull(s);
         return new SettingsFile
         {
+            ProgramFocus = new ProgramFocusGroup
+            {
+                NamedSessions        = s.NamedSessions,
+                SelectedNamedSession = s.SelectedNamedSession,
+            },
             Screen = new ScreenGroup { ScreenSavedBrightness = s.ScreenSavedBrightness },
             Appearance = new AppearanceGroup
             {
@@ -155,8 +178,6 @@ internal sealed class SettingsFile
             {
                 FocusSessionMinutes       = s.FocusSessionMinutes,
                 FocusSessionKind          = s.FocusSessionKind,
-                FocusBlocksNetwork        = s.FocusBlocksNetwork,
-                FocusPrograms             = s.FocusPrograms,
                 FocusProgramsDefaultAction = s.FocusProgramsDefaultAction,
                 FocusDimsScreen           = s.FocusDimsScreen,
                 FocusCoverVisual          = CoverAppearance.NameOf(s.FocusCoverVisual),
@@ -174,12 +195,37 @@ internal sealed class SettingsFile
                 FocusSessionBlockedNetwork = s.FocusSessionBlockedNetwork,
                 FocusSessionLimitedPrograms = s.FocusSessionLimitedPrograms,
                 FocusSessionGoal          = s.FocusSessionGoal,
+                FocusSessionNamedSession  = s.FocusSessionNamedSession,
                 FocusSavedFirewall        = s.FocusSavedFirewall,
             },
         };
     }
 
-    public AppSettings ToSettings() => new()
+    /// <summary>Whether reading this document creates or repairs named sessions, so the reader writes
+    /// it back at once and every key it hands out stays the one on disk.</summary>
+    public bool NamedSessionsNeedWriting =>
+        ProgramFocus.NamedSessions is not { Count: > 0 } sessions
+        || sessions.Any(n => n is null || string.IsNullOrWhiteSpace(n.Key) || string.IsNullOrWhiteSpace(n.Name));
+
+    /// <summary>The list as read. Absent, today's Focus list and network switch become "Default"; empty,
+    /// "Default" holds nothing; a session missing its key or name gets one.</summary>
+    private List<NamedSession> ReadNamedSessions()
+    {
+        if (ProgramFocus.NamedSessions is null)
+            return [NamedSession.Create(NamedSessions.DefaultName(), Focus.FocusBlocksNetwork ?? false,
+                                        Focus.FocusPrograms ?? FocusAllowedPrograms.Migrate(Focus.FocusAllowedPrograms))];
+
+        var sessions = ProgramFocus.NamedSessions.Where(n => n is not null).ToList();
+        foreach (var session in sessions)
+        {
+            if (string.IsNullOrWhiteSpace(session.Key)) session.Key = NamedSessions.NewKey();
+            if (string.IsNullOrWhiteSpace(session.Name)) session.Name = NamedSessions.DefaultName();
+            session.Programs ??= [];
+        }
+        return sessions.Count > 0 ? sessions : [NamedSession.Create(NamedSessions.DefaultName())];
+    }
+
+    public AppSettings ToSettings() => WithNamedSessions(new()
     {
         ScreenSavedBrightness = Screen.ScreenSavedBrightness,
 
@@ -187,10 +233,6 @@ internal sealed class SettingsFile
         // Nothing carries over from the two lever switches the kind replaced: an installation that
         // has never chosen a kind gets a screen break.
         FocusSessionKind          = Focus.FocusSessionKind ?? FocusSessionKind.ScreenBreak,
-        FocusBlocksNetwork        = Focus.FocusBlocksNetwork ?? false,
-        // A document with no program list but an earlier path list migrates; one with neither reads
-        // as an empty list.
-        FocusPrograms             = Focus.FocusPrograms ?? FocusAllowedPrograms.Migrate(Focus.FocusAllowedPrograms),
         FocusProgramsDefaultAction = Focus.FocusProgramsDefaultAction ?? FocusProgramAction.Minimise,
         FocusDimsScreen           = Focus.FocusDimsScreen ?? true,
         FocusCoverVisual          = CoverAppearance.ParseVisual(Focus.FocusCoverVisual),
@@ -208,6 +250,7 @@ internal sealed class SettingsFile
         FocusSessionBlockedNetwork = Focus.FocusSessionBlockedNetwork,
         FocusSessionLimitedPrograms = Focus.FocusSessionLimitedPrograms,
         FocusSessionGoal          = Focus.FocusSessionGoal,
+        FocusSessionNamedSession  = Focus.FocusSessionNamedSession,
         FocusSavedFirewall        = Focus.FocusSavedFirewall,
 
         PromoteTrayIcon               = Appearance.PromoteTrayIcon ?? false,
@@ -220,7 +263,16 @@ internal sealed class SettingsFile
         SettingsWindowY      = Window.SettingsWindowY,
         SettingsWindowWidth  = Window.SettingsWindowWidth,
         SettingsWindowHeight = Window.SettingsWindowHeight,
-    };
+    });
+
+    private AppSettings WithNamedSessions(AppSettings settings)
+    {
+        settings.NamedSessions = ReadNamedSessions();
+        settings.SelectedNamedSession = ProgramFocus.NamedSessions is null
+            ? settings.NamedSessions[0].Key
+            : ProgramFocus.SelectedNamedSession;
+        return settings;
+    }
 
     /// <summary>The shape of a file, read from its version key rather than inferred from which keys
     /// it happens to carry. Null means the key is absent or not a whole number.</summary>

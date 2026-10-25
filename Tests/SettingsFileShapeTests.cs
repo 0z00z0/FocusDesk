@@ -44,8 +44,6 @@ public class SettingsFileShapeTests : IDisposable
         "Focus.FocusPointStartsSession",
         "Focus.FocusPointSeconds",
         "Focus.FocusSessionKind",
-        "Focus.FocusBlocksNetwork",
-        "Focus.FocusPrograms",
         "Focus.FocusProgramsDefaultAction",
         "Focus.FocusDimsScreen",
         "Focus.FocusCoverVisual",
@@ -59,7 +57,11 @@ public class SettingsFileShapeTests : IDisposable
         "Focus.FocusSessionBlockedInput",
         "Focus.FocusSessionLimitedPrograms",
         "Focus.FocusSessionGoal",
+        "Focus.FocusSessionNamedSession",
         "Focus.FocusSavedFirewall",
+        "ProgramFocus",
+        "ProgramFocus.NamedSessions",
+        "ProgramFocus.SelectedNamedSession",
         "Screen",
         "Screen.ScreenSavedBrightness",
         "Appearance",
@@ -162,8 +164,7 @@ public class SettingsFileShapeTests : IDisposable
         {
             ScreenSavedBrightness     = 42,
             FocusSessionMinutes       = 90,
-            FocusBlocksNetwork        = true,
-            FocusPrograms             =
+            NamedSessions             = [NamedSession.Create("Writing", blocksNetwork: true, programs:
             [
                 new() { Kind = FocusProgramKind.ProgramFile, Id = @"C:\Program Files\Example\editor.exe",
                         StartEntry = @"C:\ProgramData\Example\Editor.lnk", CanRun = true, CanUseNetwork = true },
@@ -173,7 +174,7 @@ public class SettingsFileShapeTests : IDisposable
                 new() { Kind = FocusProgramKind.WebApp, Id = "Brave._crx_abcdefghijklmnopqrstuvwxyz",
                         BrowserPath = @"C:\Program Files\Example\browser.exe",
                         WhenNotAllowed = FocusProgramAction.ForceClose },
-            ],
+            ]), NamedSession.Create("Calls")],
             FocusProgramsDefaultAction = FocusProgramAction.AskToClose,
             FocusDimsScreen           = false,
             FocusCoverVisual          = CoverVisual.FocusPoint,
@@ -191,12 +192,17 @@ public class SettingsFileShapeTests : IDisposable
             FocusPointStartsSession   = true,
             FocusPointSeconds         = 120,
         };
+        before.SelectedNamedSession = before.NamedSessions[1].Key;
+        before.FocusSessionNamedSession = before.NamedSessions[0].Key;
         Assert.True(SettingsService.WriteTo(before, File_));
 
         var after = SettingsService.ReadFrom(File_);
 
         Assert.NotNull(after);
         Assert.Equal(Describe(before), Describe(after!));
+        Assert.Equal(before.NamedSessions.Select(n => n.Key), after!.NamedSessions.Select(n => n.Key));
+        Assert.Equal((before.SelectedNamedSession, before.FocusSessionNamedSession),
+                     (after.SelectedNamedSession, after.FocusSessionNamedSession));
     }
 
     /// <summary>A document from before the one program list carries a bare path list. Each path was
@@ -214,7 +220,7 @@ public class SettingsFileShapeTests : IDisposable
         var loaded = SettingsService.ReadFrom(File_);
 
         Assert.NotNull(loaded);
-        var only = Assert.Single(loaded!.FocusPrograms);
+        var only = Assert.Single(loaded!.NamedSessions[0].Programs);
         Assert.Equal(new FocusProgramEntry
         {
             Kind = FocusProgramKind.ProgramFile, Id = @"C:\Program Files\Example\editor.exe",
@@ -223,11 +229,11 @@ public class SettingsFileShapeTests : IDisposable
 
         Assert.True(SettingsService.WriteTo(loaded, File_));
         Assert.Contains("\"ProgramFile\"", System.IO.File.ReadAllText(File_), StringComparison.Ordinal);
-        Assert.Single(SettingsService.ReadFrom(File_)!.FocusPrograms);
+        Assert.Single(SettingsService.ReadFrom(File_)!.NamedSessions[0].Programs);
 
-        loaded.FocusPrograms.Clear();
+        loaded.NamedSessions[0].Programs.Clear();
         Assert.True(SettingsService.WriteTo(loaded, File_));
-        Assert.Empty(SettingsService.ReadFrom(File_)!.FocusPrograms);
+        Assert.Empty(SettingsService.ReadFrom(File_)!.NamedSessions[0].Programs);
     }
 
     /// <summary>The two lever switches the kind replaced carry nothing over: a document that asked for
@@ -260,8 +266,9 @@ public class SettingsFileShapeTests : IDisposable
     }
 
     private static string Describe(AppSettings s) => string.Join('|',
-        s.ScreenSavedBrightness, s.FocusSessionMinutes, s.FocusBlocksNetwork,
-        string.Join(';', s.FocusPrograms), s.FocusProgramsDefaultAction, s.FocusSessionBlockedNetwork,
+        s.ScreenSavedBrightness, s.FocusSessionMinutes,
+        string.Join(';', s.NamedSessions.Select(n => $"{n.Name}/{n.BlocksNetwork}/{string.Join(',', n.Programs)}")),
+        s.FocusProgramsDefaultAction, s.FocusSessionBlockedNetwork,
         s.FocusDimsScreen, s.FocusCoverVisual, s.FocusSessionKind, s.FocusSessionRunningKind,
         s.FocusSessionLimitedPrograms,
         s.FocusBlocksInput, s.FocusStartFromDashboard, s.FocusSessionStartedAt, s.FocusSessionEndsAt,
@@ -338,5 +345,63 @@ public class SettingsFileShapeTests : IDisposable
 
         Assert.Equal(newer, System.IO.File.ReadAllText(File_));
         Assert.Empty(Directory.GetFiles(_dir, "settings.*.bad.json"));
+    }
+
+    /// <summary>A version 1 document's list and network switch become "Default" unchanged, once: the
+    /// second start leaves the file byte for byte, and the old list is never written again.</summary>
+    [Fact]
+    public void TodaysListAndNetworkSwitchCarryIntoDefaultOnce()
+    {
+        Directory.CreateDirectory(_dir);
+        System.IO.File.WriteAllText(File_,
+            "{ \"ConfigVersion\": 1, \"Focus\": { \"FocusBlocksNetwork\": true, \"FocusPrograms\": [ "
+          + "{ \"Kind\": \"ProgramFile\", \"Id\": \"C:\\\\Tools\\\\editor.exe\",\"CanRun\": true, \"CanUseNetwork\": true }, "
+          + "{ \"Kind\": \"StorePackage\", \"Id\": \"Example.Notes_8wekyb3d8bbwe\", \"CanRun\": true } ] } }");
+
+        var first = SettingsService.ReadFrom(File_)!;
+        var only = Assert.Single(first.NamedSessions);
+        Assert.Equal(("Default", true), (only.Name, only.BlocksNetwork));
+        Assert.Equal([@"C:\Tools\editor.exe", "Example.Notes_8wekyb3d8bbwe"], only.Programs.Select(p => p.Id));
+        Assert.True(only.Programs.All(p => p.CanRun));
+        Assert.Equal(only.Key, first.SelectedNamedSession);
+
+        string carried = System.IO.File.ReadAllText(File_);
+        Assert.Contains("\"ConfigVersion\": 2", carried, StringComparison.Ordinal);
+        var second = SettingsService.ReadFrom(File_)!;
+        Assert.Equal(carried, System.IO.File.ReadAllText(File_));
+        Assert.Equal(only.Key, Assert.Single(second.NamedSessions).Key);
+
+        second.NamedSessions[0].Programs.Clear();
+        Assert.True(SettingsService.WriteTo(second, File_));
+        Assert.Contains("Example.Notes_8wekyb3d8bbwe", System.IO.File.ReadAllText(File_), StringComparison.Ordinal);
+        Assert.Empty(Assert.Single(SettingsService.ReadFrom(File_)!.NamedSessions).Programs);
+    }
+
+    /// <summary>After a restart a running session reads its own named session's list and switch, not
+    /// the one in use, which may have moved since it started.</summary>
+    [Fact]
+    public void ARunningSessionReadsItsOwnListAfterARestart()
+    {
+        Directory.CreateDirectory(_dir);
+        var editor = new FocusProgramEntry { Kind = FocusProgramKind.ProgramFile, Id = @"C:\Tools\editor.exe", CanRun = true };
+        var notes  = new FocusProgramEntry { Kind = FocusProgramKind.StorePackage, Id = "Example.Notes_8wekyb3d8bbwe", CanRun = true };
+        var running = NamedSession.Create("Writing", blocksNetwork: true, programs: [editor]);
+        var inUse   = NamedSession.Create("Reading", blocksNetwork: false, programs: [notes]);
+        Assert.True(SettingsService.WriteTo(new AppSettings
+        {
+            NamedSessions               = [running, inUse],
+            SelectedNamedSession        = inUse.Key,
+            FocusSessionEndsAt          = new DateTimeOffset(2026, 10, 25, 13, 0, 0, TimeSpan.Zero),
+            FocusSessionRunningKind     = FocusSessionKind.ProgramFocus,
+            FocusSessionLimitedPrograms = true,
+            FocusSessionNamedSession    = running.Key,
+        }, File_));
+
+        var restarted = SettingsService.ReadFrom(File_)!;
+        var read = NamedSessions.ForLevers(restarted, arming: null);
+
+        Assert.Equal((running.Key, true, editor.Id), (read.Key, read.BlocksNetwork, Assert.Single(read.Programs).Id));
+        restarted.FocusSessionEndsAt = null;
+        Assert.Equal(inUse.Key, NamedSessions.ForLevers(restarted, arming: null).Key);
     }
 }
