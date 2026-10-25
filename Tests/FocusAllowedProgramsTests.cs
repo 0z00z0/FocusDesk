@@ -23,7 +23,7 @@ public class FocusAllowedProgramsTests
     [Fact]
     public void ThePublishedRuleNamesAreTheOnesAPersonIsToldToDelete()
     {
-        Assert.Equal("FocusDesk focus session: broker", FocusFirewallRules.BrokerRuleName);
+        Assert.Equal("FocusDesk focus session: MQTT server", FocusFirewallRules.BrokerRuleName);
         Assert.Equal("FocusDesk focus session: name resolution", FocusFirewallRules.ResolverRuleName);
         Assert.Equal("FocusDesk focus session: allowed program 1", FocusFirewallRules.AllowedProgramName(1));
         Assert.Equal("FocusDesk focus session", FocusFirewallRules.Group);

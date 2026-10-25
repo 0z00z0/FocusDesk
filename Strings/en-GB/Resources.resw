@@ -631,12 +631,28 @@
     <comment>Card heading for the screen-break network switch.</comment>
   </data>
   <data name="ScreenBlocksNetworkDescription" xml:space="preserve">
-    <value>Blocks every connection during a session, except to the MQTT broker and the programs the named session in use allows the network.</value>
+    <value>Blocks every connection during a session, except to the MQTT server and the programs the named session in use allows the network.</value>
     <comment>Description under Blocks the network.</comment>
   </data>
   <data name="ScreenBlocksNetworkInfo" xml:space="preserve">
-    <value>Needs administrator rights and a broker set on the MQTT page. Where refused, the session runs without it.</value>
+    <value>Needs administrator rights and a server set on the MQTT page. Where refused, the session runs without it.</value>
     <comment>Hover text on the network switch's info bubble.</comment>
+  </data>
+  <data name="MqttPageHeading" xml:space="preserve">
+    <value>Remote control (MQTT)</value>
+    <comment>Heading at the top of the MQTT page in Settings. The navigation entry stays "MQTT".</comment>
+  </data>
+  <data name="MqttPageRemoteControlLine" xml:space="preserve">
+    <value>FocusDesk can be controlled over MQTT from a home automation system such as Home Assistant, openHAB or Domoticz.</value>
+    <comment>First line under the MQTT page heading, whole sentence on one line.</comment>
+  </data>
+  <data name="MqttPageEndsEarlyLine" xml:space="preserve">
+    <value>Only a remote command can end a focus session early.</value>
+    <comment>Second line under the MQTT page heading, whole sentence on one line.</comment>
+  </data>
+  <data name="MqttPublishDescription" xml:space="preserve">
+    <value>Publishes the focus session and the screen over MQTT.</value>
+    <comment>Description under the Publish to MQTT switch on the MQTT page.</comment>
   </data>
   <data name="ScreenBrightnessHeading" xml:space="preserve">
     <value>Brightness</value>

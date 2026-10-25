@@ -25,7 +25,7 @@ updater reads.
   follows the interface language, Norwegian included.
 - Program focus never blocks the network. The network block belongs to Screen break, set on the
   Screen break page or with the MQTT switch "Focus session blocks network", and lets through the MQTT
-  broker and the programs ticked Can use the network in the named session in use.
+  server and the programs ticked Can use the network in the named session in use.
 - The existing program list carries over unchanged into a named session called "Default" ("Standard"
   in a Norwegian interface).
 
@@ -36,7 +36,7 @@ updater reads.
   Can run can be used and every other window is minimised, and Screen break, where every display is
   covered.
 - A session has five levers: the program limit, the screen cover, the mouse and keyboard block,
-  dimming of the built-in screen, and a network block that lets through only the MQTT broker and the
+  dimming of the built-in screen, and a network block that lets through only the MQTT server and the
   programs allowed the network. Program focus can add the network block; Screen break can add the
   input block, the dimming and the network block.
 - Before a session starts from the pop-out, the full-screen focus point window runs a short breathing
@@ -82,7 +82,7 @@ updater reads.
   can be used and every other window is minimised, or Screen break, where every display is covered.
 - A session can do five things: limit work to the chosen programs, cover every display, block the
   mouse and keyboard, dim the built-in screen, and block every network connection except the MQTT
-  broker and the programs allowed the network; Program focus can add the network block, and Screen
+  server and the programs allowed the network; Program focus can add the network block, and Screen
   break can add the mouse and keyboard block, the dimming and the network block.
 - The Start button in the pop-out from the notification-area icon starts either kind, with an
   optional goal that takes the place of the standard text on the focus point and the screen cover and

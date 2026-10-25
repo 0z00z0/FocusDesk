@@ -9,7 +9,7 @@ A focus session runs for one duration and is one of two kinds, chosen when it st
   "Can run" can be worked in; every other program's window is minimised.
 - **Screen break.** Every display is covered with a black window. The mouse and keyboard can be
   blocked and the screen dimmed as well, and every network connection can be blocked except the MQTT
-  broker and the programs the named session in use allows the network.
+  server and the programs the named session in use allows the network.
 
 A session ends when its time runs out, or early from Home Assistant through a staged cancel. The
 machine itself offers no way to end one. FocusDesk does not defend against a determined
@@ -30,9 +30,9 @@ was started by hand or by itself.
 
 ## Home Assistant
 
-FocusDesk connects to an MQTT broker and appears in Home Assistant as one device carrying the
+FocusDesk connects to an MQTT server and appears in Home Assistant as one device carrying the
 session switch, its length, the kind of session it starts, a switch per optional lever, the
-session's state, its remaining time and the screen brightness. The broker is set on the MQTT page in
+session's state, its remaining time and the screen brightness. The server is set on the MQTT page in
 Settings. Each entity carries a one-sentence help text, in English, which a dashboard shows under the
 entity's name with `secondary_info: description` on an entities card or `state_content: description`
 on a tile card.

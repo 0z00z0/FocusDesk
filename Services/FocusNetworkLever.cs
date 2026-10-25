@@ -45,7 +45,7 @@ internal sealed class FocusNetworkLever(
     public string? Refusal()
     {
         if (targets.BrokerHost() is not { Length: > 0 })
-            return "no MQTT broker is configured, so nothing would be left to end the session from";
+            return "no MQTT server is set, so nothing would be left to end the session from";
         return elevationRefusal();
     }
 
@@ -58,7 +58,7 @@ internal sealed class FocusNetworkLever(
         string addresses = targets.Resolve(host);
         if (addresses.Length == 0)
         {
-            log("The network is left open: the broker's address could not be looked up, so the "
+            log("The network is left open: the MQTT server's address could not be looked up, so the "
               + "exception that keeps it reachable could not be written", cause);
             return false;
         }
