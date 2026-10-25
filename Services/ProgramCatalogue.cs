@@ -61,8 +61,8 @@ internal sealed record StartShortcut(string ShortcutPath, string Target, string 
 /// </summary>
 /// <remarks>
 /// <para>Measured on one machine: 160 shortcuts, 196 Apps-folder entries, 51 shortcuts carrying an
-/// identity of their own, one web app with a Start entry. Programs open now but not in the Start menu
-/// are not offered.</para>
+/// identity of their own, one web app with a Start entry. A program file open now that no Start entry
+/// names is offered by its path.</para>
 /// <para>Everything above the machine-reading section is pure, so the classes are exercised against
 /// composed entries rather than against a Start menu.</para>
 /// </remarks>
@@ -216,9 +216,73 @@ internal static class ProgramCatalogue
             });
         }
 
-        return [.. merged.OrderByDescending(e => e.Running)
-                         .ThenBy(e => e.Name, StringComparer.CurrentCultureIgnoreCase)
-                         .ThenBy(e => e.Id, StringComparer.OrdinalIgnoreCase)];
+        return Ordered(merged);
+    }
+
+    /// <summary>Open programs first, then by name.</summary>
+    private static IReadOnlyList<ProgramChoice> Ordered(IEnumerable<ProgramChoice> choices) =>
+        [.. choices.OrderByDescending(e => e.Running)
+                   .ThenBy(e => e.Name, StringComparer.CurrentCultureIgnoreCase)
+                   .ThenBy(e => e.Id, StringComparer.OrdinalIgnoreCase)];
+
+    /// <summary>The merged list with one row added for each open program file that no row names:
+    /// named by its file, detailed by its path, with no Start entry, so it is opened by that path.
+    /// FocusDesk itself, Windows' own files and packaged files are left out.</summary>
+    public static IReadOnlyList<ProgramChoice> WithRunningFiles(
+        IReadOnlyList<ProgramChoice> merged, IEnumerable<string> runningPaths, string windowsFolder,
+        string? ownPath)
+    {
+        var named = new HashSet<string>(merged.Where(c => c.Kind == FocusProgramKind.ProgramFile).Select(c => c.Id),
+                                        StringComparer.OrdinalIgnoreCase);
+        string own = FocusAllowedPrograms.Normalise(ownPath);
+
+        var added = new List<ProgramChoice>();
+        foreach (string running in runningPaths)
+        {
+            string path = FocusAllowedPrograms.NormaliseId(FocusProgramKind.ProgramFile, running);
+            if (path.Length == 0 || FocusAllowedPrograms.Same(path, own)) continue;
+            if (WindowsPrograms.IsWindowsFile(path, windowsFolder) || IsPackaged(path)) continue;
+            if (!named.Add(path)) continue;
+
+            added.Add(new ProgramChoice(FocusProgramKind.ProgramFile, path, Path.GetFileName(path), null, null,
+                                        ProgramOffer.Limitable, Running: true));
+        }
+
+        return added.Count == 0 ? merged : Ordered(merged.Concat(added));
+    }
+
+    /// <summary>What one open window names, read through the Store app a shared frame draws.</summary>
+    internal sealed record OpenWindow(string Path, string Family, string AppId);
+
+    /// <summary>The rows the picker marks open, in the order of the windows on screen, then those open
+    /// with no window a person could work in; with each web app whose window carries its identity.</summary>
+    public static IReadOnlyList<ProgramChoice> OpenNow(IReadOnlyList<ProgramChoice> catalogue,
+                                                       IEnumerable<OpenWindow> windows)
+    {
+        var open = new List<ProgramChoice>();
+        void Take(ProgramChoice? choice)
+        {
+            if (choice is not null && !open.Contains(choice)) open.Add(choice);
+        }
+        ProgramChoice? Row(FocusProgramKind kind, string id, bool running) => id.Length == 0
+            ? null
+            : catalogue.FirstOrDefault(c => c.Kind == kind && c.Running == running && FocusAllowedPrograms.Same(c.Id, id));
+
+        foreach (var window in windows)
+        {
+            // A web app's window belongs to its browser's process; the web app is the program meant.
+            if (window.AppId.Contains(WebAppMarker, StringComparison.OrdinalIgnoreCase))
+            {
+                Take(Row(FocusProgramKind.WebApp, window.AppId, false));
+                continue;
+            }
+            Take(window.Family.Length > 0
+                ? Row(FocusProgramKind.StorePackage, window.Family, true)
+                : Row(FocusProgramKind.ProgramFile, FocusAllowedPrograms.Normalise(window.Path), true));
+        }
+
+        foreach (var choice in catalogue.Where(c => c.Running)) Take(choice);
+        return open;
     }
 
     /// <summary>What typing narrows the list to: every entry whose name or detail carries all of the
@@ -266,6 +330,24 @@ internal static class ProgramCatalogue
         }
 
         return (paths, families);
+    }
+
+    /// <summary>The windows a person could work in, topmost first, each by what it names.</summary>
+    public static IReadOnlyList<OpenWindow> OpenWindows()
+    {
+        var found = new List<OpenWindow>();
+        try
+        {
+            var inspector = new WindowInspector();
+            foreach (IntPtr window in inspector.ActionableWindows())
+            {
+                if (inspector.Facts(window) is not { } facts) continue;
+                var process = facts.Hosted ?? facts.Process;
+                found.Add(new OpenWindow(process.Path, process.PackageFamily, facts.AppId));
+            }
+        }
+        catch (Exception ex) { AppLog.Error("ProgramCatalogue.OpenWindows", ex); }
+        return found;
     }
 
     /// <summary>Every shortcut in the two Start Menu folders, read.</summary>
@@ -340,9 +422,10 @@ internal static class ProgramCatalogue
                 var apps = StartMenuApps.Read(ex => AppLog.Error("StartMenuApps.Read", ex));
                 var (paths, families) = Running();
 
-                var merged = Merge(
-                    shortcuts.Select(s => FromShortcut(s, windows)).Concat(apps.Select(FromAppsFolder)),
-                    paths, families);
+                var merged = WithRunningFiles(
+                    Merge(shortcuts.Select(s => FromShortcut(s, windows)).Concat(apps.Select(FromAppsFolder)),
+                          paths, families),
+                    paths, windows, Environment.ProcessPath);
                 AppLog.Info($"ProgramCatalogue built {merged.Count} programs from {shortcuts.Count} "
                           + $"shortcuts and {apps.Count} Apps-folder entries in {clock.ElapsedMilliseconds} ms");
                 done.SetResult(merged);

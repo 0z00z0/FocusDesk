@@ -5,6 +5,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
@@ -36,9 +37,20 @@ internal sealed partial class ProgramPickerRow(ProgramChoice choice) : INotifyPr
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
+/// <summary>The open programs under their heading, or the rest under a divider line.</summary>
+internal sealed partial class ProgramPickerGroup(string heading, IEnumerable<ProgramPickerRow> rows)
+    : List<ProgramPickerRow>(rows)
+{
+    public string Heading { get; } = heading;
+
+    public bool HasHeading => Heading.Length > 0;
+
+    public bool IsDivider => Heading.Length == 0;
+}
+
 /// <summary>
-/// Picks a program off the Start menu's own list, Store apps and web apps included, narrowed by
-/// typing. There is no file dialog and no browsing for program files.
+/// Picks a program off the Start menu's own list, Store apps, web apps and open program files
+/// included, narrowed by typing. There is no file dialog and no browsing for program files.
 /// </summary>
 /// <remarks>
 /// <para>The list is built afresh on every open, off a thread of its own, so a program installed
@@ -51,6 +63,8 @@ internal sealed partial class ProgramPickerWindow : Window
     private const int HeightDip = 520;
 
     private readonly Action<ProgramChoice> _onChosen;
+    private readonly IReadOnlyList<(FocusProgramKind Kind, string Id)> _leaveOut;
+    private readonly IReadOnlyCollection<FocusProgramKind> _kinds;
 
     private IReadOnlyList<ProgramPickerRow> _all = [];
     private bool _placed;
@@ -58,10 +72,14 @@ internal sealed partial class ProgramPickerWindow : Window
 
     /// <param name="onChosen">Handed the chosen row. Only its identifiers reach the list: the name on
     /// it is drawn and discarded.</param>
-    internal ProgramPickerWindow(Action<ProgramChoice> onChosen)
+    internal ProgramPickerWindow(Action<ProgramChoice> onChosen,
+                                 IEnumerable<(FocusProgramKind Kind, string Id)> leaveOut,
+                                 IReadOnlyCollection<FocusProgramKind> kinds)
     {
         InitializeComponent();
         _onChosen = onChosen;
+        _leaveOut = [.. leaveOut];
+        _kinds = kinds;
 
         Title = AppText.Get("PickerTitle");
         HeadingText.Text = Title;
@@ -92,7 +110,9 @@ internal sealed partial class ProgramPickerWindow : Window
         var built = await ProgramCatalogue.BuildAsync();
         if (_closing) return;
 
-        _all = [.. built.Select(c => new ProgramPickerRow(c))];
+        _all = [.. built.Where(c => _kinds.Contains(c.Kind)
+                                    && !_leaveOut.Any(x => x.Kind == c.Kind && FocusAllowedPrograms.Same(x.Id, c.Id)))
+                        .Select(c => new ProgramPickerRow(c))];
         LoadingPanel.Visibility = Visibility.Collapsed;
         Show();
     }
@@ -102,7 +122,18 @@ internal sealed partial class ProgramPickerWindow : Window
         var matching = ProgramCatalogue.Match([.. _all.Select(r => r.Choice)], QueryBox.Text);
         var rows = _all.Where(r => matching.Contains(r.Choice)).ToList();
 
-        ProgramList.ItemsSource = rows;
+        var running = rows.Where(r => r.Choice.Running).ToList();
+        var rest = rows.Where(r => !r.Choice.Running).ToList();
+        if (running.Count == 0)
+        {
+            ProgramList.ItemsSource = rows;
+        }
+        else
+        {
+            List<ProgramPickerGroup> groups = [new(AppText.Get("PickerRunningNow"), running)];
+            if (rest.Count > 0) groups.Add(new("", rest));
+            ProgramList.ItemsSource = new CollectionViewSource { IsSourceGrouped = true, Source = groups }.View;
+        }
         ProgramList.Visibility  = rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyText.Visibility    = rows.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
         EmptyText.Text = AppText.Get(_all.Count == 0 ? "PickerNothingFound" : "PickerNothingMatches");
