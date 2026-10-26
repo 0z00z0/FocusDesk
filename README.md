@@ -17,8 +17,10 @@ A focus session runs for one duration and is one of two kinds, chosen when it st
   "Completed" with any program that could not be started and why. The cover comes down at
   "Completed"; the window stays until it is closed, and closing it earlier closes the cover. With
   the focus point window shown, the programs open behind it with the cover on the other displays, and
-  the list shows when it ends. The Start button's menu picks another mode for one start. Program
-  focus never blocks the network.
+  the list shows when it ends. The Start button's menu picks another mode for one start. "Save
+  program positions" stores each program's window place and virtual desktop for the monitors
+  connected now, and a start opens each program on that desktop and in that place. Program focus
+  never blocks the network.
 - **Screen break.** Every display is covered with a black window. The mouse and keyboard can be
   blocked and the screen dimmed as well, and every network connection can be blocked except the MQTT
   server and the programs on the Screen break exception list. The list is kept on the Screen break
