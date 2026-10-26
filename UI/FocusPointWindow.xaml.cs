@@ -59,6 +59,9 @@ internal sealed partial class FocusPointWindow : Window
     /// <summary>The marked programs opening behind this window, shown in the starting window once it ends.</summary>
     private ProgramStartRun? _run;
 
+    /// <summary>This window's handle while the run may take it to another virtual desktop.</summary>
+    private IntPtr _travelling;
+
     private Storyboard? _breath;
     private bool _drawsEveryFrame;
     private bool _placed;
@@ -266,6 +269,8 @@ internal sealed partial class FocusPointWindow : Window
 
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.IsAlwaysOnTop = true;
         LockSetForegroundWindow(LSFW_LOCK);
+        _travelling = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+        VirtualDesktops.Travels(_travelling, holdsForegroundLock: true);
         StartingCover.Show(except: here);
         KeepAbove();
         _raise.Start();
@@ -312,6 +317,7 @@ internal sealed partial class FocusPointWindow : Window
         // takes the cover over every display.
         if (_run is null) return;
         _raise.Stop();
+        VirtualDesktops.Stays(_travelling);
         LockSetForegroundWindow(LSFW_UNLOCK);
         StartingWindow.Show(_run);
     }

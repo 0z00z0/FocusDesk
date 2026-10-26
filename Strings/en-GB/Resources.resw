@@ -457,6 +457,14 @@
     <value>did not start within 20 seconds</value>
     <comment>Failure beside a program whose process did not appear within 20 seconds, lower case.</comment>
   </data>
+  <data name="StartingDesktopMissing" xml:space="preserve">
+    <value>opened on the current desktop: virtual desktop {0} does not exist</value>
+    <comment>State beside a started program whose saved virtual desktop number is higher than the desktops there are; {0} is that number, lower case.</comment>
+  </data>
+  <data name="StartingDesktopNotReached" xml:space="preserve">
+    <value>opened on the current desktop: could not switch to virtual desktop {0}</value>
+    <comment>State beside a started program whose virtual desktop could not be made current; {0} is the desktop number, lower case.</comment>
+  </data>
   <data name="UnattendedUpdatesHeader" xml:space="preserve">
     <value>Install updates by themselves</value>
     <comment>Header of the switch on the About page, imperative phrase.</comment>
