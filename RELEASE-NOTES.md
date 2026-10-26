@@ -9,6 +9,19 @@ in the code. Newest version first; the heading is the version alone, exactly as 
 `FocusDesk.csproj`. A section never carries an installer hash: the workflow adds the one hash the
 updater reads.
 
+## 1.2.1
+
+- The Settings window always opens inside a display, a display at 200 % scaling included.
+- Without a usable saved place, the Settings window opens at a default size and position near the
+  notification-area icon; a saved size and position that is too small, too large or outside the
+  screen gives way to the default.
+- A saved Settings window size outside the allowed range is replaced by the new default size, so the
+  window is sized again once where another size is wanted.
+- The Program focus rows are tighter, and the Settings pages use the full width of the window.
+- Each program's ticks are named "Allowed" and "Autostart", and a program is removed with a trash
+  icon.
+- The Start menu list is read once when FocusDesk starts, so the program picker opens with it at once.
+
 ## 1.2.0
 
 - Each named session runs in one of three Program focus modes, chosen on the Program focus page:
