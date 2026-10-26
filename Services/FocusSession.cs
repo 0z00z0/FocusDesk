@@ -400,7 +400,7 @@ internal sealed class FocusSessionEngine(
         // Mode 3 holds no lever, so opening programs is all it does.
         if (plan.Required is null && !plan.MarksAProgram)
         {
-            log("Focus session refused: nothing to open, as no program is ticked to start with the session", cause);
+            log("Focus session refused: nothing to open, as no program is ticked Autostart", cause);
             return FocusArmOutcome.NothingToOpen;
         }
 

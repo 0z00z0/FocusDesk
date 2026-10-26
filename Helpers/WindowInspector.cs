@@ -123,6 +123,23 @@ internal sealed class WindowInspector : IWindowInspector
     private static extern int NtQueryInformationProcess(IntPtr process, int infoClass,
                                                         out PROCESS_BASIC_INFORMATION info, int length, out int returned);
 
+    /// <summary>Every process with a main window as .NET counts one (visible, owned by no other window),
+    /// in one pass over the windows: asking each process for its main window costs a pass each.</summary>
+    public static IReadOnlyCollection<uint> ProcessesWithMainWindow()
+    {
+        var found = new HashSet<uint>();
+        EnumWindows((window, _) =>
+        {
+            if (IsWindowVisible(window) && GetWindow(window, GW_OWNER) == IntPtr.Zero)
+            {
+                GetWindowThreadProcessId(window, out uint processId);
+                if (processId != 0) found.Add(processId);
+            }
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+
     public IReadOnlyList<IntPtr> ActionableWindows()
     {
         var found = new List<IntPtr>();

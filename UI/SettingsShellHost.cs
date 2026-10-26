@@ -131,7 +131,6 @@ internal static class SettingsShellHost
             ProductMark    = new SvgImageSource(new Uri("ms-appx:///Assets/mark.svg")),
             ProductName    = AppInfo.Name,
             ProductVersion = $"v{AppInfo.Version}",
-            PageMaxWidth   = 720,
         });
         AppTitleBar.Apply(window);
 

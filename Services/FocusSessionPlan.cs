@@ -56,7 +56,7 @@ internal sealed class FocusSessionPlan
 
     public ProgramFocusMode Mode { get; }
 
-    /// <summary>Whether a row is ticked "Start with the session".</summary>
+    /// <summary>Whether a row is ticked "Autostart".</summary>
     public bool MarksAProgram { get; }
 
     /// <summary>The lever the kind always holds, null in mode 3. Where it cannot arm, the session is

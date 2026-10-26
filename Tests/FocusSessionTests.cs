@@ -208,14 +208,14 @@ public class FocusSessionTests
     public void AProgramFocusSessionIsRefusedWhenTheProgramLimitRefuses()
     {
         var bed = new Bed();
-        bed.Programs.RefusalText = "no program is ticked Can run";
+        bed.Programs.RefusalText = "no program is ticked Allowed";
 
         var outcome = bed.Engine.Arm(60, ProgramFocus(network: true), "a test");
 
         Assert.Equal(FocusArmOutcome.LeverRefused, outcome);
         Assert.Null(bed.Record.Held);
         Assert.Equal((0, 0), (bed.Programs.Engagements, bed.Network.Engagements));
-        Assert.Contains(bed.Log, line => line.Contains("no program is ticked Can run", StringComparison.Ordinal));
+        Assert.Contains(bed.Log, line => line.Contains("no program is ticked Allowed", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -31,8 +31,7 @@
                  TextChanged="OnQueryChanged"
                  KeyDown="OnQueryKeyDown"/>
 
-        <!-- The list is built afresh every time this window opens, so a program installed since the
-             last open is on it. -->
+        <!-- The progress line shows only until the first Start menu read of the run has ended. -->
         <Grid Grid.Row="2">
             <StackPanel x:Name="LoadingPanel" Orientation="Horizontal" Spacing="10"
                         HorizontalAlignment="Center" VerticalAlignment="Center">

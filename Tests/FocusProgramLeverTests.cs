@@ -73,7 +73,7 @@ public class FocusProgramLeverTests
     public void AProgramFocusSessionIsRefusedWhenTheProgramLimitRefusesOrFails()
     {
         var log = new List<string>();
-        var refused = new FakeFocusLever { RefusalText = "no program is ticked Can run" };
+        var refused = new FakeFocusLever { RefusalText = "no program is ticked Allowed" };
         var record = new FakeFocusSessionRecord();
         var network = new FakeFocusLever();
         var engine = new FocusSessionEngine(new FakeFocusLever(), new FakeFocusLever(), new FakeFocusLever(),
@@ -84,7 +84,7 @@ public class FocusProgramLeverTests
         Assert.Equal(0, refused.Engagements);
         Assert.Equal(0, network.Engagements);
         Assert.Null(record.Held);
-        Assert.Contains(log, line => line.Contains("no program is ticked Can run", StringComparison.Ordinal));
+        Assert.Contains(log, line => line.Contains("no program is ticked Allowed", StringComparison.Ordinal));
 
         var failing = new FakeFocusLever { EngageSucceeds = false };
         var second = Engine(failing, out var secondRecord);

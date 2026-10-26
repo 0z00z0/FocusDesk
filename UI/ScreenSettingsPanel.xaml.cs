@@ -171,23 +171,12 @@ public sealed partial class ScreenSettingsPanel : UserControl
         foreach (var exception in SettingsService.Read(s => s.ScreenBreakNetworkExceptions.ToList()))
         {
             var entry = new FocusProgramEntry { Kind = exception.Kind, Id = exception.Id, StartEntry = exception.StartEntry };
-            var remove = new Button { Content = AppText.Get("FocusProgramRemove") };
+            var remove = ProgramRowParts.RemoveButton();
             remove.Click += (_, _) => RemoveException(exception);
             remove.IsEnabled = !FocusSessionService.LeversAreLocked;
             _removeButtons.Add(remove);
 
-            var icon = new ImageIcon { Width = 24, Height = 24 };
-            ProgramIconLoader.Request(entry.StartEntry ?? entry.Id, image => icon.Source = image);
-
-            ExceptionRows.Children.Add(new SettingsCard
-            {
-                HeaderIcon  = icon,
-                Header      = ProgramNames.For(entry),
-                Description = ProgramCatalogue.IsPresent(entry)
-                    ? FocusAllowedPrograms.Describe(entry)
-                    : AppText.Get("FocusProgramNotFound"),
-                Content     = remove,
-            });
+            ExceptionRows.Children.Add(ProgramRowParts.Card(entry, remove));
         }
     }
 

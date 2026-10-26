@@ -14,7 +14,7 @@ internal enum FocusSessionKind
     /// network can be held as well.</summary>
     ScreenBreak,
 
-    /// <summary>Only the programs ticked "Can run" can be worked in; the network can be held as
+    /// <summary>Only the programs ticked "Allowed" can be worked in; the network can be held as
     /// well.</summary>
     ProgramFocus,
 }
