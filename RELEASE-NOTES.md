@@ -9,6 +9,41 @@ in the code. Newest version first; the heading is the version alone, exactly as 
 `FocusDesk.csproj`. A section never carries an installer hash: the workflow adds the one hash the
 updater reads.
 
+## 1.2.0
+
+- Each named session runs in one of three Program focus modes, chosen on the Program focus page:
+  "Allow only listed programs", "Open marked, allow only listed" and "Open marked, allow all others".
+- A program ticked "Start with the session" is opened when a session in either "Open marked" mode
+  starts; a program already open is left alone, and a session resumed after a restart opens nothing.
+- The program picker lists the programs open now first, under "Running now", followed by every other
+  program, and never offers one the list already holds.
+- "Save open programs as a new session", on the Program focus page and on the dashboard, makes a
+  named session from the programs open now, each ticked "Can run" and "Start with the session".
+- While programs open, a window lists each one with its state over a see-through cover on every
+  display, then reads "Completed" with any program that could not be started and why; the cover
+  comes down at "Completed" and the window stays until it is closed.
+- With the focus point window shown, the programs open behind it, and the starting window shows the
+  result when it ends.
+- The dashboard's Start button has a menu with the three modes, which picks another mode for one
+  start without changing the saved one.
+- For a grace period after a fresh start, 2 minutes by default and set on the Focus session page,
+  the dashboard shows Cancel counting down, which ends the session at once.
+- In Program focus the grace period lets the mode change on the dashboard and the session's programs
+  change in Settings; in a screen break the displays stay uncovered and the mouse, keyboard and
+  network stay free until the period ends.
+- The MQTT select "Program focus mode" shows and sets the mode of the named session in use, and
+  during the grace period changes the running session's mode.
+- "Save program positions", on the dashboard during a session and on each named session in Settings,
+  stores each program's window place and virtual desktop for the monitors connected now.
+- At a start, each program opens on its saved virtual desktop and its window goes to the place saved
+  for the monitors connected at that moment.
+- Screen break keeps the network for the programs on its own exception list, kept on the Screen break
+  page under "Blocks the network" and independent of the named sessions.
+- The Screen break exception list starts empty, so the programs that keep the network during a screen
+  break are added to it once more.
+- The settings file has a new shape: where a 1.1.0 build on another machine writes the old shape
+  back, the Program focus choices are set again.
+
 ## 1.1.0
 
 - Program focus runs on a named session, each with its own list of allowed programs, and up to five
