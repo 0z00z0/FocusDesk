@@ -166,9 +166,8 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         return row.Expander;
     }
 
-    /// <summary>One card per program of the session: its icon and name, "can run", "start with the
-    /// session" and Remove. A tick the session's mode does not use is disabled and keeps its value, and
-    /// so is "can run" for a Windows program, each with the reason on hover.</summary>
+    /// <summary>One card per program: "Allowed", "Autostart" and Remove. A tick the mode does not use, and
+    /// "Allowed" for a Windows program, is disabled and keeps its value, with the reason on hover.</summary>
     private IEnumerable<SettingsCard> ProgramCards(string key, Action<FocusAllowVerdict> refused)
     {
         string windows = WindowsPrograms.Folder;
@@ -185,10 +184,12 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
             bool canRunUsed = mode != ProgramFocusMode.OpenMarkedAllowAll;
             bool startUsed  = mode != ProgramFocusMode.AllowListed;
 
+            // MinWidth 0: a check box otherwise reserves 120 wide, which is the air between the ticks.
             var canRun = new CheckBox
             {
                 Content   = AppText.Get("FocusProgramCanRun"),
                 IsChecked = offer == ProgramOffer.AlwaysUsable || entry.CanRun,
+                MinWidth  = 0,
             };
             canRun.Click += (_, _) => ChangePrograms(key, refused, list => FocusAllowedPrograms.SetCanRun(
                 list, program.Kind, program.Id, canRun.IsChecked == true, Locked(key)));
@@ -197,11 +198,12 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
             {
                 Content   = AppText.Get("FocusProgramStartWithSession"),
                 IsChecked = entry.StartWithSession,
+                MinWidth  = 0,
             };
             start.Click += (_, _) => ChangePrograms(key, refused, list => FocusAllowedPrograms.SetStartWithSession(
                 list, program.Kind, program.Id, start.IsChecked == true, Locked(key)));
 
-            var remove = new Button { Content = AppText.Get("FocusProgramRemove") };
+            var remove = ProgramRowParts.RemoveButton();
             remove.Click += (_, _) => ChangePrograms(key, refused, list => FocusAllowedPrograms.Remove(
                 list, program.Kind, program.Id, Locked(key)));
 
@@ -213,23 +215,12 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
                 : offer == ProgramOffer.AlwaysUsable ? AppText.Get("FocusProgramWindowsRunInfo") : null;
             string? startWhy = startUsed ? null : AppText.Get("FocusProgramStartUnusedInfo");
 
-            var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-            controls.Children.Add(WithReason(canRun, runWhy));
-            controls.Children.Add(WithReason(start, startWhy));
+            var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            controls.Children.Add(WithHover(canRun, AppText.Get("FocusProgramCanRunInfo"), runWhy));
+            controls.Children.Add(WithHover(start, AppText.Get("FocusProgramStartWithSessionInfo"), startWhy));
             controls.Children.Add(remove);
 
-            var icon = new ImageIcon { Width = 24, Height = 24 };
-            ProgramIconLoader.Request(entry.StartEntry ?? entry.Id, image => icon.Source = image);
-
-            yield return new SettingsCard
-            {
-                HeaderIcon  = icon,
-                Header      = ProgramNames.For(entry),
-                Description = ProgramCatalogue.IsPresent(entry)
-                    ? FocusAllowedPrograms.Describe(entry)
-                    : AppText.Get("FocusProgramNotFound"),
-                Content     = controls,
-            };
+            yield return ProgramRowParts.Card(entry, controls);
         }
     }
 
@@ -253,12 +244,13 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         return card;
     }
 
-    private static FrameworkElement WithReason(Control control, string? reason)
+    /// <summary>A tick inside a frame carrying its hover text: what it does, then why it is greyed where
+    /// it is. A disabled control shows no hover text of its own, so the text sits on the frame.</summary>
+    private static FrameworkElement WithHover(Control control, string what, string? reason)
     {
-        if (reason is null) return control;
         var frame = new Grid { Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent) };
         frame.Children.Add(control);
-        ToolTipService.SetToolTip(frame, reason);
+        ToolTipService.SetToolTip(frame, reason is null ? what : $"{what} {reason}");
         return frame;
     }
 

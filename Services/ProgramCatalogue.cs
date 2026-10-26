@@ -39,7 +39,7 @@ internal sealed record ProgramChoice(
     /// visibility so the row binds straight to it.</summary>
     public string OpenMark => Running ? AppText.Get("PickerOpenMark") : "";
 
-    /// <summary>The row this choice becomes on the list: "can run" ticked, as every added program
+    /// <summary>The row this choice becomes on the list: "Allowed" ticked, as every added program
     /// starts. The name is not carried.</summary>
     public FocusProgramEntry ToEntry() => new()
     {
@@ -309,24 +309,16 @@ internal static class ProgramCatalogue
         var paths = new List<string>();
         var families = new List<string>();
 
-        Process[] processes;
-        try { processes = Process.GetProcesses(); }
+        IReadOnlyCollection<uint> processes;
+        try { processes = WindowInspector.ProcessesWithMainWindow(); }
         catch (Exception ex) { AppLog.Error("ProgramCatalogue.Running", ex); return (paths, families); }
 
-        foreach (var process in processes)
+        foreach (uint process in processes)
         {
-            try
-            {
-                if (process.MainWindowHandle == IntPtr.Zero) continue;
-                var (path, family) = ProcessIdentity.Of((uint)process.Id);
-                if (path.Length > 0) paths.Add(path);
-                if (family.Length > 0) families.Add(family);
-            }
-            catch
-            {
-                // A protected process refuses: one mark missing from a list, not worth a log line.
-            }
-            finally { process.Dispose(); }
+            // A protected process refuses and comes back empty: one mark missing, not worth a log line.
+            var (path, family) = ProcessIdentity.Of(process);
+            if (path.Length > 0) paths.Add(path);
+            if (family.Length > 0) families.Add(family);
         }
 
         return (paths, families);
@@ -404,43 +396,82 @@ internal static class ProgramCatalogue
                                              || File.Exists(start)),
     };
 
-    /// <summary>Every source as one list, read on a single-threaded-apartment thread of its own, so
-    /// the shell calls run in their own apartment and nothing blocks the thread drawing the
-    /// window.</summary>
-    public static Task<IReadOnlyList<ProgramChoice>> BuildAsync()
+    /// <summary>The kept Start menu with what is open now: one row per program, open programs first.</summary>
+    public static IReadOnlyList<ProgramChoice> Compose(IReadOnlyList<ProgramChoice> startMenu,
+                                                       IReadOnlyList<string> runningPaths,
+                                                       IReadOnlyList<string> runningFamilies) =>
+        WithRunningFiles(Merge(startMenu, runningPaths, runningFamilies),
+                         runningPaths, WindowsPrograms.Folder, Environment.ProcessPath);
+
+    /// <summary>Every source read again, the Start menu kept as it is read, with what is open now.</summary>
+    public static async Task<IReadOnlyList<ProgramChoice>> BuildAsync()
     {
-        var done = new TaskCompletionSource<IReadOnlyList<ProgramChoice>>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var startMenu = ReadStartMenuAsync();
+        var (paths, families) = await Task.Run(Running);
+        return Compose(await startMenu, paths, families);
+    }
 
-        var thread = new Thread(() =>
+    // ── The Start menu, kept in memory ──────────────────────────────────────────────────────────
+
+    private static readonly Lock StartMenuGate = new();
+    private static IReadOnlyList<ProgramChoice>? _startMenu;
+    private static Task<IReadOnlyList<ProgramChoice>>? _reading;
+
+    /// <summary>The Start menu's programs as last read, or null until the first read ends.</summary>
+    public static IReadOnlyList<ProgramChoice>? KeptStartMenu
+    {
+        get { lock (StartMenuGate) return _startMenu; }
+    }
+
+    /// <summary>Reads the Start menu again and keeps it; a read already under way is shared rather than
+    /// started twice. Never faults: a read that finds nothing keeps the list already kept.</summary>
+    public static Task<IReadOnlyList<ProgramChoice>> ReadStartMenuAsync()
+    {
+        lock (StartMenuGate)
         {
-            var clock = Stopwatch.StartNew();
-            try
+            if (_reading is { } underWay) return underWay;
+
+            var done = new TaskCompletionSource<IReadOnlyList<ProgramChoice>>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            _reading = done.Task;
+
+            // Single-threaded apartment for the shell calls; below normal, so a read at start-up or
+            // behind an open picker never competes with drawing.
+            var thread = new Thread(() =>
             {
-                string windows = WindowsPrograms.Folder;
-                var shortcuts = Shortcuts();
-                var apps = StartMenuApps.Read(ex => AppLog.Error("StartMenuApps.Read", ex));
-                var (paths, families) = Running();
+                IReadOnlyList<ProgramChoice> read = [];
+                try { read = ReadStartMenu(); }
+                catch (Exception ex) { AppLog.Error("ProgramCatalogue.ReadStartMenu", ex); }
 
-                var merged = WithRunningFiles(
-                    Merge(shortcuts.Select(s => FromShortcut(s, windows)).Concat(apps.Select(FromAppsFolder)),
-                          paths, families),
-                    paths, windows, Environment.ProcessPath);
-                AppLog.Info($"ProgramCatalogue built {merged.Count} programs from {shortcuts.Count} "
-                          + $"shortcuts and {apps.Count} Apps-folder entries in {clock.ElapsedMilliseconds} ms");
-                done.SetResult(merged);
-            }
-            catch (Exception ex)
-            {
-                AppLog.Error("ProgramCatalogue.BuildAsync", ex);
-                done.SetResult([]);
-            }
-        })
-        { IsBackground = true, Name = "FocusDesk program list" };
+                IReadOnlyList<ProgramChoice> kept;
+                lock (StartMenuGate)
+                {
+                    if (read.Count > 0 || _startMenu is null) _startMenu = read;
+                    kept = _startMenu;
+                    _reading = null;
+                }
+                done.SetResult(kept);
+            })
+            { IsBackground = true, Name = "FocusDesk Start menu", Priority = ThreadPriority.BelowNormal };
 
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            return done.Task;
+        }
+    }
 
-        return done.Task;
+    private static IReadOnlyList<ProgramChoice> ReadStartMenu()
+    {
+        var clock = Stopwatch.StartNew();
+        string windows = WindowsPrograms.Folder;
+        var shortcuts = Shortcuts();
+        var apps = StartMenuApps.Read(ex => AppLog.Error("StartMenuApps.Read", ex));
+
+        List<ProgramChoice> read = [.. shortcuts.Select(s => FromShortcut(s, windows))
+                                                .Concat(apps.Select(FromAppsFolder))
+                                                .OfType<ProgramChoice>()];
+        AppLog.Info($"ProgramCatalogue read {read.Count} Start menu entries from {shortcuts.Count} "
+                  + $"shortcuts and {apps.Count} Apps-folder entries in {clock.ElapsedMilliseconds} ms");
+        return read;
     }
 }

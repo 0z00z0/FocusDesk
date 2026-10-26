@@ -1,7 +1,7 @@
 namespace FocusDesk.Services;
 
 /// <summary>
-/// The focus-app lever: only the programs ticked "can run" can be worked in, and every other
+/// The focus-app lever: only the programs ticked "Allowed" can be worked in, and every other
 /// program's window is minimised as it appears and again whenever it is restored.
 /// </summary>
 /// <remarks>
@@ -23,7 +23,7 @@ internal sealed class FocusProgramLever(ProgramGate gate, Func<GateContext?> con
             ? null
             : "no program is chosen to stay usable, so every program window would be minimised";
 
-    /// <summary>Whether any row ticked "can run" keeps a program usable that the limit would otherwise
+    /// <summary>Whether any row ticked "Allowed" keeps a program usable that the limit would otherwise
     /// minimise. The same rule the lever refuses on, so a surface offering program focus can say so
     /// before a session is asked for.</summary>
     internal static bool KeepsAProgramUsable(IEnumerable<FocusProgramEntry> entries, string windowsFolder) =>

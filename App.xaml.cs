@@ -132,6 +132,9 @@ public partial class App : Application
 
             // Last: the icon exists and the host window is created. From here on a report only logs.
             _crashHandlers.MarkStartupComplete();
+
+            // On a thread of its own, so the program picker opens on a list already read.
+            _ = ProgramCatalogue.ReadStartMenuAsync();
         }
         catch (Exception ex)
         {

@@ -22,7 +22,7 @@ internal enum GateExemption
 
 internal enum GateOutcome
 {
-    /// <summary>On the list with "can run" ticked, or a dialog or helper of one that is.</summary>
+    /// <summary>On the list with "Allowed" ticked, or a dialog or helper of one that is.</summary>
     Allowed,
 
     /// <summary>Left alone whatever the list says.</summary>
@@ -42,7 +42,7 @@ internal sealed record GateVerdict(
     FocusProgramAction Action = FocusProgramAction.Minimise, FocusProgramEntry? Entry = null);
 
 /// <summary>What the rules are applied against, read once when a session arms.</summary>
-/// <param name="Entries">Every row on the list, ticked or not: a row with "can run" clear still
+/// <param name="Entries">Every row on the list, ticked or not: a row with "Allowed" clear still
 /// decides the action for its program.</param>
 /// <param name="DefaultAction">The action for a program with no row.</param>
 /// <param name="OwnPath">FocusDesk's own program file.</param>

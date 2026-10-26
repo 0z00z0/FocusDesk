@@ -127,7 +127,7 @@ internal static class NamedSessions
     }
 
     /// <summary>Adds a session that opens <paramref name="programs"/> and lets only them run: each
-    /// ticked "can run" and "start with the session", duplicates and anything past
+    /// ticked "Allowed" and "Autostart", duplicates and anything past
     /// <see cref="FocusAllowedPrograms.Maximum"/> dropped. Null at <see cref="Maximum"/>.</summary>
     public static NamedSession? AddFrom(AppSettings s, string baseName, IEnumerable<FocusProgramEntry> programs)
     {

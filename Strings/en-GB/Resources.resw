@@ -81,12 +81,16 @@
     <comment>Button that opens the program picker, imperative.</comment>
   </data>
   <data name="FocusProgramCanRun" xml:space="preserve">
-    <value>Can run</value>
-    <comment>Checkbox on a program row: the program may be used during a session.</comment>
+    <value>Allowed</value>
+    <comment>Checkbox on a program row: the program may be used during a session. One whole word, never shortened.</comment>
+  </data>
+  <data name="FocusProgramCanRunInfo" xml:space="preserve">
+    <value>The program can be used during a session.</value>
+    <comment>Hover text on the Allowed checkbox, saying what it does, whole sentence.</comment>
   </data>
   <data name="FocusProgramRemove" xml:space="preserve">
     <value>Remove</value>
-    <comment>Button on a program row that takes it off the list, imperative.</comment>
+    <comment>Hover text and screen-reader name of the trash-can button on a program row that takes it off the list, imperative.</comment>
   </data>
   <data name="FocusProgramNotFound" xml:space="preserve">
     <value>Not found on this machine</value>
@@ -374,7 +378,7 @@
     <comment>Placeholder and screen-reader name of the one-line goal field in the pop-out's start box, noun phrase.</comment>
   </data>
   <data name="PopOutStartProgramFocusInfo" xml:space="preserve">
-    <value>Tick at least one program as Can run on the Program focus page</value>
+    <value>Tick at least one program as Allowed on the Program focus page</value>
     <comment>Hover text on the greyed Program focus button when no named session can run.</comment>
   </data>
   <data name="PopOutRefusalAlreadyRunning" xml:space="preserve">
@@ -382,7 +386,7 @@
     <comment>Line under the start buttons when a start is refused because one runs, whole sentence.</comment>
   </data>
   <data name="PopOutRefusalLeverRefused" xml:space="preserve">
-    <value>The session could not take what its kind needs: a display to cover, a program ticked Can run, or a brightness to dim.</value>
+    <value>The session could not take what its kind needs: a display to cover, a program ticked Allowed, or a brightness to dim.</value>
     <comment>Line under the start buttons when the kind's own lever or the dim refuses, whole sentence.</comment>
   </data>
   <data name="PopOutRefusalLeverFailed" xml:space="preserve">
@@ -595,12 +599,12 @@
     <comment>Line after "Save open programs as a new session" found no open program, on the Program focus page and the dashboard, whole sentence.</comment>
   </data>
   <data name="NamedSessionSummaryStart" xml:space="preserve">
-    <value>{0} start with the session</value>
-    <comment>Second half of the row summary, {0} is the number of programs ticked Start with the session; follows the program count after a comma.</comment>
+    <value>{0} with Autostart</value>
+    <comment>Second half of the row summary, {0} is the number of programs ticked Autostart; follows the program count after a comma.</comment>
   </data>
   <data name="NamedSessionSummaryStartOne" xml:space="preserve">
-    <value>1 starts with the session</value>
-    <comment>Second half of the row summary when exactly one program is ticked Start with the session.</comment>
+    <value>1 with Autostart</value>
+    <comment>Second half of the row summary when exactly one program is ticked Autostart.</comment>
   </data>
   <data name="NamedSessionModeHeader" xml:space="preserve">
     <value>Mode</value>
@@ -619,16 +623,20 @@
     <comment>Mode 3 of a named session: the marked programs are opened and every other program may run too. Option in the mode list.</comment>
   </data>
   <data name="FocusProgramStartWithSession" xml:space="preserve">
-    <value>Start with the session</value>
-    <comment>Checkbox on a program row: the program is opened when a session starts in a mode that opens programs.</comment>
+    <value>Autostart</value>
+    <comment>Checkbox on a program row: the program is opened when a session starts in a mode that opens programs. One whole word, never shortened.</comment>
+  </data>
+  <data name="FocusProgramStartWithSessionInfo" xml:space="preserve">
+    <value>The program is opened when the session starts.</value>
+    <comment>Hover text on the Autostart checkbox, saying what it does, whole sentence.</comment>
   </data>
   <data name="FocusProgramStartUnusedInfo" xml:space="preserve">
     <value>Not used in this mode: nothing is opened.</value>
-    <comment>Hover text on the greyed Start with the session checkbox in mode 1, whole sentence.</comment>
+    <comment>Added after the Autostart hover text when the checkbox is greyed in mode 1, whole sentence.</comment>
   </data>
   <data name="FocusProgramCanRunUnusedInfo" xml:space="preserve">
     <value>Not used in this mode: every other program may run.</value>
-    <comment>Hover text on the greyed Can run checkbox in mode 3, whole sentence.</comment>
+    <comment>Added after the Allowed hover text when the checkbox is greyed in mode 3, whole sentence.</comment>
   </data>
   <data name="FocusGraceHeader" xml:space="preserve">
     <value>Time to cancel or change after a start</value>
@@ -807,15 +815,15 @@
     <comment>Button that puts the brightness back, verb.</comment>
   </data>
   <data name="PopOutNamedSessionCannotRunInfo" xml:space="preserve">
-    <value>Tick at least one program as Can run for this session on the Program focus page</value>
+    <value>Tick at least one program as Allowed for this session on the Program focus page</value>
     <comment>Hover text on a greyed named-session button in the status window.</comment>
   </data>
   <data name="PopOutNamedSessionNothingToOpenInfo" xml:space="preserve">
-    <value>Tick at least one program as Start with the session for this session on the Program focus page</value>
-    <comment>Hover text on a named-session button greyed because the mode chosen opens programs and none is ticked Start with the session.</comment>
+    <value>Tick at least one program as Autostart for this session on the Program focus page</value>
+    <comment>Hover text on a named-session button greyed because the mode chosen opens programs and none is ticked Autostart.</comment>
   </data>
   <data name="PopOutRefusalNothingToOpen" xml:space="preserve">
-    <value>Nothing to open: no program in this session is ticked Start with the session.</value>
+    <value>Nothing to open: no program in this session is ticked Autostart.</value>
     <comment>Line under the start buttons when "Open marked, allow all others" has no program to open, whole sentence.</comment>
   </data>
   <data name="PopOutSaveOpenPrograms" xml:space="preserve">

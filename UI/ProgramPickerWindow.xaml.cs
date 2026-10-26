@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using FocusDesk.Helpers;
 using FocusDesk.Services;
@@ -37,9 +38,10 @@ internal sealed partial class ProgramPickerRow(ProgramChoice choice) : INotifyPr
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
-/// <summary>The open programs under their heading, or the rest under a divider line.</summary>
+/// <summary>The open programs under their heading, or the rest under a divider line. Observable, so a
+/// refreshed list changes in place.</summary>
 internal sealed partial class ProgramPickerGroup(string heading, IEnumerable<ProgramPickerRow> rows)
-    : List<ProgramPickerRow>(rows)
+    : ObservableCollection<ProgramPickerRow>(rows)
 {
     public string Heading { get; } = heading;
 
@@ -53,8 +55,8 @@ internal sealed partial class ProgramPickerGroup(string heading, IEnumerable<Pro
 /// included, narrowed by typing. There is no file dialog and no browsing for program files.
 /// </summary>
 /// <remarks>
-/// <para>The list is built afresh on every open, off a thread of its own, so a program installed
-/// since the last open is on it and the window draws while it is read.</para>
+/// <para>Opens on the Start menu read at start-up, with what is open read fresh. The Start menu is
+/// read again behind it and the list changes in place, keeping the scroll, selection and search.</para>
 /// <para>Always on top of the Settings window it was opened from; Escape or Cancel closes it.</para>
 /// </remarks>
 internal sealed partial class ProgramPickerWindow : Window
@@ -67,6 +69,9 @@ internal sealed partial class ProgramPickerWindow : Window
     private readonly IReadOnlyCollection<FocusProgramKind> _kinds;
 
     private IReadOnlyList<ProgramPickerRow> _all = [];
+    private bool _loaded;
+    private ObservableCollection<ProgramPickerRow>? _flat;
+    private ObservableCollection<ProgramPickerGroup>? _groups;
     private bool _placed;
     private bool _closing;
 
@@ -105,41 +110,105 @@ internal sealed partial class ProgramPickerWindow : Window
         _ = LoadAsync();
     }
 
+    /// <summary>Shows the kept Start menu at once and the fresh one when it differs. The progress line
+    /// shows only while no Start menu has been read yet.</summary>
     private async Task LoadAsync()
     {
-        var built = await ProgramCatalogue.BuildAsync();
-        if (_closing) return;
+        try
+        {
+            var running = Task.Run(ProgramCatalogue.Running);
+            var kept = ProgramCatalogue.KeptStartMenu;
+            var fresh = ProgramCatalogue.ReadStartMenuAsync();
+            LoadingPanel.Visibility = kept is null ? Visibility.Visible : Visibility.Collapsed;
 
-        _all = [.. built.Where(c => _kinds.Contains(c.Kind)
-                                    && !_leaveOut.Any(x => x.Kind == c.Kind && FocusAllowedPrograms.Same(x.Id, c.Id)))
-                        .Select(c => new ProgramPickerRow(c))];
-        LoadingPanel.Visibility = Visibility.Collapsed;
-        Show();
+            var (paths, families) = await running;
+            var startMenu = kept ?? await fresh;
+            if (_closing) return;
+            Fill(ProgramCatalogue.Compose(startMenu, paths, families));
+
+            if (kept is null) return;
+            var again = await fresh;
+            if (_closing || ReferenceEquals(again, kept)) return;
+            Fill(ProgramCatalogue.Compose(again, paths, families));
+        }
+        catch (Exception ex) { AppLog.Error("ProgramPickerWindow.Load", ex); }
     }
 
-    private void Show()
+    /// <summary>Takes a composed list. A row whose program is unchanged is kept, with its icon.</summary>
+    private void Fill(IReadOnlyList<ProgramChoice> composed)
     {
-        var matching = ProgramCatalogue.Match([.. _all.Select(r => r.Choice)], QueryBox.Text);
+        var offered = composed.Where(c => _kinds.Contains(c.Kind)
+                                          && !_leaveOut.Any(x => x.Kind == c.Kind && FocusAllowedPrograms.Same(x.Id, c.Id)))
+                              .ToList();
+        if (_loaded && _all.Select(r => r.Choice).SequenceEqual(offered)) return;
+
+        var before = _all.GroupBy(r => r.Choice).ToDictionary(g => g.Key, g => g.First());
+        _all = [.. offered.Select(c => before.TryGetValue(c, out var row) ? row : new ProgramPickerRow(c))];
+
+        bool first = !_loaded;
+        _loaded = true;
+        LoadingPanel.Visibility = Visibility.Collapsed;
+        Show(keepSelection: !first);
+    }
+
+    /// <summary>Lays the rows matching the search into the list. A refresh changes the list in place and
+    /// keeps the selection; typing selects the top row, which Enter then takes.</summary>
+    private void Show(bool keepSelection)
+    {
+        var matching = new HashSet<ProgramChoice>(ProgramCatalogue.Match([.. _all.Select(r => r.Choice)], QueryBox.Text));
         var rows = _all.Where(r => matching.Contains(r.Choice)).ToList();
+        var selected = ProgramList.SelectedItem as ProgramPickerRow;
 
         var running = rows.Where(r => r.Choice.Running).ToList();
         var rest = rows.Where(r => !r.Choice.Running).ToList();
         if (running.Count == 0)
         {
-            ProgramList.ItemsSource = rows;
+            _groups = null;
+            if (_flat is null) ProgramList.ItemsSource = _flat = new(rows);
+            else Sync(_flat, rows);
+        }
+        else if (_groups is null)
+        {
+            _flat = null;
+            _groups = [new(AppText.Get("PickerRunningNow"), running)];
+            if (rest.Count > 0) _groups.Add(new("", rest));
+            ProgramList.ItemsSource = new CollectionViewSource { IsSourceGrouped = true, Source = _groups }.View;
         }
         else
         {
-            List<ProgramPickerGroup> groups = [new(AppText.Get("PickerRunningNow"), running)];
-            if (rest.Count > 0) groups.Add(new("", rest));
-            ProgramList.ItemsSource = new CollectionViewSource { IsSourceGrouped = true, Source = groups }.View;
+            Sync(_groups[0], running);
+            if (rest.Count == 0 && _groups.Count > 1) _groups.RemoveAt(1);
+            else if (rest.Count > 0 && _groups.Count == 1) _groups.Add(new("", rest));
+            else if (rest.Count > 0) Sync(_groups[1], rest);
         }
         ProgramList.Visibility  = rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyText.Visibility    = rows.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
         EmptyText.Text = AppText.Get(_all.Count == 0 ? "PickerNothingFound" : "PickerNothingMatches");
 
-        if (rows.Count > 0) ProgramList.SelectedIndex = 0;
+        if (keepSelection && selected is not null && rows.Contains(selected)) ProgramList.SelectedItem = selected;
+        else if (rows.Count > 0)
+        {
+            ProgramList.SelectedIndex = 0;
+            if (!keepSelection) ProgramList.ScrollIntoView(ProgramList.SelectedItem);
+        }
         AddButton.IsEnabled = rows.Count > 0;
+    }
+
+    /// <summary>Turns <paramref name="shown"/> into <paramref name="wanted"/> by removing, moving and
+    /// inserting single rows, so the rows on screen stay where they are.</summary>
+    private static void Sync(ObservableCollection<ProgramPickerRow> shown, IReadOnlyList<ProgramPickerRow> wanted)
+    {
+        var keep = new HashSet<ProgramPickerRow>(wanted);
+        for (int i = shown.Count - 1; i >= 0; i--)
+            if (!keep.Contains(shown[i])) shown.RemoveAt(i);
+
+        for (int i = 0; i < wanted.Count; i++)
+        {
+            if (i < shown.Count && ReferenceEquals(shown[i], wanted[i])) continue;
+            int at = shown.IndexOf(wanted[i]);
+            if (at >= 0) shown.Move(at, i);
+            else shown.Insert(i, wanted[i]);
+        }
     }
 
     /// <summary>Asks for a row's icon as it is about to be drawn, so a long list reads only the
@@ -153,8 +222,8 @@ internal sealed partial class ProgramPickerWindow : Window
 
     private void OnQueryChanged(object sender, TextChangedEventArgs e)
     {
-        if (LoadingPanel.Visibility == Visibility.Visible) return;
-        Show();
+        if (!_loaded) return;
+        Show(keepSelection: false);
     }
 
     /// <summary>Typing then pressing Enter takes the top row, so the whole choice is made without

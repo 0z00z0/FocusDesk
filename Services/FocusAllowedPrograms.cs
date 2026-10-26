@@ -225,12 +225,12 @@ internal static class FocusAllowedPrograms
         return FocusAllowVerdict.Removed;
     }
 
-    /// <summary>Ticks or clears "can run" on one row. Clearing it also clears "start with the session".</summary>
+    /// <summary>Ticks or clears "Allowed" on one row. Clearing it also clears "Autostart".</summary>
     public static FocusAllowVerdict SetCanRun(IList<FocusProgramEntry> list, FocusProgramKind kind,
                                               string? id, bool canRun, bool sessionRunning) =>
         Change(list, kind, id, sessionRunning, e => e with { CanRun = canRun, StartWithSession = canRun && e.StartWithSession });
 
-    /// <summary>Ticks or clears "start with the session" on one row. Ticking it also ticks "can run".</summary>
+    /// <summary>Ticks or clears "Autostart" on one row. Ticking it also ticks "Allowed".</summary>
     public static FocusAllowVerdict SetStartWithSession(IList<FocusProgramEntry> list, FocusProgramKind kind,
                                                         string? id, bool start, bool sessionRunning) =>
         Change(list, kind, id, sessionRunning, e => e with { StartWithSession = start, CanRun = start || e.CanRun });
@@ -258,7 +258,7 @@ internal static class FocusAllowedPrograms
         return -1;
     }
 
-    /// <summary>The entries a session lets run: "can run" ticked and naming something, in list order,
+    /// <summary>The entries a session lets run: "Allowed" ticked and naming something, in list order,
     /// with duplicates dropped.</summary>
     public static IReadOnlyList<FocusProgramEntry> RunEntries(IEnumerable<FocusProgramEntry>? entries)
     {

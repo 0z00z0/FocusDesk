@@ -6,10 +6,10 @@ A Windows tray application that holds the machine in a chosen state for a chosen
 A focus session runs for one duration and is one of two kinds, chosen when it starts:
 
 - **Program focus.** Runs on one of up to five named sessions, in the session's mode:
-  - "Allow only listed programs": only the programs the session ticks "Can run" can be worked in;
+  - "Allow only listed programs": only the programs the session ticks "Allowed" can be worked in;
     every other program's window is minimised.
-  - "Open marked, allow only listed": the same, and the programs ticked "Start with the session" are
-    opened when the session starts.
+  - "Open marked, allow only listed": the same, and the programs ticked "Autostart" are opened when
+    the session starts.
   - "Open marked, allow all others": the marked programs are opened and nothing is limited.
 
   A program already open is left alone, and a session resumed after a restart opens nothing. While
