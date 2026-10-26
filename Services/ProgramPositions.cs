@@ -76,7 +76,7 @@ internal static class ProgramPositions
 
     /// <summary>The session row a window belongs to: a web app by its window's identity, otherwise by
     /// the process, or the Store app behind the shared frame.</summary>
-    private static FocusProgramEntry? RowFor(WindowFacts facts, GateContext context)
+    internal static FocusProgramEntry? RowFor(WindowFacts facts, GateContext context)
     {
         if (facts.AppId.Length > 0)
         {
