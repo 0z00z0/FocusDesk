@@ -73,7 +73,8 @@ internal sealed partial class StartingWindow : Window
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             _names[i] = new TextBlock { Text = ProgramNames.For(run.Programs[i]), FontSize = 13,
                                         TextTrimming = TextTrimming.CharacterEllipsis };
-            _states[i] = new TextBlock { FontSize = 13 };
+            // A desktop note is long; it wraps rather than crowding out the program's name.
+            _states[i] = new TextBlock { FontSize = 13, MaxWidth = 300, TextWrapping = TextWrapping.Wrap };
             Grid.SetColumn(_states[i], 1);
             row.Children.Add(_names[i]);
             row.Children.Add(_states[i]);
@@ -106,6 +107,7 @@ internal sealed partial class StartingWindow : Window
         Activate();
         KeepAbove();
         _tick.Start();
+        VirtualDesktops.Travels(_hwnd);
     }
 
     private void KeepAbove()
@@ -122,13 +124,17 @@ internal sealed partial class StartingWindow : Window
     private void Refresh()
     {
         var results = _run.Results();
+        var notes = _run.Notes();
         int tried = results.Count(r => r is not null);
         int failed = results.Count(r => r is { } result && ProgramStartRun.Failed(result));
 
         Progress.Value = tried;
         for (int i = 0; i < results.Length; i++)
         {
-            _states[i].Text = AppText.Get(StateKey(results[i]));
+            _states[i].Text = notes[i] is { } note
+                ? AppText.Format(note.Miss == DesktopMiss.DoesNotExist ? "StartingDesktopMissing" : "StartingDesktopNotReached",
+                                 note.Desktop)
+                : AppText.Get(StateKey(results[i]));
             bool failedHere = results[i] is { } outcome && ProgramStartRun.Failed(outcome);
             _names[i].Foreground = Themed(results[i] is null ? "TextFillColorTertiaryBrush" : "TextFillColorPrimaryBrush");
             _states[i].Foreground = Themed(failedHere ? "SystemFillColorCriticalBrush" : "TextFillColorSecondaryBrush");
@@ -177,6 +183,7 @@ internal sealed partial class StartingWindow : Window
         _closed = true;
         _tick.Stop();
         _run.Changed -= OnRunChanged;
+        VirtualDesktops.Stays(_hwnd);
 
         // A window replaced by a newer start leaves the newer one's cover alone.
         if (_open != this) return;

@@ -457,6 +457,14 @@
     <value>startet ikke innen 20 sekunder</value>
     <comment>Failure beside a program whose process did not appear within 20 seconds, lower case.</comment>
   </data>
+  <data name="StartingDesktopMissing" xml:space="preserve">
+    <value>åpnet på gjeldende skrivebord: virtuelt skrivebord {0} finnes ikke</value>
+    <comment>State beside a started program whose saved virtual desktop number is higher than the desktops there are; {0} is that number, lower case.</comment>
+  </data>
+  <data name="StartingDesktopNotReached" xml:space="preserve">
+    <value>åpnet på gjeldende skrivebord: kunne ikke bytte til virtuelt skrivebord {0}</value>
+    <comment>State beside a started program whose virtual desktop could not be made current; {0} is the desktop number, lower case.</comment>
+  </data>
   <data name="UnattendedUpdatesHeader" xml:space="preserve">
     <value>Installer oppdateringer av seg selv</value>
     <comment>Header of the switch on the About page, imperative phrase.</comment>
