@@ -129,9 +129,9 @@ internal sealed class AppSettings
     /// With it off nothing is checked in the background either.</summary>
     public bool InstallUpdatesUnattended { get; set; }
 
-    /// <summary>The Settings window's outer rectangle in physical pixels, as the window manager
-    /// last reported it. All four are set together or none is: a partial rectangle is treated as
-    /// nothing saved, and the window opens centred on the monitor under the cursor.</summary>
+    /// <summary>Where the Settings window was left: X and Y the outer top-left in physical pixels,
+    /// width and height in device-independent units, so the size looks the same on any scale. All
+    /// four are set together or none is: a partial spot is treated as nothing saved.</summary>
     public int? SettingsWindowX { get; set; }
 
     /// <inheritdoc cref="SettingsWindowX"/>

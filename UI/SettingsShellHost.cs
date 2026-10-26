@@ -4,7 +4,9 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Graphics;
 using ZeroZero.SettingsShell.WinUI;
+using ZeroZero.Win32;
 
 namespace FocusDesk.UI;
 
@@ -45,9 +47,6 @@ internal static class SettingsShellHost
         DiagnosticsSettingsPanel? diagnostics = null;
 
         var rectStore = new SettingsWindowRectStore();
-        // Only a first open is sized to its content: fitting a remembered rectangle would grow the
-        // window back every time, which is the same as not remembering a size at all.
-        bool fitToContent = rectStore.Load() is null;
 
         var window = new SettingsWindow(new SettingsWindowSetup
         {
@@ -159,8 +158,9 @@ internal static class SettingsShellHost
             // reachable and keeps touching a torn-down tree.
             about?.Detach();
         };
-        // Straight after the constructor, as the shell requires: it waits for load if it must.
-        if (fitToContent) window.FitToPages();
+        // A window moved onto a display at another scale resizes itself by the ratio; placed again, it stays.
+        if (rectStore.Opened is { } opened)
+            window.AppWindow.MoveAndResize(new RectInt32(opened.X, opened.Y, opened.Width, opened.Height));
         window.Activate();
     }
 
@@ -184,34 +184,45 @@ internal static class SettingsShellHost
     };
 }
 
-/// <summary>Where the Settings window's rectangle is kept: the application's own settings document,
-/// in its Window section.</summary>
+/// <summary>The Settings window's spot, kept in the settings document; what the shell gets is always on a display.</summary>
 internal sealed class SettingsWindowRectStore : IWindowRectStore
 {
-    public WindowRect? Load() => SettingsService.Read(RectIn);
+    /// <summary>The rectangle last handed to the shell.</summary>
+    public WindowRect? Opened { get; private set; }
 
-    public void Save(WindowRect rect) => SettingsService.Update(s => Store(s, rect));
+    public WindowRect? Load()
+    {
+        var displays = DisplayAreas.All();
+        var rect = SettingsWindowPlacement.Opening(
+            SettingsService.Read(SpotIn), displays, DisplayAreas.Home(displays, TrayIconHost.ShellId));
+        Opened = new WindowRect(rect.Left, rect.Top, rect.Width, rect.Height);
+        return Opened;
+    }
 
-    /// <summary>The rectangle one settings object carries, or null where it carries none. All four
-    /// values are needed: a document holding three of them describes no rectangle, so the window
-    /// opens where it would with nothing saved.</summary>
-    internal static WindowRect? RectIn(AppSettings s)
+    public void Save(WindowRect rect)
+    {
+        var spot = SettingsWindowPlacement.Keep(
+            new NativeRect(rect.X, rect.Y, rect.X + rect.Width, rect.Y + rect.Height), DisplayAreas.All());
+        SettingsService.Update(s => Store(s, spot));
+    }
+
+    /// <summary>The spot one settings object carries, or null unless all four values are there.</summary>
+    internal static SettingsWindowSpot? SpotIn(AppSettings s)
     {
         ArgumentNullException.ThrowIfNull(s);
         return s is { SettingsWindowX: { } x, SettingsWindowY: { } y,
                       SettingsWindowWidth: { } width, SettingsWindowHeight: { } height }
-            ? new WindowRect(x, y, width, height)
+            ? new SettingsWindowSpot(x, y, width, height)
             : null;
     }
 
-    /// <summary>Puts a rectangle into one settings object. Separated from <see cref="Save"/> so the
-    /// round trip through the document can be exercised without the installed settings file.</summary>
-    internal static void Store(AppSettings s, WindowRect rect)
+    /// <summary>Puts a spot into one settings object, apart from <see cref="Save"/> for the round-trip test.</summary>
+    internal static void Store(AppSettings s, SettingsWindowSpot spot)
     {
         ArgumentNullException.ThrowIfNull(s);
-        s.SettingsWindowX      = rect.X;
-        s.SettingsWindowY      = rect.Y;
-        s.SettingsWindowWidth  = rect.Width;
-        s.SettingsWindowHeight = rect.Height;
+        s.SettingsWindowX      = spot.X;
+        s.SettingsWindowY      = spot.Y;
+        s.SettingsWindowWidth  = spot.WidthInUnits;
+        s.SettingsWindowHeight = spot.HeightInUnits;
     }
 }
