@@ -3,7 +3,7 @@ using System.IO;
 using FocusDesk.Services;
 using FocusDesk.UI;
 using Xunit;
-using ZeroZero.SettingsShell.WinUI;
+using FocusDesk.Helpers;
 
 namespace FocusDesk.Tests;
 
@@ -32,7 +32,7 @@ public class SettingsWindowRectStoreTests : IDisposable
     {
         // Negative coordinates on purpose: a monitor to the left of the primary one is where a
         // rectangle written as an unsigned value would come back wrong.
-        var saved = new WindowRect(-1720, 240, 980, 700);
+        var saved = new SettingsWindowSpot(-1720, 240, 980, 700);
 
         var written = new AppSettings();
         SettingsWindowRectStore.Store(written, saved);
@@ -41,7 +41,7 @@ public class SettingsWindowRectStoreTests : IDisposable
         var read = SettingsService.ReadFrom(File_);
 
         Assert.NotNull(read);
-        Assert.Equal(saved, SettingsWindowRectStore.RectIn(read!));
+        Assert.Equal(saved, SettingsWindowRectStore.SpotIn(read!));
     }
 
     [Fact]
@@ -52,14 +52,13 @@ public class SettingsWindowRectStoreTests : IDisposable
         var read = SettingsService.ReadFrom(File_);
 
         Assert.NotNull(read);
-        Assert.Null(SettingsWindowRectStore.RectIn(read!));
+        Assert.Null(SettingsWindowRectStore.SpotIn(read!));
     }
 
     [Fact]
     public void ARectangleMissingOneOfItsFourValuesYieldsNothing() =>
-        // Not three-quarters of a rectangle: the window opens centred on the cursor's monitor
-        // instead, which is where it opens with nothing saved at all.
-        Assert.Null(SettingsWindowRectStore.RectIn(new AppSettings
+        // Not three-quarters of a spot: the window opens where it opens with nothing saved at all.
+        Assert.Null(SettingsWindowRectStore.SpotIn(new AppSettings
         {
             SettingsWindowX = 100, SettingsWindowY = 200, SettingsWindowWidth = 980,
         }));
