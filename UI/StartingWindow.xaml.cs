@@ -13,8 +13,9 @@ using ZeroZero.Win32;
 
 namespace FocusDesk.UI;
 
-/// <summary>Shows one start's programs as they open, over the see-through cover, then "Completed".
-/// Closing it closes the cover too; the run carries on unseen.</summary>
+/// <summary>Shows one start's programs as they open, over the see-through cover, then "Completed",
+/// which takes the cover down and stays until closed. Closing it earlier closes the cover too; the run
+/// carries on unseen.</summary>
 internal sealed partial class StartingWindow : Window
 {
     private const int WidthDip = 560;
@@ -34,6 +35,7 @@ internal sealed partial class StartingWindow : Window
     private readonly DispatcherQueueTimer _tick;
     private readonly IntPtr _hwnd;
     private bool _closed;
+    private bool _coverDown;
 
     /// <summary>Hands the window the UI thread; a start can come from MQTT's thread.</summary>
     internal static void Start(DispatcherQueue ui) => _ui = ui;
@@ -103,17 +105,26 @@ internal sealed partial class StartingWindow : Window
     private void Open()
     {
         Place();
-        StartingCover.Show();
+        if (!_coverDown) StartingCover.Show();
         Activate();
         KeepAbove();
-        _tick.Start();
+        if (!_coverDown) _tick.Start();
         VirtualDesktops.Travels(_hwnd);
     }
 
     private void KeepAbove()
     {
-        StartingCover.KeepUp();
+        if (!_coverDown) StartingCover.KeepUp();
         NativeMethods.RaiseToTopmost(_hwnd);
+    }
+
+    /// <summary>At "Completed": the cover comes down, the focus point window's included.</summary>
+    private void TakeCoverDown()
+    {
+        _coverDown = true;
+        _tick.Stop();
+        StartingCover.Hide();
+        AppLog.Info("Focus: the start is completed, so the see-through cover is down.");
     }
 
     private void OnRunChanged() => DispatcherQueue.TryEnqueue(() =>
@@ -154,6 +165,7 @@ internal sealed partial class StartingWindow : Window
         }
         else MessageText.Inlines.Add(new Run { Text = AppText.Get("StartingWorking") });
         CloseButton.Visibility = complete ? Visibility.Visible : Visibility.Collapsed;
+        if (complete && !_coverDown) TakeCoverDown();
     }
 
     private static string StateKey(ProgramStartResult? result) => result switch

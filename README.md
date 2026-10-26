@@ -14,7 +14,8 @@ A focus session runs for one duration and is one of two kinds, chosen when it st
 
   A program already open is left alone, and a session resumed after a restart opens nothing. While
   programs open, a window lists each one over a see-through cover on every display, then reads
-  "Completed" with any program that could not be started and why; closing it closes the cover. With
+  "Completed" with any program that could not be started and why. The cover comes down at
+  "Completed"; the window stays until it is closed, and closing it earlier closes the cover. With
   the focus point window shown, the programs open behind it with the cover on the other displays, and
   the list shows when it ends. The Start button's menu picks another mode for one start. Program
   focus never blocks the network.
@@ -28,7 +29,9 @@ grace period after a fresh start (30 seconds, 1, 2 or 5 minutes, set on the Focu
 minutes by default) the dashboard shows Cancel counting down, which ends the session at once. In
 Program focus the same period lets the mode change on the dashboard and the session's programs
 change in Settings; a change from "Allow only listed programs" to a mode that opens programs opens
-them then. A resumed session has no grace period. After it, the machine itself offers no way to end
+them then. In a screen break the displays stay uncovered and undimmed, and the mouse, keyboard and
+network stay free, until the period ends, so Cancel can be reached. A resumed session has no grace
+period. After it, the machine itself offers no way to end
 a session. FocusDesk does not defend against a determined
 administrator, never closes a program, and does not block per site.
 

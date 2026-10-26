@@ -729,7 +729,12 @@ internal sealed partial class StatusWindow : Window
         ShowSession();
         try
         {
-            var (key, leftOut) = await ProgramFocusSettingsPanel.SaveOpenProgramsAsync();
+            var (key, leftOut, nothingOpen) = await ProgramFocusSettingsPanel.SaveOpenProgramsAsync();
+            if (nothingOpen)
+            {
+                RefusalText.Text = AppText.Get("NamedSessionSaveOpenNothing");
+                RefusalText.Visibility = Visibility.Visible;
+            }
             if (key is null) return;
             ProgramFocusSettingsPanel.ShowSaved(key, leftOut);
             Dismiss();
