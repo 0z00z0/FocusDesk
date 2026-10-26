@@ -50,8 +50,8 @@ internal sealed class ProgramStartRun
                   or ProgramStartResult.DidNotStart;
 }
 
-/// <summary>Opens a session's marked programs in list order, leaving open ones alone. Nothing is ever
-/// closed.</summary>
+/// <summary>Opens a session's marked programs in list order and places the windows it opened, leaving
+/// open ones alone. Nothing is ever closed.</summary>
 internal static class ProgramStarter
 {
     public static readonly TimeSpan StartWait = TimeSpan.FromSeconds(20);
@@ -72,9 +72,10 @@ internal static class ProgramStarter
                 var inspector = new WindowInspector();
                 string windows = WindowsPrograms.Folder;
                 var skip = GateContext.MachineSkipFolders();
+                var layout = marked.Any(p => p.Positions is { Count: > 0 }) ? DisplayLayout.Read() : null;
                 for (; next < marked.Count; next++)
                 {
-                    var result = StartOne(marked[next], inspector, windows, skip);
+                    var result = StartOne(marked[next], inspector, windows, skip, layout);
                     AppLog.Info($"Focus: starting {marked[next].Id} with the session: {result}");
                     run.Record(next, result);
                 }
@@ -93,7 +94,7 @@ internal static class ProgramStarter
     }
 
     private static ProgramStartResult StartOne(FocusProgramEntry entry, IWindowInspector inspector,
-                                               string windows, IReadOnlyList<string> skip)
+                                               string windows, IReadOnlyList<string> skip, DisplayLayoutReading? layout)
     {
         var context = new GateContext([entry], FocusProgramAction.Minimise, windows, "", [], skip, _ => false);
         if (IsOpen(entry, context, inspector)) return ProgramStartResult.AlreadyOpen;
@@ -108,9 +109,36 @@ internal static class ProgramStarter
         while (clock.Elapsed < StartWait)
         {
             Thread.Sleep(PollInterval);
-            if (IsOpen(entry, context, inspector)) return ProgramStartResult.Started;
+            if (!IsOpen(entry, context, inspector)) continue;
+            Arrange(entry, context, inspector, layout);
+            return ProgramStartResult.Started;
         }
         return ProgramStartResult.DidNotStart;
+    }
+
+    /// <summary>Puts a started program's first window at its saved place for the displays connected
+    /// now; at a layout with no saved place it stays where Windows put it.</summary>
+    private static void Arrange(FocusProgramEntry entry, GateContext context, IWindowInspector inspector,
+                                DisplayLayoutReading? layout)
+    {
+        if (layout is null || entry.Positions?.FirstOrDefault(p => p.Layout == layout.LayoutKey) is not { } saved) return;
+
+        var clock = Stopwatch.StartNew();
+        while (true)
+        {
+            var window = inspector.ActionableWindows().FirstOrDefault(w =>
+                inspector.Facts(w) is { } facts && ProgramPositions.RowFor(facts, context) is not null);
+            if (window != IntPtr.Zero)
+            {
+                var spot = new WindowSpot(saved.Display, saved.Left, saved.Top, saved.Width, saved.Height, saved.Maximised);
+                bool placed = WindowPlacement.Place(window, spot, layout);
+                AppLog.Info($"Focus: {entry.Id} {(placed ? "placed at its saved position" : "window gone before placing")}");
+                return;
+            }
+            if (clock.Elapsed >= StartWait) break;
+            Thread.Sleep(PollInterval);
+        }
+        AppLog.Info($"Focus: no window of {entry.Id} within {StartWait.TotalSeconds:0} seconds; left unplaced");
     }
 
     /// <summary>The shortcut or Apps-folder entry to open, the file where a program file has none,
