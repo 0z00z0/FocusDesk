@@ -174,6 +174,21 @@
                             CornerRadius="{StaticResource SessionControlCornerRadius}"
                             Click="OnSaveOpenPrograms"/>
 
+                    <!-- While a Program focus session runs, and never locked: it changes no restriction. -->
+                    <Button x:Name="SavePositionsButton" Visibility="Collapsed"
+                            HorizontalAlignment="Stretch"
+                            MinHeight="{StaticResource SessionControlHeight}"
+                            FontSize="{StaticResource SessionControlFontSize}"
+                            Padding="{StaticResource SessionControlPadding}"
+                            BorderThickness="{StaticResource SessionControlBorder}"
+                            CornerRadius="{StaticResource SessionControlCornerRadius}"
+                            Style="{StaticResource AccentButtonStyle}"
+                            Click="OnSavePositions"/>
+                    <TextBlock x:Name="SavePositionsResult"
+                               FontSize="11" TextWrapping="Wrap"
+                               Visibility="Collapsed"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>

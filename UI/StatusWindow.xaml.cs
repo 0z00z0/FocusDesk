@@ -142,6 +142,8 @@ internal sealed partial class StatusWindow : Window
         ScreenBreakChoice.Content  = AppText.Get("PopOutStartScreenBreak");
         StartButton.Content        = AppText.Get("PopOutStart");
         SaveOpenProgramsButton.Content = AppText.Get("PopOutSaveOpenPrograms");
+        SavePositionsButton.Content = AppText.Get("SavePositionsButton");
+        ToolTipService.SetToolTip(SavePositionsButton, AppText.Get("SavePositionsInfo"));
         foreach (var mode in ProgramFocusText.Modes)
         {
             var item = new RadioMenuFlyoutItem { Text = ProgramFocusText.ModeName(mode), Tag = mode, GroupName = "Mode" };
@@ -309,6 +311,10 @@ internal sealed partial class StatusWindow : Window
         MinutesCombo.IsEnabled       = !session.IsRunning;
         GoalBox.IsEnabled            = !session.IsRunning;
         SaveOpenProgramsButton.IsEnabled = !session.IsRunning && !_sessionsFull && !_saving;
+        bool positions = session.IsRunning && session.Kind == FocusSessionKind.ProgramFocus;
+        SavePositionsButton.Visibility = positions ? Visibility.Visible : Visibility.Collapsed;
+        SavePositionsButton.IsEnabled = !_savingPositions;
+        if (!positions) SavePositionsResult.Visibility = Visibility.Collapsed;
         foreach (var button in SessionButtons())
             button.IsEnabled = !session.IsRunning && button.Tag is string key && _runnableSessions.Contains(key);
         if (session.IsRunning && !inGrace) RefusalText.Visibility = Visibility.Collapsed;
@@ -733,6 +739,28 @@ internal sealed partial class StatusWindow : Window
         {
             _saving = false;
             Reload();
+        }
+    }
+
+    private bool _savingPositions;
+
+    /// <summary>Saves where the running session's programs sit, for this monitor layout.</summary>
+    private async void OnSavePositions(object sender, RoutedEventArgs e)
+    {
+        if (_savingPositions) return;
+        _savingPositions = true;
+        ShowSession();
+        try
+        {
+            var (outcome, saved) = await ProgramPositions.SaveAsync(FocusSessionService.Current.NamedSession);
+            SavePositionsResult.Text = ProgramFocusText.PositionsSaved(outcome, saved);
+            SavePositionsResult.Visibility = Visibility.Visible;
+        }
+        catch (Exception ex) { AppLog.Error("StatusWindow.SavePositions", ex); }
+        finally
+        {
+            _savingPositions = false;
+            ShowSession();
         }
     }
 

@@ -143,6 +143,7 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
 
         PresetRows.Parts? built = null;
         cards.AddRange(ProgramCards(key, verdict => ShowRefusal(built!, verdict)));
+        cards.Add(PositionsCard(key));
 
         var row = PresetRows.Build(session.Name, Summary(session), key, cards,
                                    ProgramFocusText.CriticalBrush(), AppText.Get("NamedSessionDelete"));
@@ -229,6 +230,26 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
                 Content     = controls,
             };
         }
+    }
+
+    /// <summary>"Save program positions" for this session; never locked, so it is not among the lockables.</summary>
+    private static SettingsCard PositionsCard(string key)
+    {
+        var save = new Button { Content = AppText.Get("SavePositionsButton") };
+        ToolTipService.SetToolTip(save, AppText.Get("SavePositionsInfo"));
+        var card = new SettingsCard { Header = AppText.Get("NamedSessionPositionsHeader"), Content = save };
+        save.Click += async (_, _) =>
+        {
+            save.IsEnabled = false;
+            try
+            {
+                var (outcome, saved) = await ProgramPositions.SaveAsync(key);
+                card.Description = ProgramFocusText.PositionsSaved(outcome, saved);
+            }
+            catch (Exception ex) { AppLog.Error("ProgramFocusSettingsPanel.SavePositions", ex); }
+            finally { save.IsEnabled = true; }
+        };
+        return card;
     }
 
     private static FrameworkElement WithReason(Control control, string? reason)
@@ -446,6 +467,16 @@ internal static class ProgramFocusText
         FocusAllowVerdict.NotAllowed     => AppText.Get("FocusProgramsRefusalNotAllowed"),
         FocusAllowVerdict.NothingKeptUsable => AppText.Get("PopOutRefusalLeverRefused"),
         _                                => "",
+    };
+
+    /// <summary>What a press of "Save program positions" came to, on the dashboard and in Settings alike.</summary>
+    public static string PositionsSaved(PositionsSaveOutcome outcome, int saved) => outcome switch
+    {
+        PositionsSaveOutcome.Saved when saved == 1 => AppText.Get("SavePositionsDoneOne"),
+        PositionsSaveOutcome.Saved                 => AppText.Format("SavePositionsDone", saved),
+        PositionsSaveOutcome.NoOpenWindow          => AppText.Get("SavePositionsNone"),
+        PositionsSaveOutcome.SessionMissing        => AppText.Get("SavePositionsSessionMissing"),
+        _                                          => AppText.Get("SavePositionsFailed"),
     };
 
     /// <summary>The critical brush for inline refusals, looked up without throwing.</summary>

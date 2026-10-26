@@ -814,4 +814,36 @@
     <value>Modusen kan endres</value>
     <comment>Heading over the three Program focus modes in the status window during the grace period.</comment>
   </data>
+  <data name="SavePositionsButton" xml:space="preserve">
+    <value>Lagre programplasseringer</value>
+    <comment>Button on the dashboard while a Program focus session runs and inside each named session in Settings, imperative.</comment>
+  </data>
+  <data name="SavePositionsInfo" xml:space="preserve">
+    <value>Lagre programplasseringer (for dette skjermoppsettet)</value>
+    <comment>Hover text on the "Save program positions" button; a monitor layout is the set of displays connected now.</comment>
+  </data>
+  <data name="NamedSessionPositionsHeader" xml:space="preserve">
+    <value>Programplasseringer</value>
+    <comment>Header of the card inside a named session that holds the "Save program positions" button.</comment>
+  </data>
+  <data name="SavePositionsDone" xml:space="preserve">
+    <value>Plasseringer lagret for {0} programmer.</value>
+    <comment>Line after "Save program positions" saved; {0} is the number of programs with an open window, whole sentence.</comment>
+  </data>
+  <data name="SavePositionsDoneOne" xml:space="preserve">
+    <value>Plasseringer lagret for ett program.</value>
+    <comment>Line after "Save program positions" saved one program, whole sentence.</comment>
+  </data>
+  <data name="SavePositionsNone" xml:space="preserve">
+    <value>Ingen program i denne økten har et åpent vindu, så ingenting ble lagret.</value>
+    <comment>Line after "Save program positions" found no open window of the session's programs, whole sentence.</comment>
+  </data>
+  <data name="SavePositionsFailed" xml:space="preserve">
+    <value>Skjermoppsettet kunne ikke leses, så ingenting ble lagret.</value>
+    <comment>Line after "Save program positions" when the connected displays could not be read, whole sentence.</comment>
+  </data>
+  <data name="SavePositionsSessionMissing" xml:space="preserve">
+    <value>Denne navngitte økten finnes ikke lenger i listen, så ingenting ble lagret.</value>
+    <comment>Line after "Save program positions" when the session was deleted meanwhile, whole sentence.</comment>
+  </data>
 </root>
