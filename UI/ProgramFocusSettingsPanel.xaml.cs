@@ -27,6 +27,7 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         NamedSessionsDescriptionText.Text = AppText.Get("NamedSessionsDescription");
         AddNamedSessionButton.Content = AppText.Get("NamedSessionAdd");
         SaveOpenProgramsButton.Content = AppText.Get("NamedSessionSaveOpen");
+        SaveOpenNothingText.Text = AppText.Get("NamedSessionSaveOpenNothing");
 
         _list = new PresetRows.Section
         {
@@ -379,10 +380,12 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         if (FocusSessionService.LeversAreLocked || _saving) { ApplySessionLock(); return; }
         _saving = true;
         ApplySessionLock();
+        SaveOpenNothingText.Visibility = Visibility.Collapsed;
         try
         {
-            var (added, leftOut) = await SaveOpenProgramsAsync();
+            var (added, leftOut, nothingOpen) = await SaveOpenProgramsAsync();
             if (added is not null) ShowNew(added, leftOut);
+            SaveOpenNothingText.Visibility = nothingOpen ? Visibility.Visible : Visibility.Collapsed;
         }
         catch (Exception ex) { AppLog.Error("ProgramFocusSettingsPanel.SaveOpenPrograms", ex); }
         finally
@@ -392,17 +395,19 @@ public sealed partial class ProgramFocusSettingsPanel : UserControl
         }
     }
 
-    /// <summary>A session in mode 2 from the programs open now, at most a full list; also the dashboard's save.</summary>
-    internal static async Task<(string? Key, int LeftOut)> SaveOpenProgramsAsync()
+    /// <summary>A session in mode 2 from the programs open now, at most a full list, and none where nothing
+    /// is open; also the dashboard's save.</summary>
+    internal static async Task<(string? Key, int LeftOut, bool NothingOpen)> SaveOpenProgramsAsync()
     {
         var open = ProgramCatalogue.OpenNow(await ProgramCatalogue.BuildAsync(), ProgramCatalogue.OpenWindows());
-        if (FocusSessionService.LeversAreLocked) return (null, 0);
+        if (FocusSessionService.LeversAreLocked) return (null, 0, false);
+        if (open.Count == 0) return (null, 0, true);
 
         string? added = null;
         SettingsService.Update(s => added = NamedSessions.AddFrom(
             s, AppText.Get("NamedSessionNewName"),
             open.Take(FocusAllowedPrograms.Maximum).Select(c => c.ToEntry()))?.Key);
-        return (added, Math.Max(0, open.Count - FocusAllowedPrograms.Maximum));
+        return (added, Math.Max(0, open.Count - FocusAllowedPrograms.Maximum), false);
     }
 
     // Shown once loaded: a page built for it loads after it enters, and loading rebuilds the list.
@@ -465,7 +470,7 @@ internal static class ProgramFocusText
         FocusAllowVerdict.ListFull       => AppText.Format("FocusProgramsRefusalListFull", FocusAllowedPrograms.Maximum),
         FocusAllowVerdict.AlreadyAllowed => AppText.Get("FocusProgramsRefusalAlreadyAllowed"),
         FocusAllowVerdict.NotAllowed     => AppText.Get("FocusProgramsRefusalNotAllowed"),
-        FocusAllowVerdict.NothingKeptUsable => AppText.Get("PopOutRefusalLeverRefused"),
+        FocusAllowVerdict.NothingKeptUsable => AppText.Get("FocusProgramsRefusalNothingKeptUsable"),
         _                                => "",
     };
 

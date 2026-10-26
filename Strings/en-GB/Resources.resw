@@ -116,6 +116,10 @@
     <value>That program was not on the list.</value>
     <comment>Why a change to a row was refused, whole sentence.</comment>
   </data>
+  <data name="FocusProgramsRefusalNothingKeptUsable" xml:space="preserve">
+    <value>At least one program must be allowed to run.</value>
+    <comment>Why a change to the running session's programs in the grace period was refused: no program would be usable, whole sentence.</comment>
+  </data>
 
   <!-- The program picker window. -->
   <data name="PickerTitle" xml:space="preserve">
@@ -585,6 +589,10 @@
   <data name="NamedSessionSaveOpenLeftOut" xml:space="preserve">
     <value>{0} open programs were left out: a session holds at most 20.</value>
     <comment>Line on the new session when more than 20 programs were open; {0} is how many were left out, always plural.</comment>
+  </data>
+  <data name="NamedSessionSaveOpenNothing" xml:space="preserve">
+    <value>No program is open, so no session was saved.</value>
+    <comment>Line after "Save open programs as a new session" found no open program, on the Program focus page and the dashboard, whole sentence.</comment>
   </data>
   <data name="NamedSessionSummaryStart" xml:space="preserve">
     <value>{0} start with the session</value>

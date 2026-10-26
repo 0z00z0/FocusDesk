@@ -116,6 +116,10 @@ internal sealed class FocusSessionEngine(
 
     // Held in memory only: a session resumed after a restart has no grace period.
     private DateTimeOffset? _graceEndsAt;
+
+    // A screen break's dim, cover, network block and input block wait for its grace period to end, so
+    // Cancel on the dashboard stays within reach. The record names them, so a restart engages them.
+    private bool _leversWaiting;
     private FocusSessionStage _published = FocusSessionStage.Off;
 
     // Set when a lever is dropped from a running session, so the change is raised although the
@@ -185,7 +189,7 @@ internal sealed class FocusSessionEngine(
 
         lock (_gate)
         {
-            outcome = ArmLocked(minutes, plan, cause, FocusSessionGoal.Clean(goal));
+            outcome = ArmLocked(minutes, plan, cause, FocusSessionGoal.Clean(goal), grace > TimeSpan.Zero);
             if (outcome == FocusArmOutcome.Armed && grace > TimeSpan.Zero) _graceEndsAt = now() + grace;
             changed = Sync();
         }
@@ -335,11 +339,17 @@ internal sealed class FocusSessionEngine(
                     Finish("the session ran its length", FocusSessionOutcome.RanToTime);
                 else
                 {
+                    ActionCause clock = "the session's own clock";
                     if (_graceEndsAt is { } graceEnd && now() >= graceEnd)
                     {
                         _graceEndsAt = null;
                         _leversMoved = true;
-                        log("The focus session's grace period ended", "the session's own clock");
+                        log("The focus session's grace period ended", clock);
+                        if (_leversWaiting)
+                        {
+                            _leversWaiting = false;
+                            EngageMachineLevers(session, clock);
+                        }
                     }
 
                     if (_cancelRequestedAt is not null && Compose().Stage == FocusSessionStage.Active)
@@ -351,13 +361,16 @@ internal sealed class FocusSessionEngine(
 
                     // The input block lapses unless this renews it, so a hung application lifts it
                     // within seconds; one that lapsed while the session still owns it is taken again.
-                    ActionCause clock = "the session's own clock";
-                    if (session.BlocksInput && !input.Hold(session.EndsAt, clock))
-                        DropInput("the mouse and keyboard block was lost and could not be taken again",
-                                  clock);
-                    if (session.BlocksNetwork && !network.Hold(session.EndsAt, clock))
-                        DropNetwork("the network block was lost and could not be put back", clock);
-                    if (session.LimitsPrograms && !_programs.Hold(session.EndsAt, clock))
+                    // Read afresh: the grace end above may have dropped a lever or the session.
+                    if (_session is { } held && !_leversWaiting)
+                    {
+                        if (held.BlocksInput && !input.Hold(held.EndsAt, clock))
+                            DropInput("the mouse and keyboard block was lost and could not be taken again",
+                                      clock);
+                        if (held.BlocksNetwork && !network.Hold(held.EndsAt, clock))
+                            DropNetwork("the network block was lost and could not be put back", clock);
+                    }
+                    if (_session is { LimitsPrograms: true } limited && !_programs.Hold(limited.EndsAt, clock))
                         DropPrograms("the window watch stopped and could not be started again", clock);
                 }
             }
@@ -379,7 +392,8 @@ internal sealed class FocusSessionEngine(
         }
     }
 
-    private FocusArmOutcome ArmLocked(int minutes, FocusSessionPlan plan, ActionCause cause, string goal)
+    private FocusArmOutcome ArmLocked(int minutes, FocusSessionPlan plan, ActionCause cause, string goal,
+                                      bool hasGrace)
     {
         if (_session is not null) return FocusArmOutcome.AlreadyRunning;
 
@@ -438,24 +452,37 @@ internal sealed class FocusSessionEngine(
         _session = session;
         _cancelRequestedAt = null;
 
-        if (dimsScreen && !screen.Engage(cause)) return Rollback(session, cause);
-        if (session.CoversScreen && !cover.Engage(cause)) return Rollback(session, cause);
         // The program limit only ever comes as the lever program focus always holds, so a watch that
         // will not start refuses the session rather than leaving it running without it.
         if (session.LimitsPrograms && !_programs.Engage(cause)) return Rollback(session, cause);
 
-        if (blocksNetwork && !network.Engage(cause))
-            DropNetwork("the firewall would not take the block", cause);
-
-        // Last, so nothing above can fail while the machine already answers nothing.
-        if (blocksInput && !input.Engage(cause))
-            DropInput("Windows refused to block the mouse and keyboard", cause);
+        if (hasGrace && plan.Kind == FocusSessionKind.ScreenBreak)
+        {
+            _leversWaiting = true;
+            log("Focus session leaves the machine as it is until the grace period ends", cause);
+        }
+        else if (!EngageMachineLevers(session, cause)) return FocusArmOutcome.LeverFailed;
 
         // Whether a goal was set, never what it says: the goal is the person's own words.
         log($"Focus session started as {FocusSessionKinds.Word(plan.Kind)}, running until "
           + $"{session.EndsAt.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)}"
           + (goal.Length > 0 ? ", with a goal set" : ""), cause);
         return FocusArmOutcome.Armed;
+    }
+
+    /// <summary>A failed dim or cover undoes the session (false); a failed block is left off.</summary>
+    private bool EngageMachineLevers(FocusSessionRecord session, ActionCause cause)
+    {
+        if (session.DimsScreen && !screen.Engage(cause)) { Rollback(session, cause); return false; }
+        if (session.CoversScreen && !cover.Engage(cause)) { Rollback(session, cause); return false; }
+
+        if (session.BlocksNetwork && !network.Engage(cause))
+            DropNetwork("the firewall would not take the block", cause);
+
+        // Last, so nothing above can fail while the machine already answers nothing.
+        if (session.BlocksInput && !input.Engage(cause))
+            DropInput("Windows refused to block the mouse and keyboard", cause);
+        return true;
     }
 
     private IFocusLever LeverFor(FocusLever lever) => lever switch
@@ -478,6 +505,7 @@ internal sealed class FocusSessionEngine(
         record.Clear();
         _session = null;
         _cancelRequestedAt = null;
+        _leversWaiting = false;
         log("Focus session not started: a lever could not be engaged, and what did engage is back as "
           + "it was", cause);
         return FocusArmOutcome.LeverFailed;
@@ -509,14 +537,20 @@ internal sealed class FocusSessionEngine(
     {
         if (_session is not { } session) return;
 
-        if (session.DimsScreen && !screen.Lift(cause))
+        // A screen break cancelled in its grace period engaged nothing to put back.
+        var held = _leversWaiting
+            ? session with { DimsScreen = false, CoversScreen = false, BlocksInput = false, BlocksNetwork = false }
+            : session;
+        _leversWaiting = false;
+
+        if (held.DimsScreen && !screen.Lift(cause))
             log("The screen brightness could not be put back — it is retried at the next start", cause);
-        if (session.CoversScreen && !cover.Lift(cause))
+        if (held.CoversScreen && !cover.Lift(cause))
             log("The screen cover could not be taken down — it goes with the next restart", cause);
-        if (session.BlocksInput && !input.Lift(cause))
+        if (held.BlocksInput && !input.Lift(cause))
             log("The mouse and keyboard block did not release at once — it lapses by itself within "
               + "seconds", cause);
-        if (session.BlocksNetwork && !network.Lift(cause))
+        if (held.BlocksNetwork && !network.Lift(cause))
             log("The firewall could not be put back — it is retried at the next start", cause);
         // Nothing to put back: minimised programs stay minimised until somebody restores them.
         if (session.LimitsPrograms) _programs.Lift(cause);
