@@ -6,11 +6,11 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src 'self' file:; img-src data:">
 <title>Automatic focus session · FocusDesk</title>
 <style>
-  /* The brand face: an installed Cascadia Mono first, then the copy shipped beside FocusDesk. */
+  /* The brand face: an installed Cascadia Code first, then the copy shipped beside FocusDesk. */
   @font-face {
     font-family: "FocusDesk Mono";
-    src: local("Cascadia Mono"), local("CascadiaMono-Regular"),
-         url("../../ZeroZero.Brand.WinUI/Assets/Fonts/CascadiaMono.ttf") format("truetype");
+    src: local("Cascadia Code"), local("CascadiaCode-Regular"),
+         url("../../ZeroZero.Brand.WinUI/Assets/Fonts/CascadiaCode.ttf") format("truetype");
   }
   :root {
     --ground: #1b1d28;
@@ -34,7 +34,7 @@
     margin: 0;
     background: var(--ground);
     color: var(--text);
-    font: 15px/1.6 "FocusDesk Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+    font: 15px/1.6 "FocusDesk Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
   }
   html[data-lang="en"] [lang="nb-NO"], html[data-lang="nb"] [lang="en-GB"] { display: none; }
   main { max-width: 760px; margin: 0 auto; padding: 40px 24px 32px; }

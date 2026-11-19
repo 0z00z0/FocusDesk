@@ -23,7 +23,7 @@
 
     The FocusDesk mark comes from FocusDeskMark.ps1, the file the icons are drawn from. The studio
     mark follows the geometry of the shared About control's header. The brand typeface, Cascadia
-    Mono, is read from the restored ZeroZero.Brand.WinUI package; Consolas stands in without it.
+    Code, is read from the restored ZeroZero.Brand.WinUI package; Consolas stands in without it.
 
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-wizard-images.ps1
@@ -64,7 +64,7 @@ $StudioZero       = [System.Drawing.ColorTranslator]::FromHtml('#d8a657')
 
 $packageRoot = $env:NUGET_PACKAGES
 if (-not $packageRoot) { $packageRoot = Join-Path $env:USERPROFILE '.nuget\packages' }
-$fontFile = Get-ChildItem -ErrorAction SilentlyContinue -Recurse -Filter 'CascadiaMono.ttf' `
+$fontFile = Get-ChildItem -ErrorAction SilentlyContinue -Recurse -Filter 'CascadiaCode.ttf' `
     -Path (Join-Path $packageRoot 'zerozero.brand.winui') |
     Sort-Object FullName -Descending | Select-Object -First 1
 
@@ -74,7 +74,7 @@ if ($fontFile) {
     $BrandFamily = $fonts.Families[0]
 }
 else {
-    Write-Warning 'CascadiaMono.ttf was not found in the NuGet cache; the text is drawn in Consolas.'
+    Write-Warning 'CascadiaCode.ttf was not found in the NuGet cache; the text is drawn in Consolas.'
     $BrandFamily = New-Object System.Drawing.FontFamily('Consolas')
 }
 
