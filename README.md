@@ -30,7 +30,8 @@ A session ends when its time runs out, or early from Home Assistant through a st
 grace period after a fresh start (30 seconds, 1, 2 or 5 minutes, set on the Focus session page; 2
 minutes by default) the dashboard shows Cancel counting down, which ends the session at once. In
 Program focus the same period lets the mode change on the dashboard and the session's programs
-change in Settings; a change from "Allow only listed programs" to a mode that opens programs opens
+change in Settings, so a program found blocked can be added. During the period Settings opens on the
+Program focus page, from the tray menu as well as the dashboard. A change from "Allow only listed programs" to a mode that opens programs opens
 them then. In a screen break the displays stay uncovered and undimmed, and the mouse, keyboard and
 network stay free, until the period ends, so Cancel can be reached. A resumed session has no grace
 period. After it, the machine itself offers no way to end

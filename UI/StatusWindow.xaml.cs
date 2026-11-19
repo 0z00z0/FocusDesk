@@ -772,7 +772,7 @@ internal sealed partial class StatusWindow : Window
     /// <summary>Opens the Settings window, and stands down behind it.</summary>
     private void OnSettings(object sender, RoutedEventArgs e)
     {
-        SettingsShellHost.Open(SettingsShellHost.FocusTag);
+        SettingsShellHost.Open(SettingsShellHost.PageFor(SettingsShellHost.FocusTag));
         Dismiss();
     }
 
