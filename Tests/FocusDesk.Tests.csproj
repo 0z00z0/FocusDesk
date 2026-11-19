@@ -2,11 +2,11 @@
 
   <!--
     Targets the same Windows-specific TFM as FocusDesk.csproj (required for a ProjectReference to a
-    net10.0-windows project). Deliberately does NOT set UseWinUI/WindowsPackageType/etc. — the types
+    net11.0-windows project). Deliberately does NOT set UseWinUI/WindowsPackageType/etc. — the types
     under test are plain C# with no XAML or WinRT dependency, so the test project stays lightweight.
   -->
   <PropertyGroup>
-    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net11.0-windows10.0.26100.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>

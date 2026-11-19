@@ -9,7 +9,7 @@ public class InstallLocationsTests
 {
     [Theory]
     [InlineData(@"C:\Users\Someone\AppData\Local\Programs\FocusDesk\FocusDesk.exe", true)]
-    [InlineData(@"C:\repo\FocusDesk\bin\Debug\net10.0-windows10.0.26100.0\FocusDesk.exe", false)]
+    [InlineData(@"C:\repo\FocusDesk\bin\Debug\net11.0-windows10.0.26100.0\FocusDesk.exe", false)]
     [InlineData(@"C:\Users\Someone\AppData\Local\Programs\FocusDesk\SomethingElse.exe", false)]
     [InlineData(null, false)]
     [InlineData("", false)]
