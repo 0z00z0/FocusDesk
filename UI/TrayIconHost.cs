@@ -148,9 +148,14 @@ internal static class TrayIconHost
     {
         var session = FocusSessionService.Current;
 
-        // Every row below is greyed for the length of a session: a session is only as firm as the
-        // ways around it, and the update flow can close the application for an install.
+        // Every row below is greyed for the length of a session, Settings… outside the grace period: a
+        // session is only as firm as the ways around it, and the update flow can close the application
+        // for an install.
         bool unlocked = !FocusSessionService.LeversAreLocked;
+
+        // Settings also opens in the grace period, which can end the session anyway, so a program found
+        // blocked can be added to the running session there.
+        bool settingsOpen = unlocked || session.GraceLeft(DateTimeOffset.Now) is not null;
 
         // A line of text and never a control. A person at the keyboard cannot end a session, and
         // nothing may put a way to here because the line looked incomplete without one. It sits
@@ -171,7 +176,8 @@ internal static class TrayIconHost
             yield return TrayMenuItem.Separator();
         }
 
-        yield return TrayMenuItem.Command("Settings…", () => SettingsShellHost.Open(), isEnabled: unlocked);
+        yield return TrayMenuItem.Command("Settings…", () => SettingsShellHost.Open(SettingsShellHost.PageFor(null)),
+                                          isEnabled: settingsOpen);
         yield return TrayMenuItem.Separator();
 
         bool startsAtLogon = LaunchAtStartup.IsOn;

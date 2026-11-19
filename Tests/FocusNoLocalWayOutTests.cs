@@ -218,13 +218,20 @@ public class FocusNoLocalWayOutTests
                              source.IndexOf("private static void CheckForUpdates", StringComparison.Ordinal)];
 
         Assert.Contains("bool unlocked = !FocusSessionService.LeversAreLocked;", menu, StringComparison.Ordinal);
+        Assert.Contains("bool settingsOpen = unlocked || session.GraceLeft(DateTimeOffset.Now) is not null;", menu, StringComparison.Ordinal);
 
         var rows = Regex.Matches(menu, @"TrayMenuItem\.(?:Command|Toggle)\((?:(?!TrayMenuItem\.)[^;])*")
                         .Select(m => m.Value).ToArray();
         Assert.Equal(8, rows.Length);
 
+        // Settings… alone also opens in the grace period, when Cancel ends the session anyway.
+        Assert.Single(rows, r => r.Contains("isEnabled: settingsOpen", StringComparison.Ordinal));
+        Assert.Contains(rows, r => r.StartsWith("TrayMenuItem.Command(\"Settings…\"", StringComparison.Ordinal)
+                                && r.Contains("isEnabled: settingsOpen", StringComparison.Ordinal));
+
         // The live Exit row is only reached when the session rule allows it, in the guard above.
         var unguarded = rows.Where(r => !r.Contains("isEnabled: unlocked", StringComparison.Ordinal)
+                                     && !r.Contains("isEnabled: settingsOpen", StringComparison.Ordinal)
                                      && !r.Contains("isEnabled: false", StringComparison.Ordinal)
                                      && !r.Contains("AppText.Get(\"TrayMenuExit\"),", StringComparison.Ordinal));
         Assert.Empty(unguarded);

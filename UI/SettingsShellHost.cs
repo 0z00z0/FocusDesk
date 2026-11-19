@@ -28,6 +28,14 @@ internal static class SettingsShellHost
 
     private static SettingsWindow? _window;
 
+    /// <summary>The Program focus page during a Program focus session's grace period, where a program found
+    /// blocked is added to the running session; <paramref name="otherwise"/> at any other time.</summary>
+    public static string? PageFor(string? otherwise) =>
+        FocusSessionService.Current is { Kind: FocusSessionKind.ProgramFocus } running
+        && running.GraceLeft(DateTimeOffset.Now) is not null
+            ? ProgramFocusTag
+            : otherwise;
+
     /// <summary>Opens the Settings window at a section, or brings the open one to that section.</summary>
     public static void Open(string? tag = null)
     {
