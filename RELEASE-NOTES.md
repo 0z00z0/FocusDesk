@@ -9,6 +9,15 @@ in the code. Newest version first; the heading is the version alone, exactly as 
 `FocusDesk.csproj`. A section never carries an installer hash: the workflow adds the one hash the
 updater reads.
 
+## 1.2.2
+
+- During the grace period of a Program focus session, "Settings…" in the tray menu and the gear on
+  the dashboard open Settings directly on the Program focus page, so a program can be added or
+  changed in time.
+- FocusDesk runs on .NET 11 and Windows App SDK 2.7.0, and the installer carries everything the
+  application needs, so nothing has to be installed beforehand.
+- The libraries FocusDesk is built on are at their latest stable releases.
+
 ## 1.2.1
 
 - The Settings window always opens inside a display, a display at 200 % scaling included.
