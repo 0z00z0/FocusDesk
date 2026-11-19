@@ -54,10 +54,11 @@
     <PackageVersion Include="NLog" Version="6.2.2" />
   </ItemGroup>
 
-  <!-- WMI, the interface the display brightness is read and written through. Part of the .NET
-       platform's out-of-band packages, so the version tracks the runtime's own. -->
+  <!-- WMI, the interface the display brightness is read and written through. One of the .NET
+       platform's out-of-band packages; each release also ships an asset for the previous runtime,
+       so the latest release serves the net10.0 target. -->
   <ItemGroup>
-    <PackageVersion Include="System.Management" Version="10.0.14" />
+    <PackageVersion Include="System.Management" Version="11.0.0" />
   </ItemGroup>
 
 </Project>
