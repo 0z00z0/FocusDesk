@@ -101,7 +101,7 @@ public partial class App : Application
             var started = await TrayIconHost.StartAsync(Shutdown);
             if (!started.IsCreated)
             {
-                AppLog.Info($"Tray icon not created: {started.Outcome}, {started.Attempts} attempts in {started.Elapsed}. The process ends.");
+                AppLog.Info($"Tray icon not created: {started.Outcome}, {started.Attempts} attempts in {started.Elapsed}. {started.Explanation} The process ends.");
                 _crashHandlers.Report("tray", started.LastError);
             }
 

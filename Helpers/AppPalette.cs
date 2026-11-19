@@ -81,7 +81,7 @@ internal static class AppPalette
             secondaryText.Color = SecondaryTextColour(sender));
 
         // Templated controls resolve these two keys rather than the implicit TextBlock style in
-        // App.xaml; Cascadia Mono renders larger than the stock face, so the size drops a notch.
+        // App.xaml; Cascadia Code renders larger than the stock face, so the size drops a notch.
         object brandFont = resources["BrandFontFamily"];
         resources["ContentControlThemeFontFamily"] = brandFont;
         resources["ControlContentThemeFontFamily"] = brandFont;
