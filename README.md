@@ -74,7 +74,7 @@ does; at any other time a change while a session runs is refused.
 
 ## Build
 
-Building needs the .NET 10 SDK and read access to the ZeroZero package feed. The installer and the
+Building needs the .NET 11 SDK and read access to the ZeroZero package feed. The installer and the
 release process are described in `installer\README.md`; a release is made only by pushing a
 `v*.*.*` tag.
 
