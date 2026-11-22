@@ -9,6 +9,11 @@ in the code. Newest version first; the heading is the version alone, exactly as 
 `FocusDesk.csproj`. A section never carries an installer hash: the workflow adds the one hash the
 updater reads.
 
+## 1.2.3
+
+- The shared libraries FocusDesk is built on are at their latest stable releases.
+- The windows use the studio's typeface Cascadia Code.
+
 ## 1.2.2
 
 - During the grace period of a Program focus session, "Settings…" in the tray menu and the gear on
